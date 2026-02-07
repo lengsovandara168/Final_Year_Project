@@ -1,0 +1,9 @@
+{
+  "/(dashboard)/customers/page": "/customers",
+  "/(dashboard)/orders/page": "/orders",
+  "/(dashboard)/products/page": "/products",
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/favicon.ico/route": "/favicon.ico",
+  "/page": "/"
+}
