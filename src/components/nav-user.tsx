@@ -28,7 +28,7 @@ export function NavUser() {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-black text-white text-xs">
-                  AD
+                  A
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
