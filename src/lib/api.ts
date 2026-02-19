@@ -1,5 +1,6 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://final-year.agritechkh.com";
+const API_PROXY_BASE_PATH = "/api";
 
 export type ApiError = {
   message: string;
@@ -12,9 +13,9 @@ function buildApiUrl(path: string) {
     return path;
   }
 
-  const normalizedBase = API_BASE_URL.endsWith("/")
-    ? API_BASE_URL.slice(0, -1)
-    : API_BASE_URL;
+  const base =
+    typeof window === "undefined" ? API_BASE_URL : API_PROXY_BASE_PATH;
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
 }
@@ -25,8 +26,19 @@ async function parseError(response: Response) {
 
   try {
     const data = await response.json();
-    if (data && typeof data === "object" && "message" in data) {
-      message = String((data as { message?: string }).message ?? message);
+    if (data && typeof data === "object") {
+      const payload = data as {
+        message?: unknown;
+        error?: unknown;
+        detail?: unknown;
+      };
+      if (typeof payload.message === "string" && payload.message.trim()) {
+        message = payload.message;
+      } else if (typeof payload.error === "string" && payload.error.trim()) {
+        message = payload.error;
+      } else if (typeof payload.detail === "string" && payload.detail.trim()) {
+        message = payload.detail;
+      }
     }
     details = data;
   } catch {
@@ -82,7 +94,7 @@ export async function apiFetchPublic<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(url, {
     ...init,
     headers,
-    // Note: not including credentials for public endpoints
+    credentials: "omit",
   });
 
   if (!response.ok) {
