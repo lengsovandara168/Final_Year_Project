@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Package, ShoppingCart, Users } from "lucide-react";
+import { Home, Package, ShoppingCart, Users, Store, Settings, Boxes } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -17,22 +17,37 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: Home,
-    href: "/en",
+    href: "/admin",
   },
   {
     title: "Products",
     icon: Package,
-    href: "/en/products",
+    href: "/admin/products",
+  },
+  {
+    title: "Inventory",
+    icon: Boxes,
+    href: "/admin/inventory",
   },
   {
     title: "Orders",
     icon: ShoppingCart,
-    href: "/en/orders",
+    href: "/admin/orders",
   },
   {
-    title: "Customers",
+    title: "Users",
     icon: Users,
-    href: "/en/customers",
+    href: "/admin/users",
+  },
+  {
+    title: "Settings",
+    icon: Settings,
+    href: "/admin/settings",
+  },
+  {
+    title: "View Shop",
+    icon: Store,
+    href: "/",
   },
 ];
 

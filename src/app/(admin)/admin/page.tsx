@@ -59,7 +59,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export default function DashboardPage() {
+export default function AdminDashboardPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
@@ -98,14 +98,17 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {topSellingProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="font-medium">{product.name}</p>
+                <div key={index} className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-bold">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{product.name}</p>
                     <p className="text-sm text-gray-500">{product.brand}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">{product.revenue}</p>
-                    <p className="text-sm text-gray-500">{product.sales} sold</p>
+                    <p className="text-sm text-gray-500">{product.sales} sales</p>
                   </div>
                 </div>
               ))}
@@ -121,16 +124,13 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between">
-                  <div className="flex-1">
+                <div key={order.id} className="flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium">{order.id}</p>
-                    <p className="text-sm text-gray-500">{order.customer}</p>
+                    <p className="text-sm text-gray-500 truncate">{order.customer}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="font-medium">{order.total}</p>
-                      <p className="text-sm text-gray-500">{order.items} items</p>
-                    </div>
+                  <div className="text-right">
+                    <p className="font-medium">{order.total}</p>
                     <Badge className={getStatusColor(order.status)}>
                       {order.status}
                     </Badge>
