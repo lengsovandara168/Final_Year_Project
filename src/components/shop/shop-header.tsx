@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ShoppingCart, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { useShop } from "@/contexts/shop-context";
 
 export function ShopHeader() {
-  const { cartCount, setIsCartOpen, isAuthenticated, user, setIsAuthModalOpen, setAuthModalMode, logout } = useShop();
+  const router = useRouter();
+  const { cartCount, setIsCartOpen, isAuthenticated, user, logout } = useShop();
 
   const handleAuthClick = () => {
     if (isAuthenticated) {
       logout();
     } else {
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
+      router.push("/en/login");
     }
   };
 

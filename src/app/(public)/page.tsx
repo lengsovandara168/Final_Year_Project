@@ -90,20 +90,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Categories */}
-      <section className="container mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Shop by Category</h2>
-          <Link
-            href="/products"
-            className="text-sm font-medium hover:underline flex items-center"
-          >
-            View All <ChevronRight className="h-4 w-4 ml-1" />
-          </Link>
-        </div>
-        <CategoryNav />
-      </section>
-
       {/* Popular Products */}
       <section className="container mx-auto px-4 py-12">
         <Card>

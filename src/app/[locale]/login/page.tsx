@@ -24,7 +24,7 @@ export default function LoginPage() {
     try {
       await login({ email, password });
       setSuccess("Login successful. Redirecting...");
-      router.push("/en");
+      router.push("/");
     } catch (err) {
       if (err && typeof err === "object" && "message" in err) {
         setError(String((err as { message?: string }).message));
@@ -98,6 +98,13 @@ export default function LoginPage() {
           <Button className="w-full" type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <a href="/en/register" className="text-primary hover:underline">
+              Create one
+            </a>
+          </p>
         </form>
       </div>
     </div>

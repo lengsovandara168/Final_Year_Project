@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function CartDrawer() {
+  const router = useRouter();
   const {
     cart,
     isCartOpen,
@@ -23,20 +25,12 @@ export function CartDrawer() {
     updateQuantity,
     cartTotal,
     isAuthenticated,
-    setIsAuthModalOpen,
-    setAuthModalMode,
-    setPendingAction,
   } = useShop();
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
-      setPendingAction(() => () => {
-        // After login, redirect to checkout
-        window.location.href = "/checkout";
-      });
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
       setIsCartOpen(false);
+      router.push("/en/login");
       return;
     }
     // Navigate to checkout

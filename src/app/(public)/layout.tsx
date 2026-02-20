@@ -1,5 +1,5 @@
 import { ShopProvider } from "@/contexts/shop-context";
-import { ShopHeader, CartDrawer, AuthModal, ShopSidebar } from "@/components/shop";
+import { ShopHeader, CartDrawer, ShopSidebar } from "@/components/shop";
 import {
   SidebarProvider,
   SidebarInset,
@@ -87,7 +87,6 @@ export default function PublicLayout({
 
             {/* Global Modals */}
             <CartDrawer />
-            <AuthModal />
           </div>
         </SidebarInset>
       </SidebarProvider>

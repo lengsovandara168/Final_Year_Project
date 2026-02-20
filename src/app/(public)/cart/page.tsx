@@ -15,26 +15,21 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CartPage() {
+  const router = useRouter();
   const {
     cart,
     removeFromCart,
     updateQuantity,
     cartTotal,
     isAuthenticated,
-    setIsAuthModalOpen,
-    setAuthModalMode,
-    setPendingAction,
   } = useShop();
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
-      setPendingAction(() => () => {
-        window.location.href = "/checkout";
-      });
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
+      router.push("/en/login");
       return;
     }
     window.location.href = "/checkout";

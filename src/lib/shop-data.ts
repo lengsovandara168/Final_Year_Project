@@ -8,6 +8,14 @@ export type Category = {
   productCount: number;
 };
 
+export type Brand = {
+  id: string;
+  name: string;
+  slug: string;
+  logo: string; // Path to brand logo image (e.g., "/brands/apple.png")
+  description?: string;
+};
+
 export type Product = {
   id: number;
   brand: string;
@@ -47,6 +55,21 @@ export const categories: Category[] = [
   { id: "3", name: "Accessories", slug: "accessories", icon: "headphones", productCount: 45 },
   { id: "4", name: "Smartwatches", slug: "smartwatches", icon: "watch", productCount: 18 },
   { id: "5", name: "Cases & Covers", slug: "cases", icon: "shield", productCount: 67 },
+];
+
+// Brands (Subcategories) - Use external URL links for brand logos
+// Example: "https://example.com/logo.png" or CDN links
+export const brands: Brand[] = [
+  { id: "1", name: "Apple", slug: "apple", logo: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg", description: "Think Different" },
+  { id: "2", name: "Samsung", slug: "samsung", logo: "https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg", description: "Do What You Can't" },
+  { id: "3", name: "Google", slug: "google", logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg", description: "Made by Google" },
+  { id: "4", name: "Nokia", slug: "nokia", logo: "https://upload.wikimedia.org/wikipedia/commons/0/02/Nokia_wordmark.svg", description: "Connecting People" },
+  { id: "5", name: "Huawei", slug: "huawei", logo: "https://upload.wikimedia.org/wikipedia/commons/e/e8/Huawei_Logo.svg", description: "Make It Possible" },
+  { id: "6", name: "Oppo", slug: "oppo", logo: "https://upload.wikimedia.org/wikipedia/commons/0/0a/OPPO_LOGO_2019.svg", description: "Inspiration Ahead" },
+  { id: "7", name: "Xiaomi", slug: "xiaomi", logo: "https://upload.wikimedia.org/wikipedia/commons/a/ae/Xiaomi_logo_%282021-%29.svg", description: "Innovation for Everyone" },
+  { id: "8", name: "OnePlus", slug: "oneplus", logo: "https://upload.wikimedia.org/wikipedia/commons/9/9e/OnePlus_logo.svg", description: "Never Settle" },
+  { id: "9", name: "Sony", slug: "sony", logo: "https://upload.wikimedia.org/wikipedia/commons/c/ca/Sony_logo.svg", description: "Be Moved" },
+  { id: "10", name: "Spigen", slug: "spigen", logo: "https://upload.wikimedia.org/wikipedia/commons/8/84/Spigen_logo.svg", description: "Designed for Protection" },
 ];
 
 // Products
@@ -374,3 +397,57 @@ export const getCategoryBySlug = (slug: string) =>
 
 export const formatPrice = (price: number) => 
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(price);
+
+// Get unique brands for a category (or all brands if no category)
+export const getBrandsByCategory = (categorySlug?: string | null) => {
+  const filteredProducts = categorySlug
+    ? products.filter((p) => p.categorySlug === categorySlug)
+    : products;
+  
+  const brandCounts = filteredProducts.reduce((acc, product) => {
+    acc[product.brand] = (acc[product.brand] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return Object.entries(brandCounts)
+    .map(([brand, count]) => ({ brand, count }))
+    .sort((a, b) => a.brand.localeCompare(b.brand));
+};
+
+// Get all unique brands
+export const getAllBrands = () => {
+  const brandNames = [...new Set(products.map((p) => p.brand))];
+  return brandNames.sort();
+};
+
+// Get brand info by name
+export const getBrandByName = (name: string) =>
+  brands.find((b) => b.name.toLowerCase() === name.toLowerCase());
+
+// Get brand info by slug
+export const getBrandBySlug = (slug: string) =>
+  brands.find((b) => b.slug === slug);
+
+// Get all brands with product counts per category
+export const getBrandsWithCountsByCategory = (categorySlug?: string | null) => {
+  const filteredProducts = categorySlug
+    ? products.filter((p) => p.categorySlug === categorySlug)
+    : products;
+  
+  const brandCounts = filteredProducts.reduce((acc, product) => {
+    acc[product.brand] = (acc[product.brand] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return Object.entries(brandCounts)
+    .map(([brandName, count]) => {
+      const brandInfo = getBrandByName(brandName);
+      return {
+        brand: brandName,
+        slug: brandInfo?.slug || brandName.toLowerCase(),
+        logo: brandInfo?.logo || "/brands/default.png",
+        count,
+      };
+    })
+    .sort((a, b) => a.brand.localeCompare(b.brand));
+};

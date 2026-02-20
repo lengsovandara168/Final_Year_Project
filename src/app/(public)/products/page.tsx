@@ -7,18 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ProductCard, CategorySidebar } from "@/components/shop";
-import { products, categories } from "@/lib/shop-data";
+import { products, categories, getBrandsByCategory } from "@/lib/shop-data";
 import { Search, SlidersHorizontal, ChevronRight, Home, Grid3X3, List } from "lucide-react";
 import Link from "next/link";
 
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
+  const brandParam = searchParams.get("brand");
   const sortParam = searchParams.get("sort");
   
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState(sortParam || "featured");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Get brands for current category
+  const availableBrands = useMemo(() => {
+    return getBrandsByCategory(categoryParam);
+  }, [categoryParam]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -26,6 +32,11 @@ export default function ProductsPage() {
     // Filter by category
     if (categoryParam) {
       result = result.filter((p) => p.categorySlug === categoryParam);
+    }
+
+    // Filter by brand
+    if (brandParam) {
+      result = result.filter((p) => p.brand.toLowerCase() === brandParam.toLowerCase());
     }
 
     // Filter by search
@@ -62,11 +73,19 @@ export default function ProductsPage() {
     }
 
     return result;
-  }, [categoryParam, searchQuery, sortBy]);
+  }, [categoryParam, brandParam, searchQuery, sortBy]);
 
   const currentCategory = categoryParam
     ? categories.find((c) => c.slug === categoryParam)
     : null;
+
+  // Build URL with current params plus new ones
+  const buildFilterUrl = (newBrand?: string) => {
+    const params = new URLSearchParams();
+    if (categoryParam) params.set("category", categoryParam);
+    if (newBrand) params.set("brand", newBrand);
+    return `/products?${params.toString()}`;
+  };
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -83,7 +102,25 @@ export default function ProductsPage() {
               Products
             </Link>
             <ChevronRight className="h-4 w-4" />
-            <span className="text-black font-medium">{currentCategory.name}</span>
+            {brandParam ? (
+              <>
+                <Link href={`/products?category=${categoryParam}`} className="hover:text-black">
+                  {currentCategory.name}
+                </Link>
+                <ChevronRight className="h-4 w-4" />
+                <span className="text-black font-medium">{brandParam}</span>
+              </>
+            ) : (
+              <span className="text-black font-medium">{currentCategory.name}</span>
+            )}
+          </>
+        ) : brandParam ? (
+          <>
+            <Link href="/products" className="hover:text-black">
+              Products
+            </Link>
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-black font-medium">{brandParam}</span>
           </>
         ) : (
           <span className="text-black font-medium">All Products</span>
@@ -97,7 +134,11 @@ export default function ProductsPage() {
           {/* Page Header */}
           <div className="mb-6">
             <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              {currentCategory ? currentCategory.name : "All Products"}
+              {brandParam 
+                ? `${brandParam}${currentCategory ? ` ${currentCategory.name}` : ""}`
+                : currentCategory 
+                  ? currentCategory.name 
+                  : "All Products"}
             </h1>
             <p className="text-gray-500">
               {filteredProducts.length} products found
@@ -157,13 +198,13 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Mobile Categories */}
+              {/* Mobile Categories & Brands */}
               <div className="flex gap-2 mt-4 overflow-x-auto pb-2 lg:hidden">
                 <Link href="/products">
                   <Badge
-                    variant={!categoryParam ? "default" : "outline"}
+                    variant={!categoryParam && !brandParam ? "default" : "outline"}
                     className={`whitespace-nowrap cursor-pointer ${
-                      !categoryParam ? "bg-black text-white" : "hover:bg-gray-100"
+                      !categoryParam && !brandParam ? "bg-black text-white" : "hover:bg-gray-100"
                     }`}
                   >
                     All
@@ -172,9 +213,9 @@ export default function ProductsPage() {
                 {categories.map((cat) => (
                   <Link key={cat.id} href={`/products?category=${cat.slug}`}>
                     <Badge
-                      variant={cat.slug === categoryParam ? "default" : "outline"}
+                      variant={cat.slug === categoryParam && !brandParam ? "default" : "outline"}
                       className={`whitespace-nowrap cursor-pointer ${
-                        cat.slug === categoryParam
+                        cat.slug === categoryParam && !brandParam
                           ? "bg-black text-white"
                           : "hover:bg-gray-100"
                       }`}
@@ -184,6 +225,36 @@ export default function ProductsPage() {
                   </Link>
                 ))}
               </div>
+
+              {/* Mobile Brands (when category selected) */}
+              {categoryParam && availableBrands.length > 0 && (
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-2 lg:hidden">
+                  <Link href={`/products?category=${categoryParam}`}>
+                    <Badge
+                      variant={!brandParam ? "default" : "outline"}
+                      className={`whitespace-nowrap cursor-pointer ${
+                        !brandParam ? "bg-blue-600 text-white" : "hover:bg-gray-100"
+                      }`}
+                    >
+                      All Brands
+                    </Badge>
+                  </Link>
+                  {availableBrands.map(({ brand, count }) => (
+                    <Link key={brand} href={buildFilterUrl(brand)}>
+                      <Badge
+                        variant={brandParam === brand ? "default" : "outline"}
+                        className={`whitespace-nowrap cursor-pointer ${
+                          brandParam === brand
+                            ? "bg-blue-600 text-white"
+                            : "hover:bg-gray-100"
+                        }`}
+                      >
+                        {brand} ({count})
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

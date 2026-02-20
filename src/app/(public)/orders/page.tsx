@@ -70,9 +70,14 @@ export default function OrdersPage() {
         <p className="text-gray-500 mb-6">
           You need to be logged in to view your orders.
         </p>
-        <Button asChild>
-          <Link href="/">Back to Shop</Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button asChild>
+            <Link href="/en/login">Sign In</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/en/register">Create Account</Link>
+          </Button>
+        </div>
       </div>
     );
   }

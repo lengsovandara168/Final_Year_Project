@@ -8,6 +8,18 @@ const normalizedBackendOrigin = backendOrigin.endsWith("/")
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+  },
   async rewrites() {
     return [
       {

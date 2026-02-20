@@ -27,6 +27,7 @@ import {
   Check,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ProductDetailPage({
   params,
@@ -37,12 +38,10 @@ export default function ProductDetailPage({
   const productId = parseInt(slug);
   const product = getProductById(productId);
   const [quantity, setQuantity] = useState(1);
+  const router = useRouter();
   const {
     addToCart,
     isAuthenticated,
-    setIsAuthModalOpen,
-    setAuthModalMode,
-    setPendingAction,
     setIsCartOpen,
   } = useShop();
 
@@ -72,14 +71,7 @@ export default function ProductDetailPage({
 
   const handleAddToCart = () => {
     if (!isAuthenticated) {
-      setPendingAction(() => () => {
-        for (let i = 0; i < quantity; i++) {
-          addToCart(product);
-        }
-        setIsCartOpen(true);
-      });
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
+      router.push("/en/login");
       return;
     }
 
@@ -91,14 +83,7 @@ export default function ProductDetailPage({
 
   const handleBuyNow = () => {
     if (!isAuthenticated) {
-      setPendingAction(() => () => {
-        for (let i = 0; i < quantity; i++) {
-          addToCart(product);
-        }
-        window.location.href = "/checkout";
-      });
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
+      router.push("/en/login");
       return;
     }
 

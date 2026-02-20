@@ -66,8 +66,8 @@ export default function RegisterPage() {
       });
 
       console.log('Registration successful:', response);
-      // TODO: Redirect to OTP verification page or login based on backend response
-      // router.push('/verify-otp');
+      // Redirect to login page after successful registration
+      router.push('/en/login');
     } catch (err) {
       const apiError = err as ApiError;
       setError(apiError.message || 'Registration failed. Please try again.');
@@ -161,7 +161,7 @@ export default function RegisterPage() {
         {/* Login Link */}
         <p className="text-center mt-4 text-sm text-gray-600">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">
+          <a href="/en/login" className="text-blue-600 hover:underline">
             Login here
           </a>
         </p>

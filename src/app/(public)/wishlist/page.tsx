@@ -10,8 +10,6 @@ export default function WishlistPage() {
   const { 
     wishlist, 
     isAuthenticated, 
-    setIsAuthModalOpen, 
-    setAuthModalMode,
     wishlistCount 
   } = useShop();
 
@@ -28,24 +26,16 @@ export default function WishlistPage() {
             Please sign in or create an account to save items to your wishlist and access them anytime.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              onClick={() => {
-                setAuthModalMode("login");
-                setIsAuthModalOpen(true);
-              }}
-              className="bg-black text-white hover:bg-gray-800"
-            >
-              Sign In
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setAuthModalMode("register");
-                setIsAuthModalOpen(true);
-              }}
-            >
-              Create Account
-            </Button>
+            <Link href="/en/login">
+              <Button className="bg-black text-white hover:bg-gray-800 w-full">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/en/register">
+              <Button variant="outline" className="w-full">
+                Create Account
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

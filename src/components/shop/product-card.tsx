@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Heart } from "lucide-react";
 import { useShop } from "@/contexts/shop-context";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -15,12 +16,10 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product, showAddToCart = true }: ProductCardProps) {
+  const router = useRouter();
   const { 
     addToCart, 
     isAuthenticated, 
-    setIsAuthModalOpen, 
-    setAuthModalMode, 
-    setPendingAction, 
     setIsCartOpen,
     toggleWishlist,
     isInWishlist 
@@ -33,12 +32,7 @@ export function ProductCard({ product, showAddToCart = true }: ProductCardProps)
     e.stopPropagation();
     
     if (!isAuthenticated) {
-      setPendingAction(() => () => {
-        addToCart(product);
-        setIsCartOpen(true);
-      });
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
+      router.push("/en/login");
       return;
     }
     
@@ -51,11 +45,7 @@ export function ProductCard({ product, showAddToCart = true }: ProductCardProps)
     e.stopPropagation();
     
     if (!isAuthenticated) {
-      setPendingAction(() => () => {
-        toggleWishlist(product);
-      });
-      setAuthModalMode("login");
-      setIsAuthModalOpen(true);
+      router.push("/en/login");
       return;
     }
     
