@@ -1,22 +1,33 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { register } from '@/lib/api';
-import type { ApiError } from '@/lib/api';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { register } from "@/lib/api";
+import type { ApiError } from "@/lib/api";
+
+interface ErrorDetails {
+  issues?: Array<{ message: string }>;
+  errors?: Array<{ message?: string } | string>;
+  message?: string;
+}
+
+interface ValidationIssue {
+  message: string;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,30 +40,35 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     // Validation
-    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('All fields are required');
+    if (
+      !formData.username ||
+      !formData.email ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
+      setError("All fields are required");
       setIsLoading(false);
       return;
     }
 
     if (formData.username.length < 3) {
-      setError('Username must be at least 3 characters');
+      setError("Username must be at least 3 characters");
       setIsLoading(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
       setIsLoading(false);
       return;
     }
@@ -65,12 +81,46 @@ export default function RegisterPage() {
         password: formData.password,
       });
 
-      console.log('Registration successful:', response);
-      // TODO: Redirect to OTP verification page or login based on backend response
-      // router.push('/verify-otp');
+      console.log("Registration successful:", response);
+
+      // Store email for OTP verification
+      localStorage.setItem("verifyEmail", formData.email);
+
+      // Redirect to OTP verification page
+      router.push("/en/verify-otp");
     } catch (err) {
+      console.error("Registration error (raw):", err);
+      console.error("Error type:", typeof err);
+      console.error("Error keys:", err ? Object.keys(err) : "null");
+
       const apiError = err as ApiError;
-      setError(apiError.message || 'Registration failed. Please try again.');
+
+      // Show detailed validation errors if available
+      let errorMessage = "Registration failed. Please try again.";
+
+      if (apiError && apiError.message) {
+        errorMessage = apiError.message;
+
+        if (apiError.details && typeof apiError.details === "object") {
+          const details = apiError.details as ErrorDetails;
+          // Handle backend validation issues
+          if (details.issues && Array.isArray(details.issues)) {
+            errorMessage = details.issues
+              .map((issue: ValidationIssue) => issue.message)
+              .join(". ");
+          } else if (details.errors && Array.isArray(details.errors)) {
+            errorMessage = details.errors
+              .map((e: { message?: string } | string) => (typeof e === "string" ? e : e.message || "Unknown error"))
+              .join(", ");
+          } else if (details.message) {
+            errorMessage = details.message;
+          }
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +140,10 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username Input */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium mb-1"
+            >
               Username
             </label>
             <Input
@@ -122,7 +175,10 @@ export default function RegisterPage() {
 
           {/* Password Input */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium mb-1"
+            >
               Password
             </label>
             <Input
@@ -138,7 +194,10 @@ export default function RegisterPage() {
 
           {/* Confirm Password Input */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium mb-1"
+            >
               Confirm Password
             </label>
             <Input
@@ -154,16 +213,16 @@ export default function RegisterPage() {
 
           {/* Submit Button */}
           <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-            {isLoading ? 'Registering...' : 'Register'}
+            {isLoading ? "Registering..." : "Register"}
           </Button>
         </form>
 
         {/* Login Link */}
         <p className="text-center mt-4 text-sm text-gray-600">
-          Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">
+          Already have an account?{" "}
+          <Link href="/en/login" className="text-blue-600 hover:underline">
             Login here
-          </a>
+          </Link>
         </p>
       </Card>
     </div>

@@ -1,16 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { login } from "@/lib/api";
+import { locales } from "@/i18n/routing";
+import { requestOtp } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -22,12 +24,37 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
-      setSuccess("Login successful. Redirecting...");
-      router.push("/en");
+      await requestOtp({ email });
+      localStorage.setItem("verifyEmail", email);
+
+      const segments = pathname?.split("/").filter(Boolean) ?? [];
+      const firstSegment = segments[0];
+      const hasLocale = firstSegment
+        ? (locales as readonly string[]).includes(firstSegment)
+        : false;
+      const localePrefix = hasLocale ? `/${firstSegment}` : "";
+
+      setSuccess("OTP sent. Redirecting to verification...");
+      router.push(`${localePrefix}/verify-otp` || "/en/verify-otp");
     } catch (err) {
+      console.error("Login error:", err);
       if (err && typeof err === "object" && "message" in err) {
-        setError(String((err as { message?: string }).message));
+        const message = String((err as { message?: string }).message);
+        if (message.toLowerCase().includes("already verified")) {
+          localStorage.setItem("verifyEmail", email);
+
+          const segments = pathname?.split("/").filter(Boolean) ?? [];
+          const firstSegment = segments[0];
+          const hasLocale = firstSegment
+            ? (locales as readonly string[]).includes(firstSegment)
+            : false;
+          const localePrefix = hasLocale ? `/${firstSegment}` : "";
+
+          setSuccess("Email already verified. Continue to OTP verification...");
+          router.push(`${localePrefix}/verify-otp` || "/en/verify-otp");
+          return;
+        }
+        setError(message);
       } else {
         setError("Login failed. Please try again.");
       }
@@ -42,7 +69,7 @@ export default function LoginPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-foreground">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Use your email and password to access the dashboard.
+            Enter your email and we&apos;ll send you an OTP to verify.
           </p>
         </div>
 
@@ -65,25 +92,6 @@ export default function LoginPage() {
               required
             />
           </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-foreground"
-              htmlFor="password"
-            >
-              Password
-            </label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </div>
-
           {error ? (
             <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
@@ -96,9 +104,20 @@ export default function LoginPage() {
           ) : null}
 
           <Button className="w-full" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Signing in..." : "Sign in"}
+            {isSubmitting ? "Sending OTP..." : "Send OTP"}
           </Button>
         </form>
+
+        {/* Register Link */}
+        <p className="text-center mt-4 text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/en/register"
+            className="text-blue-600 hover:underline font-medium"
+          >
+            Register here
+          </Link>
+        </p>
       </div>
     </div>
   );

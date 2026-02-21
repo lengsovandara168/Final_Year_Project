@@ -147,6 +147,21 @@ export async function login(payload: LoginRequest) {
   });
 }
 
+export type OtpRequest = {
+  email: string;
+};
+
+export type OtpRequestResponse = {
+  message?: string;
+};
+
+export async function requestOtp(payload: OtpRequest) {
+  return apiFetchPublic<OtpRequestResponse>("/v1/auth/otp/request", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export type OtpVerifyRequest = {
   email: string;
   code: string;
