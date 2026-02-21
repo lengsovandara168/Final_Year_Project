@@ -112,9 +112,9 @@ export async function apiFetchPublic<T>(path: string, init: RequestInit = {}) {
 // ===================== Auth Endpoints =====================
 
 export type RegisterRequest = {
-  "email": string;
-  "name" : string;
-  "password": string;
+  email: string;
+  name: string;
+  password: string;
 };
 
 export type RegisterResponse = {
@@ -213,7 +213,7 @@ export type DeleteAccountRequest = {
 
 export async function deleteAccount(
   payload: DeleteAccountRequest,
-  accessToken: string
+  accessToken: string,
 ) {
   return apiFetch<{ message?: string }>("/v1/auth/account", {
     method: "DELETE",
@@ -262,7 +262,7 @@ export type CreateCategoryRequest = {
 
 export async function createCategory(
   payload: CreateCategoryRequest,
-  accessToken: string
+  accessToken: string,
 ) {
   return apiFetch<Category>("/v1/categories", {
     method: "POST",
@@ -283,7 +283,7 @@ export type UpdateCategoryRequest = {
 export async function updateCategory(
   id: string,
   payload: UpdateCategoryRequest,
-  accessToken: string
+  accessToken: string,
 ) {
   return apiFetch<Category>(`/v1/categories/${id}`, {
     method: "PATCH",
