@@ -43,7 +43,7 @@ export function middleware(request: NextRequest) {
   if (!accessToken) {
     const loginUrl = request.nextUrl.clone();
     // Always prefix with locale so Vercel finds the page
-    loginUrl.pathname = `/${activeLocale}/login/email`;
+    loginUrl.pathname = `/${activeLocale}/login`;
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
