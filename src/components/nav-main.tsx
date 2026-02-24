@@ -17,27 +17,29 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: Home,
-    href: "/en",
+    path: "",
   },
   {
     title: "Products",
     icon: Package,
-    href: "/en/products",
+    path: "/products",
   },
   {
     title: "Orders",
     icon: ShoppingCart,
-    href: "/en/orders",
+    path: "/orders",
   },
   {
     title: "Customers",
     icon: Users,
-    href: "/en/customers",
+    path: "/customers",
   },
 ];
 
 export function NavMain() {
   const pathname = usePathname();
+  const locale = pathname?.split("/").filter(Boolean)[0] || "en";
+  const adminBasePath = `/${locale}/admin`;
 
   return (
     <SidebarGroup>
@@ -48,11 +50,12 @@ export function NavMain() {
         <SidebarMenu className="gap-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const href = `${adminBasePath}${item.path}`;
             const isActive =
-              pathname === item.href || pathname?.startsWith(item.href + "/");
+              pathname === href || pathname?.startsWith(href + "/");
 
             return (
-              <SidebarMenuItem key={item.href}>
+              <SidebarMenuItem key={href}>
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
@@ -60,7 +63,7 @@ export function NavMain() {
                   size="default"
                   className="h-10"
                 >
-                  <Link href={item.href}>
+                  <Link href={href}>
                     <Icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </Link>

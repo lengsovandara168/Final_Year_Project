@@ -8,6 +8,15 @@ export type ApiError = {
   details?: unknown;
 };
 
+type RefreshResponse = {
+  ok: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  userId?: string;
+  email?: string;
+  role?: string;
+};
+
 function buildApiUrl(path: string) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
@@ -56,6 +65,109 @@ async function parseError(response: Response) {
   } satisfies ApiError;
 }
 
+function getCookieValue(name: string) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const prefix = `${name}=`;
+  const cookie = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix));
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.slice(prefix.length));
+}
+
+function setCookie(name: string, value: string, maxAgeSeconds = 60 * 60 * 24 * 7) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax`;
+}
+
+function clearAuthCookies() {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.cookie = "access_token=; Path=/; Max-Age=0; SameSite=Lax";
+  document.cookie = "refresh_token=; Path=/; Max-Age=0; SameSite=Lax";
+  document.cookie = "auth_user=; Path=/; Max-Age=0; SameSite=Lax";
+}
+
+async function isExpiredTokenResponse(response: Response) {
+  if (response.status !== 401) {
+    return false;
+  }
+
+  try {
+    const data = (await response.clone().json()) as {
+      error?: string;
+      message?: string;
+    };
+    const message = (data.error || data.message || "").toLowerCase();
+    return message.includes("invalid or expired token");
+  } catch {
+    return false;
+  }
+}
+
+async function refreshAccessToken() {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const refreshToken = getCookieValue("refresh_token");
+  if (!refreshToken) {
+    return null;
+  }
+
+  const url = buildApiUrl("/v1/auth/refresh");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    clearAuthCookies();
+    return null;
+  }
+
+  const payload = (await response.json()) as RefreshResponse;
+  if (!payload.ok || !payload.accessToken) {
+    clearAuthCookies();
+    return null;
+  }
+
+  setCookie("access_token", payload.accessToken);
+  if (payload.refreshToken) {
+    setCookie("refresh_token", payload.refreshToken);
+  }
+
+  if (payload.userId && payload.email && payload.role) {
+    setCookie(
+      "auth_user",
+      JSON.stringify({
+        id: payload.userId,
+        email: payload.email,
+        role: payload.role,
+      }),
+    );
+  }
+
+  return payload.accessToken;
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}) {
   const url = buildApiUrl(path);
   const headers = new Headers(init.headers);
@@ -69,6 +181,36 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
     headers,
     credentials: "include",
   });
+
+  if (
+    !(path.includes("/v1/auth/refresh") || path.includes("/v1/auth/login")) &&
+    (await isExpiredTokenResponse(response))
+  ) {
+    const nextAccessToken = await refreshAccessToken();
+    if (nextAccessToken) {
+      const retryHeaders = new Headers(headers);
+      if (retryHeaders.has("Authorization")) {
+        retryHeaders.set("Authorization", `Bearer ${nextAccessToken}`);
+      }
+
+      const retryResponse = await fetch(url, {
+        ...init,
+        headers: retryHeaders,
+        credentials: "include",
+      });
+
+      if (!retryResponse.ok) {
+        throw await parseError(retryResponse);
+      }
+
+      const retryContentType = retryResponse.headers.get("content-type");
+      if (retryContentType && retryContentType.includes("application/json")) {
+        return (await retryResponse.json()) as T;
+      }
+
+      return (await retryResponse.text()) as T;
+    }
+  }
 
   if (!response.ok) {
     throw await parseError(response);
@@ -114,12 +256,12 @@ export async function apiFetchPublic<T>(path: string, init: RequestInit = {}) {
 export type RegisterRequest = {
   email: string;
   name: string;
-  password: string;
 };
 
 export type RegisterResponse = {
-  message?: string;
-  user_id?: string;
+  ok: boolean;
+  userId: string;
+  email: string;
 };
 
 export async function register(payload: RegisterRequest) {
@@ -131,13 +273,10 @@ export async function register(payload: RegisterRequest) {
 
 export type LoginRequest = {
   email: string;
-  password: string;
 };
 
 export type LoginResponse = {
-  message?: string;
-  access_token?: string;
-  refresh_token?: string;
+  ok: boolean;
 };
 
 export async function login(payload: LoginRequest) {
@@ -168,13 +307,23 @@ export type OtpVerifyRequest = {
 };
 
 export type OtpVerifyResponse = {
-  message?: string;
-  access_token?: string;
-  refresh_token?: string;
+  ok: boolean;
+  userId: string;
+  email: string;
+  role: string;
+  accessToken: string;
+  refreshToken: string;
 };
 
-export async function verifyOtp(payload: OtpVerifyRequest) {
-  return apiFetch<OtpVerifyResponse>("/v1/auth/otp/verify", {
+export async function verifyRegisterOtp(payload: OtpVerifyRequest) {
+  return apiFetchPublic<OtpVerifyResponse>("/v1/auth/otp/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function verifyLoginOtp(payload: OtpVerifyRequest) {
+  return apiFetchPublic<OtpVerifyResponse>("/v1/auth/login-verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });

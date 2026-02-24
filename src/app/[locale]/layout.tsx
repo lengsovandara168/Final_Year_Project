@@ -2,6 +2,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { FlashToast } from "@/components/flash-toast";
 
 
 export default async function LocaleLayout({
@@ -22,6 +23,7 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <main className="flex flex-1 flex-col overflow-y-auto bg-gray-50">
+        <FlashToast />
         {children}
       </main>
     </NextIntlClientProvider>

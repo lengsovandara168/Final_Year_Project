@@ -27,6 +27,7 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
+import { useLogout } from "@/hooks/use-logout";
 
 // Type definitions for products
 interface Product {
@@ -167,6 +168,7 @@ const newsItems: NewsItem[] = [
 ];
 
 export default function ShopPage() {
+  const handleLogout = useLogout();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -231,7 +233,6 @@ export default function ShopPage() {
 
   // Get cart count
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header - Logo + Search + Cart */}
@@ -265,7 +266,12 @@ export default function ShopPage() {
             </div>
 
             {/* Account */}
-            <Button variant="outline" className="relative shrink-0">
+            <Button
+              variant="outline"
+              className="relative shrink-0"
+              onClick={handleLogout}
+              aria-label="Sign out"
+            >
               <User className="h-5 w-5" />
             </Button>
           </div>

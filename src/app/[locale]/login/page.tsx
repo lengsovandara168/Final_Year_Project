@@ -1,17 +1,18 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { locales } from "@/i18n/routing";
-import { requestOtp } from "@/lib/api";
+import { login } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,39 +23,29 @@ export default function LoginPage() {
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
+    const normalizedEmail = email.trim();
 
     try {
-      await requestOtp({ email });
-      localStorage.setItem("verifyEmail", email);
+      await login({ email: normalizedEmail });
+      localStorage.setItem("verifyEmail", normalizedEmail);
+      localStorage.setItem("verifyFlow", "login");
 
       const segments = pathname?.split("/").filter(Boolean) ?? [];
       const firstSegment = segments[0];
       const hasLocale = firstSegment
         ? (locales as readonly string[]).includes(firstSegment)
         : false;
-      const localePrefix = hasLocale ? `/${firstSegment}` : "";
+      const localePrefix = hasLocale ? `/${firstSegment}` : "/en";
 
       setSuccess("OTP sent. Redirecting to verification...");
-      router.push(`${localePrefix}/verify-otp` || "/en/verify-otp");
+      const nextPath = searchParams.get("next");
+      if (nextPath) {
+        localStorage.setItem("postLoginRedirect", nextPath);
+      }
+      router.push(`${localePrefix}/verify-otp?flow=login`);
     } catch (err) {
-      console.error("Login error:", err);
       if (err && typeof err === "object" && "message" in err) {
-        const message = String((err as { message?: string }).message);
-        if (message.toLowerCase().includes("already verified")) {
-          localStorage.setItem("verifyEmail", email);
-
-          const segments = pathname?.split("/").filter(Boolean) ?? [];
-          const firstSegment = segments[0];
-          const hasLocale = firstSegment
-            ? (locales as readonly string[]).includes(firstSegment)
-            : false;
-          const localePrefix = hasLocale ? `/${firstSegment}` : "";
-
-          setSuccess("Email already verified. Continue to OTP verification...");
-          router.push(`${localePrefix}/verify-otp` || "/en/verify-otp");
-          return;
-        }
-        setError(message);
+        setError(String((err as { message?: string }).message));
       } else {
         setError("Login failed. Please try again.");
       }

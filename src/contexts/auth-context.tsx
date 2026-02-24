@@ -1,18 +1,24 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import {
+  clearAuthSession,
+  getSessionSnapshot,
+  persistAuthSession,
+  type AuthSessionPayload,
+} from "@/lib/auth-session";
 
 interface User {
   id: string;
   email: string;
-  name?: string;
+  role: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, user: User, refreshToken?: string) => void;
+  login: (payload: AuthSessionPayload) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
 }
@@ -26,39 +32,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load user data from localStorage after mount to avoid hydration mismatch
+  // Load auth session from cookies after mount to avoid hydration mismatch
   React.useEffect(() => {
-    const userData = localStorage.getItem("userData");
-    const authToken = localStorage.getItem("authToken");
+    const session = getSessionSnapshot();
 
-    if (userData && authToken) {
-      try {
-        setUser(JSON.parse(userData));
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error("Failed to parse user data:", error);
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userData");
-      }
+    if (session.accessToken && session.user) {
+      setUser(session.user);
+      setIsAuthenticated(true);
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
     }
 
     setIsLoading(false);
   }, []);
 
-  const login = (token: string, userData: User, refreshToken?: string) => {
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("userData", JSON.stringify(userData));
-    if (refreshToken) {
-      localStorage.setItem("refreshToken", refreshToken);
-    }
-    setUser(userData);
+  const login = (payload: AuthSessionPayload) => {
+    persistAuthSession(payload);
+    setUser({
+      id: payload.userId,
+      email: payload.email,
+      role: payload.role,
+    });
     setIsAuthenticated(true);
   };
 
   const logout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userData");
-    localStorage.removeItem("refreshToken");
+    clearAuthSession();
+    localStorage.removeItem("verifyEmail");
+    localStorage.removeItem("verifyFlow");
+    localStorage.removeItem("postLoginRedirect");
     setUser(null);
     setIsAuthenticated(false);
   };
