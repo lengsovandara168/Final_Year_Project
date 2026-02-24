@@ -13,6 +13,10 @@ export default async function UsersLayout({
   const { locale } = await params;
   const session = await getValidatedServerSession();
 
+  if (session.requiresRefresh) {
+    redirect(`/api/auth/refresh-session?next=/${locale}/users`);
+  }
+
   if (!session.isAuthenticated || !session.user) {
     redirect(`/${locale}/login?next=/${locale}/users`);
   }

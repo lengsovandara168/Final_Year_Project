@@ -31,12 +31,17 @@ type RefreshPayload = {
 type ValidatedServerSession = {
   isAuthenticated: boolean;
   user: SessionUser | null;
+  requiresRefresh?: boolean;
 };
 
 function getBackendOrigin() {
   const rawOrigin =
     process.env.NEXT_PUBLIC_API_BASE_URL || "https://final-year.agritechkh.com";
   return rawOrigin.endsWith("/") ? rawOrigin.slice(0, -1) : rawOrigin;
+}
+
+export function getBackendAuthBaseUrl() {
+  return getBackendOrigin();
 }
 
 function isExpiredTokenError(payload: { error?: string; message?: string }) {
@@ -131,7 +136,7 @@ async function verifyWithMe(accessToken: string) {
   return { ok: false as const, expired: false };
 }
 
-async function refreshAccessToken(refreshToken: string) {
+export async function refreshAccessTokenOnServer(refreshToken: string) {
   let response: Response;
   try {
     response = await fetch(`${getBackendOrigin()}/v1/auth/refresh`, {
@@ -173,22 +178,19 @@ export async function getValidatedServerSession(): Promise<ValidatedServerSessio
     };
   }
 
-  if (!verified.expired || !session.refreshToken) {
+  if (!verified.expired) {
     return { isAuthenticated: false, user: null };
   }
 
-  const refreshedAccessToken = await refreshAccessToken(session.refreshToken);
-  if (!refreshedAccessToken) {
+  if (!session.refreshToken) {
     return { isAuthenticated: false, user: null };
   }
 
-  const reverified = await verifyWithMe(refreshedAccessToken);
-  if (!reverified.ok) {
-    return { isAuthenticated: false, user: null };
-  }
-
+  // Server Components cannot reliably persist cookie updates.
+  // The caller should redirect through a route handler that refreshes and sets cookies.
   return {
-    isAuthenticated: true,
-    user: reverified.user,
+    isAuthenticated: false,
+    user: null,
+    requiresRefresh: true,
   };
 }
