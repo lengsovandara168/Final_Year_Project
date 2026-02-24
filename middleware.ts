@@ -29,7 +29,53 @@ export default async function middleware(request: NextRequest) {
   if (!auth.isAuthenticated && !publicRoutes.includes(routeSegment)) {
     const loginUrl = new URL(`/${activeLocale}/login`, request.url);
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    applyAuthCookies(response, auth);
+    return response;
+  };
+
+  const redirectToRefreshSession = () => {
+    const response = NextResponse.redirect(
+      new URL(`/api/auth/refresh-session?next=${encodeURIComponent(pathname)}`, request.url),
+    );
+    applyAuthCookies(response, auth);
+    return response;
+  };
+
+  // 5. Redirect locale root to role-aware destination
+  if (pathname === `/${activeLocale}`) {
+    if (!auth.isAuthenticated) {
+      if (auth.requiresRefresh) {
+        return redirectToRefreshSession();
+      }
+      return redirectToLogin();
+    }
+
+    if (role === "admin") {
+      const response = NextResponse.redirect(
+        new URL(`/${activeLocale}/admin`, request.url),
+      );
+      applyAuthCookies(response, auth);
+      return response;
+    }
+
+    if (role === "user") {
+      const response = NextResponse.redirect(
+        new URL(`/${activeLocale}/users`, request.url),
+      );
+      applyAuthCookies(response, auth);
+      return response;
+    }
+
+    return redirectToLogin();
+  }
+
+  // 6. All protected routes require authentication
+  if (!auth.isAuthenticated) {
+    if (auth.requiresRefresh) {
+      return redirectToRefreshSession();
+    }
+    return redirectToLogin();
   }
 
   // 6. Role-based Redirection
