@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Package, ShoppingCart, Users } from "lucide-react";
+import { FolderTree, Home, Package, ShoppingCart, Users } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -33,6 +33,11 @@ const menuItems = [
     title: "Customers",
     icon: Users,
     path: "/customers",
+  },
+  {
+    title: "Manage Categories",
+    icon: FolderTree,
+    path: "/categories",
   },
 ];
 

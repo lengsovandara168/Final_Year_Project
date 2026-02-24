@@ -123,19 +123,10 @@ async function refreshAccessToken() {
     return null;
   }
 
-  const refreshToken = getCookieValue("refresh_token");
-  if (!refreshToken) {
-    return null;
-  }
-
   const url = buildApiUrl("/v1/auth/refresh");
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     credentials: "include",
-    body: JSON.stringify({ refreshToken }),
   });
 
   if (!response.ok) {
@@ -150,9 +141,8 @@ async function refreshAccessToken() {
   }
 
   setCookie("access_token", payload.accessToken);
-  if (payload.refreshToken) {
-    setCookie("refresh_token", payload.refreshToken);
-  }
+  // Refresh token may be HttpOnly and rotated by Set-Cookie header.
+  // We intentionally do not depend on reading/writing it from JS.
 
   if (payload.userId && payload.email && payload.role) {
     setCookie(
@@ -380,7 +370,6 @@ export type Category = {
   name: string;
   parentId?: string | null;
   isActive: boolean;
-  sortOrder: number;
   subcategories?: Category[];
 };
 
@@ -406,7 +395,6 @@ export type CreateCategoryRequest = {
   name: string;
   parentId?: string | null;
   isActive?: boolean;
-  sortOrder?: number;
 };
 
 export async function createCategory(
@@ -426,7 +414,6 @@ export type UpdateCategoryRequest = {
   name?: string;
   parentId?: string | null;
   isActive?: boolean;
-  sortOrder?: number;
 };
 
 export async function updateCategory(
@@ -446,6 +433,141 @@ export async function updateCategory(
 export async function deleteCategory(id: string, accessToken: string) {
   return apiFetch<{ message?: string }>(`/v1/categories/${id}`, {
     method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+// ===================== Admin Subcategory Endpoints =====================
+
+export type ParentCategory = "phones" | "tablets" | "accessories";
+
+export type UploadedCategoryIcon = {
+  key: string;
+  url?: string;
+  contentType: string;
+  size: number;
+};
+
+export type UploadCategoryIconResponse = {
+  ok: boolean;
+  data: UploadedCategoryIcon;
+};
+
+export async function uploadCategoryIcon(file: File, accessToken: string) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFetch<UploadCategoryIconResponse>("/v1/categories/icons/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+}
+
+export type CreateSubcategoryRequest = {
+  parentCategory: ParentCategory;
+  name: string;
+  slug: string;
+  iconKey: string;
+  iconUrl?: string;
+  isActive?: boolean;
+};
+
+export type Subcategory = {
+  id: string;
+  parentCategory: ParentCategory;
+  name: string;
+  slug: string;
+  iconKey: string;
+  iconUrl?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSubcategoryResponse = {
+  ok: boolean;
+  data: Subcategory;
+};
+
+export async function createSubcategory(
+  payload: CreateSubcategoryRequest,
+  accessToken: string,
+) {
+  return apiFetch<CreateSubcategoryResponse>("/v1/categories", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export type UpdateSubcategoryRequest = {
+  name?: string;
+  slug?: string;
+  iconKey?: string;
+  iconUrl?: string;
+  isActive?: boolean;
+};
+
+export type UpdateSubcategoryResponse = {
+  ok: boolean;
+  data: Subcategory;
+};
+
+export async function updateSubcategory(
+  id: string,
+  payload: UpdateSubcategoryRequest,
+  accessToken: string,
+) {
+  return apiFetch<UpdateSubcategoryResponse>(`/v1/categories/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCategoryGroups(accessToken: string) {
+  return apiFetch<unknown>("/v1/categories", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export type CategoryBoardItem = {
+  id: string;
+  name: string;
+  slug: string;
+  iconUrl?: string;
+  iconKey: string;
+  isActive: boolean;
+};
+
+export type CategoryBoardGroup = {
+  key: ParentCategory;
+  name: string;
+  total: number;
+  items: CategoryBoardItem[];
+};
+
+export type CategoryBoardResponse = {
+  ok: boolean;
+  total: number;
+  data: CategoryBoardGroup[];
+};
+
+export async function getCategoryBoard(accessToken: string) {
+  return apiFetch<CategoryBoardResponse>("/v1/categories/board", {
+    method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
