@@ -56,9 +56,20 @@ export async function middleware(request: NextRequest) {
     return response;
   };
 
+  const redirectToRefreshSession = () => {
+    const response = NextResponse.redirect(
+      new URL(`/api/auth/refresh-session?next=${encodeURIComponent(pathname)}`, request.url),
+    );
+    applyAuthCookies(response, auth);
+    return response;
+  };
+
   // 5. Redirect locale root to role-aware destination
   if (pathname === `/${activeLocale}`) {
     if (!auth.isAuthenticated) {
+      if (auth.requiresRefresh) {
+        return redirectToRefreshSession();
+      }
       return redirectToLogin();
     }
 
@@ -83,6 +94,9 @@ export async function middleware(request: NextRequest) {
 
   // 6. All protected routes require authentication
   if (!auth.isAuthenticated) {
+    if (auth.requiresRefresh) {
+      return redirectToRefreshSession();
+    }
     return redirectToLogin();
   }
 
