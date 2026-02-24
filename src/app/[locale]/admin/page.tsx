@@ -1,58 +1,101 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Package, ShoppingCart, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 // Dummy data
-const stats = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1% from last month",
-    icon: DollarSign,
-  },
-  {
-    title: "Products",
-    value: "234",
-    change: "+12 new this week",
-    icon: Package,
-  },
-  {
-    title: "Total Orders",
-    value: "1,234",
-    change: "+19% from last month",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Customers",
-    value: "573",
-    change: "+28 new this week",
-    icon: Users,
-  },
-];
+function getStats(t: ReturnType<typeof useTranslations>) {
+  return [
+    {
+      title: t("Dashboard.stats.totalRevenue"),
+      value: "$45,231.89",
+      change: t("Dashboard.stats.changeRevenue"),
+      icon: DollarSign,
+    },
+    {
+      title: t("Dashboard.stats.products"),
+      value: "234",
+      change: t("Dashboard.stats.changeProducts"),
+      icon: Package,
+    },
+    {
+      title: t("Dashboard.stats.totalOrders"),
+      value: "1,234",
+      change: t("Dashboard.stats.changeOrders"),
+      icon: ShoppingCart,
+    },
+    {
+      title: t("Dashboard.stats.customers"),
+      value: "573",
+      change: t("Dashboard.stats.changeCustomers"),
+      icon: Users,
+    },
+  ];
+}
 
 const topSellingProducts = [
-  { name: "iPhone 15 Pro Max", brand: "Apple", sales: 145, revenue: "$174,000" },
-  { name: "Galaxy S24 Ultra", brand: "Samsung", sales: 132, revenue: "$158,400" },
+  {
+    name: "iPhone 15 Pro Max",
+    brand: "Apple",
+    sales: 145,
+    revenue: "$174,000",
+  },
+  {
+    name: "Galaxy S24 Ultra",
+    brand: "Samsung",
+    sales: 132,
+    revenue: "$158,400",
+  },
   { name: "iPhone 15", brand: "Apple", sales: 98, revenue: "$98,000" },
   { name: "Galaxy Z Fold 5", brand: "Samsung", sales: 76, revenue: "$136,800" },
   { name: "iPhone 14 Pro", brand: "Apple", sales: 67, revenue: "$67,000" },
 ];
 
 const recentOrders = [
-  { id: "#ORD-001", customer: "John Doe", items: 2, total: "$2,399", status: "Completed" },
-  { id: "#ORD-002", customer: "Jane Smith", items: 1, total: "$1,199", status: "Processing" },
-  { id: "#ORD-003", customer: "Mike Johnson", items: 3, total: "$3,597", status: "Completed" },
-  { id: "#ORD-004", customer: "Sarah Williams", items: 1, total: "$1,799", status: "Pending" },
-  { id: "#ORD-005", customer: "David Brown", items: 2, total: "$2,398", status: "Processing" },
+  {
+    id: "#ORD-001",
+    customer: "John Doe",
+    items: 2,
+    total: "$2,399",
+    status: "completed",
+  },
+  {
+    id: "#ORD-002",
+    customer: "Jane Smith",
+    items: 1,
+    total: "$1,199",
+    status: "processing",
+  },
+  {
+    id: "#ORD-003",
+    customer: "Mike Johnson",
+    items: 3,
+    total: "$3,597",
+    status: "completed",
+  },
+  {
+    id: "#ORD-004",
+    customer: "Sarah Williams",
+    items: 1,
+    total: "$1,799",
+    status: "pending",
+  },
+  {
+    id: "#ORD-005",
+    customer: "David Brown",
+    items: 2,
+    total: "$2,398",
+    status: "processing",
+  },
 ];
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "Completed":
+    case "completed":
       return "bg-black text-white";
-    case "Processing":
+    case "processing":
       return "bg-gray-800 text-white";
-    case "Pending":
+    case "pending":
       return "bg-gray-400 text-white";
     default:
       return "bg-gray-200";
@@ -60,11 +103,17 @@ const getStatusColor = (status: string) => {
 };
 
 export default function DashboardPage() {
+  const t = useTranslations();
+  const stats = getStats(t);
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-bold md:text-3xl">Dashboard</h1>
-        <p className="text-sm text-gray-500 md:text-base">Welcome back! Here&apos;s what&apos;s happening today.</p>
+        <h1 className="text-2xl font-bold md:text-3xl">
+          {t("Dashboard.title")}
+        </h1>
+        <p className="text-sm text-gray-500 md:text-base">
+          {t("Dashboard.welcome")}
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -93,7 +142,7 @@ export default function DashboardPage() {
         {/* Top Selling Products */}
         <Card>
           <CardHeader>
-            <CardTitle>Top Selling Products</CardTitle>
+            <CardTitle>{t("Dashboard.topSelling")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -105,7 +154,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-medium">{product.revenue}</p>
-                    <p className="text-sm text-gray-500">{product.sales} sold</p>
+                    <p className="text-sm text-gray-500">
+                      {product.sales} {t("Dashboard.sold")}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -116,12 +167,15 @@ export default function DashboardPage() {
         {/* Recent Orders */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle>{t("Dashboard.recentOrders")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between">
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex-1">
                     <p className="font-medium">{order.id}</p>
                     <p className="text-sm text-gray-500">{order.customer}</p>
@@ -129,10 +183,12 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="font-medium">{order.total}</p>
-                      <p className="text-sm text-gray-500">{order.items} items</p>
+                      <p className="text-sm text-gray-500">
+                        {order.items} {t("Dashboard.items")}
+                      </p>
                     </div>
                     <Badge className={getStatusColor(order.status)}>
-                      {order.status}
+                      {t(`Dashboard.status.${order.status}`)}
                     </Badge>
                   </div>
                 </div>

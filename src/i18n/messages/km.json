@@ -1,5 +1,30 @@
 {
   "HomePage": {
     "title": "សួស្តី​ពិភពលោក!"
+  },
+  "navigation": "ការពិព័រណ៍នា",
+  "ManageCategories": "គ្រប់គ្រងប្រភេទ",
+  "Dashboard": {
+    "title": "ផ្ទាំងគ្រប់គ្រង",
+    "welcome": "សូមស្វាគមន៍មកវិញ! នេះជាអ្វីកំពុងកើតឡើងថ្ងៃនេះ។",
+    "stats": {
+      "totalRevenue": "ប្រាក់ចំណូលសរុប",
+      "products": "ផលិតផល",
+      "totalOrders": "ការបញ្ជាទិញសរុប",
+      "customers": "អតិថិជន",
+      "changeRevenue": "+20.1% ពីខែមុន",
+      "changeProducts": "+12 ថ្មីសប្តាហ៍នេះ",
+      "changeOrders": "+19% ពីខែមុន",
+      "changeCustomers": "+28 ថ្មីសប្តាហ៍នេះ"
+    },
+    "topSelling": "ផលិតផលលក់ដាច់បំផុត",
+    "recentOrders": "ការបញ្ជាទិញថ្មីៗ",
+    "sold": "បានលក់",
+    "items": "មុខទំនិញ",
+    "status": {
+      "completed": "បានបញ្ចប់",
+      "processing": "កំពុងដំណើរការ",
+      "pending": "រង់ចាំ"
+    }
   }
 }
