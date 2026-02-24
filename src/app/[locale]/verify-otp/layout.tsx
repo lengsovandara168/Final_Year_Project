@@ -1,5 +1,6 @@
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { AuthProvider } from "@/contexts/auth-context";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
 
 export default async function VerifyOtpLayout({
   children,
@@ -10,7 +11,7 @@ export default async function VerifyOtpLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      {children}
+      <AuthProvider>{children}</AuthProvider>
     </NextIntlClientProvider>
   );
 }

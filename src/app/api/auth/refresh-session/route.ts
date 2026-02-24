@@ -69,15 +69,19 @@ export async function GET(request: NextRequest) {
     maxAge: COOKIE_MAX_AGE_SECONDS,
     sameSite: "lax",
   });
-  response.cookies.set("auth_user", JSON.stringify({
-    id: me.userId,
-    email: me.email,
-    role: me.role,
-  }), {
-    path: "/",
-    maxAge: COOKIE_MAX_AGE_SECONDS,
-    sameSite: "lax",
-  });
+  response.cookies.set(
+    "auth_user",
+    JSON.stringify({
+      id: me.userId,
+      email: me.email,
+      role: me.role,
+    }),
+    {
+      path: "/",
+      maxAge: COOKIE_MAX_AGE_SECONDS,
+      sameSite: "lax",
+    },
+  );
   // Keep the existing refresh token cookie unless backend rotated it via HttpOnly response.
   response.cookies.set("refresh_token", refreshToken, {
     path: "/",

@@ -12,36 +12,38 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useTranslations } from "next-intl";
 
 const menuItems = [
   {
-    title: "Dashboard",
+    key: "Dashboard.title",
     icon: Home,
     path: "",
   },
   {
-    title: "Products",
+    key: "Dashboard.stats.products",
     icon: Package,
     path: "/products",
   },
   {
-    title: "Orders",
+    key: "Dashboard.stats.totalOrders",
     icon: ShoppingCart,
     path: "/orders",
   },
   {
-    title: "Customers",
+    key: "Dashboard.stats.customers",
     icon: Users,
     path: "/customers",
   },
   {
-    title: "Manage Categories",
+    key: "ManageCategories",
     icon: FolderTree,
     path: "/categories",
   },
 ];
 
 export function NavMain() {
+  const t = useTranslations();
   const pathname = usePathname();
   const locale = pathname?.split("/").filter(Boolean)[0] || "en";
   const adminBasePath = `/${locale}/admin`;
@@ -49,7 +51,7 @@ export function NavMain() {
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="px-2 py-1.5 text-xs font-semibold">
-        Navigation
+        {t("navigation")}
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">
@@ -64,13 +66,13 @@ export function NavMain() {
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
-                  tooltip={item.title}
+                  tooltip={t(item.key)}
                   size="default"
                   className="h-10"
                 >
                   <Link href={href}>
                     <Icon className="h-4 w-4" />
-                    <span>{item.title}</span>
+                    <span>{t(item.key)}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

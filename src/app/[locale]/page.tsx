@@ -18,7 +18,7 @@ export default async function LocaleRootPage({ params }: PageProps) {
   }
 
   if (session.user.role === "admin") {
-    redirect(`/${locale}/admin`);
+    redirect(`/${locale}/dashboard/admin`);
   }
 
   if (session.user.role === "user") {
