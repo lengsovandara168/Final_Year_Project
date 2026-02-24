@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Package, ShoppingCart, Users } from "lucide-react";
+import DashboardLayout from "@/components/dashboard-layout";
 
 // Dummy data
 const stats = [
@@ -61,7 +62,8 @@ const getStatusColor = (status: string) => {
 
 export default function DashboardPage() {
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <DashboardLayout>
+      <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold md:text-3xl">Dashboard</h1>
         <p className="text-sm text-gray-500 md:text-base">Welcome back! Here&apos;s what&apos;s happening today.</p>
@@ -142,5 +144,6 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+    </DashboardLayout>
   );
 }
