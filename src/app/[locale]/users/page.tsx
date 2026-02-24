@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,6 @@ import {
   User,
   BadgePercent,
 } from "lucide-react";
-import { Special_Elite } from "next/font/google";
 
 // Type definitions for products
 interface Product {
@@ -681,6 +681,8 @@ function ProductCard({
   product: Product;
   onAddToCart: (productId: number) => void;
 }) {
+  const router = useRouter();
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -688,8 +690,12 @@ function ProductCard({
     }).format(price);
   };
 
+  const handleClick = () => {
+    router.push(`/users/product/${product.id}`);
+  };
+
   return (
-    <Card className="group hover:shadow-lg transition-shadow">
+    <Card className="group hover:shadow-lg transition-shadow cursor-pointer" onClick={handleClick}>
       <CardContent className="p-0">
         {/* Product Image */}
         <div className="relative aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
@@ -718,7 +724,7 @@ function ProductCard({
           </div>
           {/* Quick View Button */}
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon-sm" variant="secondary">
+            <Button size="icon-sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleClick(); }}>
               <Eye className="h-4 w-4" />
             </Button>
           </div>
@@ -766,7 +772,7 @@ function ProductCard({
           <Button
             className="w-full bg-black text-white hover:bg-gray-800"
             disabled={!product.inStock}
-            onClick={() => onAddToCart(product.id)}
+            onClick={(e) => { e.stopPropagation(); onAddToCart(product.id); }}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
             {product.inStock ? "Add to Cart" : "Out of Stock"}
