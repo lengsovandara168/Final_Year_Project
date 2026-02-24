@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
 import { useLogout } from "@/hooks/use-logout";
+import { getSessionSnapshot } from "@/lib/auth-session";
+import { getCategoryBoard } from "@/lib/api";
 
 // Type definitions for products
 interface Product {
@@ -51,60 +53,33 @@ interface Category {
   id: string;
   name: string;
   icon: React.ReactNode;
-  subcategories: Brand[];
 }
 
-// Categories configuration (brands will come from database)
 const categories: Category[] = [
   {
     id: "all",
     name: "All Products",
     icon: <Package className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ],
   },
   {
     id: "phone",
     name: "Phones",
     icon: <Smartphone className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ], 
   },
   {
     id: "tablet",
     name: "Tablets",
     icon: <Tablet className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ], // Will be populated from database
   },
   {
     id: "accessories",
     name: "Accessories",
     icon: <Package className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ], // Will be populated from database
   },
   {
     id: "offer",
     name: "Special Offer",
     icon: <BadgePercent className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ],
   },
 ];
 
@@ -113,6 +88,13 @@ interface Brand {
   id: string;
   name: string;
   logo?: string; // Brand logo image URL
+}
+
+function categoryToBoardKey(category: string) {
+  if (category === "phone") return "phones";
+  if (category === "tablet") return "tablets";
+  if (category === "accessories") return "accessories";
+  return null;
 }
 
 
@@ -171,6 +153,11 @@ export default function ShopPage() {
   const handleLogout = useLogout();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
+  const [brandsByCategory, setBrandsByCategory] = useState<Record<string, Brand[]>>({
+    phone: [],
+    tablet: [],
+    accessories: [],
+  });
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [cart, setCart] = useState<{ productId: number; quantity: number }[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -199,22 +186,89 @@ export default function ShopPage() {
     return () => clearInterval(interval);
   }, [nextSlide]);
 
+  useEffect(() => {
+    const fetchBrandFilters = async () => {
+      let accessToken = getSessionSnapshot().accessToken;
+
+      if (!accessToken) {
+        try {
+          const nextPath = `${window.location.pathname}${window.location.search}`;
+          await fetch(`/api/auth/refresh-session?next=${encodeURIComponent(nextPath)}`, {
+            method: "GET",
+            credentials: "include",
+          });
+          accessToken = getSessionSnapshot().accessToken;
+        } catch {
+          accessToken = null;
+        }
+      }
+
+      if (!accessToken) {
+        return;
+      }
+
+      try {
+        const board = await getCategoryBoard(accessToken);
+        const nextBrands: Record<string, Brand[]> = {
+          phone: [],
+          tablet: [],
+          accessories: [],
+        };
+
+        for (const group of board.data) {
+          if (group.key === "phones") {
+            nextBrands.phone = group.items.map((item) => ({
+              id: item.slug,
+              name: item.name,
+              logo: item.iconUrl,
+            }));
+          } else if (group.key === "tablets") {
+            nextBrands.tablet = group.items.map((item) => ({
+              id: item.slug,
+              name: item.name,
+              logo: item.iconUrl,
+            }));
+          } else if (group.key === "accessories") {
+            nextBrands.accessories = group.items.map((item) => ({
+              id: item.slug,
+              name: item.name,
+              logo: item.iconUrl,
+            }));
+          }
+        }
+
+        setBrandsByCategory(nextBrands);
+      } catch {
+        // Keep filter UI empty if categories cannot be loaded.
+      }
+    };
+
+    void fetchBrandFilters();
+  }, []);
+
+  // Get brands for current category
+  const boardKey = categoryToBoardKey(selectedCategory);
+  const availableBrands = boardKey ? brandsByCategory[selectedCategory] ?? [] : [];
+  const selectedBrandName =
+    selectedBrand === "all"
+      ? null
+      : availableBrands.find((brand) => brand.id === selectedBrand)?.name.toLowerCase() ?? null;
+
   // Filter products based on category, brand, and search
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
       selectedCategory === "all" || product.category === selectedCategory;
     const matchesBrand =
-      selectedBrand === "all" || product.subcategory === selectedBrand;
+      selectedBrand === "all" ||
+      product.subcategory === selectedBrand ||
+      product.subcategory.toLowerCase() === selectedBrand.toLowerCase() ||
+      product.subcategory.toLowerCase() === selectedBrandName;
     const matchesSearch =
       searchQuery === "" ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.brand.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesBrand && matchesSearch;
   });
-
-  // Get brands for current category
-  const currentCategory = categories.find((c) => c.id === selectedCategory);
-  const availableBrands = currentCategory?.subcategories || [];
 
   // Add to cart handler
   const handleAddToCart = (productId: number) => {
