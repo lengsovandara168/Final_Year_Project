@@ -6,8 +6,6 @@ import { useLogout } from "@/hooks/use-logout";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
 
-// ...existing code...
-import { locales } from "@/i18n/routing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +32,6 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
-import { usePathname, useRouter } from "next/navigation";
-import { useLogout } from "@/hooks/use-logout";
-import { getSessionSnapshot } from "@/lib/auth-session";
-import { getCategoryBoard } from "@/lib/api";
 import { locales } from "@/i18n/routing";
 
 // Product type imported from @/lib/api
