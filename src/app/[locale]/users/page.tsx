@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useLogout } from "@/hooks/use-logout";
+import { getSessionSnapshot } from "@/lib/auth-session";
+import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,28 +32,11 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
-import { usePathname, useRouter } from "next/navigation";
-import { useLogout } from "@/hooks/use-logout";
-import { getSessionSnapshot } from "@/lib/auth-session";
-import { getCategoryBoard } from "@/lib/api";
 import { locales } from "@/i18n/routing";
 
-// Type definitions for products
-interface Product {
-  id: number;
-  name: string;
-  brand: string;
-  price: number;
-  originalPrice?: number;
-  image?: string;
-  category: "phone" | "tablet" | "accessories" | "offer";
-  subcategory: string; // brand name
-  rating: number;
-  reviewCount: number;
-  inStock: boolean;
-  isPopular?: boolean;
-  isBestSeller?: boolean;
-}
+// Product type imported from @/lib/api
+// Includes: id, name, brand, price, originalPrice, image, subcategory,
+// rating, reviewCount, inStock, isPopular, isBestSeller, description, specifications
 
 // Type definitions for categories
 interface Category {
@@ -109,29 +97,6 @@ interface NewsItem {
   bgColor?: string;
 }
 
-// Placeholder arrays - data will come from database
-const products: Product[] = [];
-const popularProducts: Product[] = [
-  {
-    id: 1,
-    name: "iPhone 15 Pro Max",
-    brand: "Apple",
-    price: 1199,
-    originalPrice: 1299, // Optional - shows crossed-out price
-    image:
-      "https://media.bakuelectronics.az/media/inventImages/Apple_iPhone_17_Pro_Max_SILVER_2_ELjaqL6.webp", // Optional - product image URL
-    category: "phone", // "phone" | "tablet" | "accessories"
-    subcategory: "Apple", // Brand name for filtering
-    rating: 4.8, // 0-5 star rating
-    reviewCount: 256, // Number of reviews
-    inStock: true, // true = available, false = out of stock
-    isPopular: true, // Optional - shows "Popular" badge
-    isBestSeller: false,
-  },
-];
-const bestSellers: Product[] = [];
-// const newsItems: NewsItem[] = []; // News/banner items from database
-
 // mock data of News
 const newsItems: NewsItem[] = [
   {
@@ -140,7 +105,7 @@ const newsItems: NewsItem[] = [
     description:
       "Experience the future of smartphones with our latest arrival.",
     image:
-      "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png", // <-- Add image URL here
+      "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png",
     link: "#",
   },
   {
@@ -148,7 +113,7 @@ const newsItems: NewsItem[] = [
     title: "Galaxy S25 Ultra",
     description: "Pre-order now and get exclusive accessories.",
     image:
-      "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true", // Can also be a local path in /public folder
+      "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true",
     link: "#",
   },
 ];
@@ -157,6 +122,9 @@ export default function ShopPage() {
   const pathname = usePathname();
   const router = useRouter();
   const handleLogout = useLogout();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [brandsByCategory, setBrandsByCategory] = useState<
@@ -167,7 +135,7 @@ export default function ShopPage() {
     accessories: [],
   });
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [cart, setCart] = useState<{ productId: number; quantity: number }[]>(
+  const [cart, setCart] = useState<{ productId: string; quantity: number }[]>(
     [],
   );
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -199,7 +167,7 @@ export default function ShopPage() {
   }, [nextSlide]);
 
   useEffect(() => {
-    const fetchBrandFilters = async () => {
+    const fetchData = async () => {
       const accessToken = getSessionSnapshot().accessToken;
 
       if (!accessToken) {
@@ -214,6 +182,7 @@ export default function ShopPage() {
       }
 
       try {
+        // Fetch brand filters
         const board = await getCategoryBoard(accessToken);
         const nextBrands: Record<string, Brand[]> = {
           phone: [],
@@ -244,12 +213,19 @@ export default function ShopPage() {
         }
 
         setBrandsByCategory(nextBrands);
+
+        // Fetch products
+        const productsResponse = await getProducts(accessToken);
+        const allProducts = productsResponse.data || [];
+        setProducts(allProducts);
+        setPopularProducts(allProducts.filter((p) => p.isPopular));
+        setBestSellers(allProducts.filter((p) => p.isBestSeller));
       } catch {
-        // Keep filter UI empty if categories cannot be loaded.
+        // Keep filter UI empty if data cannot be loaded.
       }
     };
 
-    void fetchBrandFilters();
+    void fetchData();
   }, [pathname, router]);
 
   // Get brands for current category
@@ -264,15 +240,23 @@ export default function ShopPage() {
           .find((brand) => brand.id === selectedBrand)
           ?.name.toLowerCase() ?? null);
 
+  // Get all subcategory slugs for the selected category
+  const categorySubcategorySlugs =
+    selectedCategory !== "all" && brandsByCategory[selectedCategory]
+      ? brandsByCategory[selectedCategory].map((b) => b.id.toLowerCase())
+      : [];
+
   // Filter products based on category, brand, and search
   const filteredProducts = products.filter((product) => {
+    const productSubcategoryLower = product.subcategory.toLowerCase();
     const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
+      selectedCategory === "all" ||
+      categorySubcategorySlugs.includes(productSubcategoryLower);
     const matchesBrand =
       selectedBrand === "all" ||
       product.subcategory === selectedBrand ||
-      product.subcategory.toLowerCase() === selectedBrand.toLowerCase() ||
-      product.subcategory.toLowerCase() === selectedBrandName;
+      productSubcategoryLower === selectedBrand.toLowerCase() ||
+      productSubcategoryLower === selectedBrandName;
     const matchesSearch =
       searchQuery === "" ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -281,7 +265,7 @@ export default function ShopPage() {
   });
 
   // Add to cart handler
-  const handleAddToCart = (productId: number) => {
+  const handleAddToCart = (productId: string) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.productId === productId);
       if (existing) {
@@ -335,7 +319,7 @@ export default function ShopPage() {
             <Button
               variant="outline"
               className="relative shrink-0"
-              onClick={handleLogout}
+              onClick={() => {}}
               aria-label="Sign out"
             >
               <User className="h-5 w-5" />
@@ -405,13 +389,13 @@ export default function ShopPage() {
 
             {/* Quick Links */}
             <div className="hidden md:flex items-center gap-4 text-sm">
-              <a href="#" className="text-gray-600 hover:text-black">
+              <a href="/" className="text-gray-600 hover:text-black">
                 Deals
               </a>
-              <a href="#" className="text-gray-600 hover:text-black">
+              <a href="/" className="text-gray-600 hover:text-black">
                 New Arrivals
               </a>
-              <a href="#" className="text-gray-600 hover:text-black">
+              <a href="/" className="text-gray-600 hover:text-black">
                 Best Sellers
               </a>
             </div>
@@ -760,8 +744,10 @@ function ProductCard({
   onAddToCart,
 }: {
   product: Product;
-  onAddToCart: (productId: number) => void;
+  onAddToCart: (productId: string) => void;
 }) {
+  const router = useRouter();
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -769,8 +755,12 @@ function ProductCard({
     }).format(price);
   };
 
+  const handleClick = () => {
+    router.push(`/users/product/${product.id}`);
+  };
+
   return (
-    <Card className="group hover:shadow-lg transition-shadow">
+    <Card className="group hover:shadow-lg transition-shadow cursor-pointer" onClick={handleClick}>
       <CardContent className="p-0">
         {/* Product Image */}
         <div className="relative aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
@@ -799,7 +789,7 @@ function ProductCard({
           </div>
           {/* Quick View Button */}
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon-sm" variant="secondary">
+            <Button size="icon-sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleClick(); }}>
               <Eye className="h-4 w-4" />
             </Button>
           </div>
@@ -847,7 +837,7 @@ function ProductCard({
           <Button
             className="w-full bg-black text-white hover:bg-gray-800"
             disabled={!product.inStock}
-            onClick={() => onAddToCart(product.id)}
+            onClick={(e) => { e.stopPropagation(); onAddToCart(product.id); }}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
             {product.inStock ? "Add to Cart" : "Out of Stock"}
