@@ -72,7 +72,6 @@ export default function VerifyOtpPage() {
         email: response.email,
         role: response.role,
         accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
       });
 
       setSuccess("OTP verified successfully. Redirecting...");

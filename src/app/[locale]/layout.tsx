@@ -19,24 +19,20 @@ export default async function Localelayout(props: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await props.params;
-  const messages = await getMessages();
+  const messages = await getMessages({ locale });
   const { children } = props;
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body
-        className={`
-          ${latin.variable} 
-          ${khmer.variable} 
-          ${locale === "km" ? "font-[family-name:var(--font-kantumruy-pro)]" : "font-[family-name:var(--font-work-sans)]"} 
-          antialiased
-        `}
-      >
-        <NextIntlClientProvider messages={messages}>
-          <header></header>
-          <main>{children}</main>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <div
+      className={`${latin.variable} ${khmer.variable} ${
+        locale === "km"
+          ? "font-[family-name:var(--font-kantumruy-pro)]"
+          : "font-[family-name:var(--font-work-sans)]"
+      } antialiased`}
+    >
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <main>{children}</main>
+      </NextIntlClientProvider>
+    </div>
   );
 }

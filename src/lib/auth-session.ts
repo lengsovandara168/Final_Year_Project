@@ -11,13 +11,11 @@ export type AuthSessionPayload = {
   email: string;
   role: string;
   accessToken: string;
-  refreshToken: string;
 };
 
 type SessionSnapshot = {
   user: SessionUser | null;
   accessToken: string | null;
-  refreshToken: string | null;
 };
 
 function getCookieValue(name: string) {
@@ -54,8 +52,14 @@ export function persistAuthSession(payload: AuthSessionPayload) {
   };
 
   setCookie("access_token", payload.accessToken);
-  setCookie("refresh_token", payload.refreshToken);
   setCookie("auth_user", JSON.stringify(user));
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("access_token", payload.accessToken);
+    localStorage.setItem("auth_user", JSON.stringify(user));
+    sessionStorage.setItem("access_token", payload.accessToken);
+    sessionStorage.setItem("auth_user", JSON.stringify(user));
+  }
 }
 
 export function clearAuthSession() {
@@ -64,13 +68,18 @@ export function clearAuthSession() {
   }
 
   document.cookie = "access_token=; Path=/; Max-Age=0; SameSite=Lax";
-  document.cookie = "refresh_token=; Path=/; Max-Age=0; SameSite=Lax";
   document.cookie = "auth_user=; Path=/; Max-Age=0; SameSite=Lax";
+
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("auth_user");
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("auth_user");
+  }
 }
 
 export function getSessionSnapshot(): SessionSnapshot {
   const accessToken = getCookieValue("access_token");
-  const refreshToken = getCookieValue("refresh_token");
   const rawUser = getCookieValue("auth_user");
 
   let user: SessionUser | null = null;
@@ -96,10 +105,5 @@ export function getSessionSnapshot(): SessionSnapshot {
   return {
     user,
     accessToken,
-    refreshToken,
   };
-}
-
-export function getRefreshTokenFromCookie() {
-  return getCookieValue("refresh_token");
 }
