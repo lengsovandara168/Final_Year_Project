@@ -34,6 +34,11 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
+import { usePathname, useRouter } from "next/navigation";
+import { useLogout } from "@/hooks/use-logout";
+import { getSessionSnapshot } from "@/lib/auth-session";
+import { getCategoryBoard } from "@/lib/api";
+import { locales } from "@/i18n/routing";
 
 // Product type imported from @/lib/api
 // Includes: id, name, brand, price, originalPrice, image, subcategory,
