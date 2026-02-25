@@ -319,7 +319,7 @@ export default function ShopPage() {
             <Button
               variant="outline"
               className="relative shrink-0"
-              onClick={handleLogout}
+              onClick={() => {}}
               aria-label="Sign out"
             >
               <User className="h-5 w-5" />
@@ -389,13 +389,13 @@ export default function ShopPage() {
 
             {/* Quick Links */}
             <div className="hidden md:flex items-center gap-4 text-sm">
-              <a href="#" className="text-gray-600 hover:text-black">
+              <a href="/" className="text-gray-600 hover:text-black">
                 Deals
               </a>
-              <a href="#" className="text-gray-600 hover:text-black">
+              <a href="/" className="text-gray-600 hover:text-black">
                 New Arrivals
               </a>
-              <a href="#" className="text-gray-600 hover:text-black">
+              <a href="/" className="text-gray-600 hover:text-black">
                 Best Sellers
               </a>
             </div>
