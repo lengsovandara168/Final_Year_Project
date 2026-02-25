@@ -1,5 +1,31 @@
 {
   "HomePage": {
     "title": "Hello world!"
+  },
+  "navigation": "Navigation",
+  "ManageCategories": "Manage Categories",
+  "Dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back! Here's what's happening today.",
+    "stats": {
+      "totalRevenue": "Total Revenue",
+      "products": "Products",
+      "totalOrders": "Total Orders",
+      "customers": "Customers",
+      "changeRevenue": "+20.1% from last month",
+      "changeProducts": "+12 new this week",
+      "changeOrders": "+19% from last month",
+      "changeCustomers": "+28 new this week"
+    },
+    "topSelling": "Top Selling Products",
+    "recentOrders": "Recent Orders",
+    "sold": "sold",
+    "items": "items",
+    "status": {
+      "completed": "Completed",
+      "processing": "Processing",
+      "pending": "Pending"
+    }
+    
   }
 }

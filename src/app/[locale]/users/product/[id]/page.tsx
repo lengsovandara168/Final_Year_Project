@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
+import { getSessionSnapshot } from "@/lib/auth-session";
+import { getProductById, getProducts, type Product } from "@/lib/api";
+import { locales } from "@/i18n/routing";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,92 +23,58 @@ import {
   Heart,
   Share2,
   Smartphone,
+  Loader2,
 } from "lucide-react";
 
-// Type definitions for products
-interface Product {
-  id: number;
-  name: string;
-  brand: string;
-  price: number;
-  originalPrice?: number;
-  image?: string;
-  category: "phone" | "tablet" | "accessories" | "offer";
-  subcategory: string;
-  rating: number;
-  reviewCount: number;
-  inStock: boolean;
-  isPopular?: boolean;
-  isBestSeller?: boolean;
-  description?: string;
-  specifications?: { label: string; value: string }[];
-}
-
-// Mock products data - this should come from database/API
-const allProducts: Product[] = [
-  {
-    id: 1,
-    name: "iPhone 15 Pro Max",
-    brand: "Apple",
-    price: 1199,
-    originalPrice: 1299,
-    image: "https://media.bakuelectronics.az/media/inventImages/Apple_iPhone_17_Pro_Max_SILVER_2_ELjaqL6.webp",
-    category: "phone",
-    subcategory: "Apple",
-    rating: 4.8,
-    reviewCount: 256,
-    inStock: true,
-    isPopular: true,
-    isBestSeller: false,
-    description: "The iPhone 15 Pro Max features a stunning 6.7-inch Super Retina XDR display with ProMotion technology. Powered by the A17 Pro chip, it delivers exceptional performance for gaming, photography, and everyday tasks. The titanium design makes it lighter and more durable than ever.",
-    specifications: [
-      { label: "Display", value: "6.7-inch Super Retina XDR" },
-      { label: "Chip", value: "A17 Pro" },
-      { label: "Camera", value: "48MP Main + 12MP Ultra Wide + 12MP Telephoto" },
-      { label: "Storage", value: "256GB / 512GB / 1TB" },
-      { label: "Battery", value: "Up to 29 hours video playback" },
-      { label: "Water Resistance", value: "IP68" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Samsung Galaxy S24 Ultra",
-    brand: "Samsung",
-    price: 1299,
-    originalPrice: 1399,
-    image: "https://images.samsung.com/is/image/samsung/p6pim/levant/2401/gallery/levant-galaxy-s24-ultra-s928-sm-s928bztqmea-thumb-539573439",
-    category: "phone",
-    subcategory: "Samsung",
-    rating: 4.7,
-    reviewCount: 189,
-    inStock: true,
-    isPopular: true,
-    description: "The Galaxy S24 Ultra features a built-in S Pen and Galaxy AI capabilities. With a 200MP camera and advanced AI photo editing, capture and enhance every moment. The titanium frame provides durability while maintaining a premium feel.",
-    specifications: [
-      { label: "Display", value: "6.8-inch Dynamic AMOLED 2X" },
-      { label: "Processor", value: "Snapdragon 8 Gen 3" },
-      { label: "Camera", value: "200MP Main + 12MP Ultra Wide + 50MP Telephoto" },
-      { label: "Storage", value: "256GB / 512GB / 1TB" },
-      { label: "Battery", value: "5000mAh" },
-      { label: "S Pen", value: "Built-in" },
-    ],
-  },
-];
+// Product type is imported from @/lib/api
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   useEffect(() => {
-    // Find product by ID - in real app, this would be an API call
-    const productId = Number(params.id);
-    const foundProduct = allProducts.find((p) => p.id === productId);
-    setProduct(foundProduct || null);
-  }, [params.id]);
+    const fetchProduct = async () => {
+      const accessToken = getSessionSnapshot().accessToken;
+
+      if (!accessToken) {
+        const locale = pathname?.split("/").filter(Boolean)[0];
+        const hasLocale =
+          locale && (locales as readonly string[]).includes(locale);
+        const next = `${window.location.pathname}${window.location.search}`;
+        router.push(
+          `${hasLocale ? `/${locale}` : "/en"}/login?next=${encodeURIComponent(next)}`,
+        );
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const productId = params.id as string;
+        const response = await getProductById(accessToken, productId);
+        setProduct(response.data || null);
+
+        // Fetch related products
+        const productsResponse = await getProducts(accessToken);
+        const allProducts = productsResponse.data || [];
+        setRelatedProducts(
+          allProducts.filter((p) => p.id !== productId).slice(0, 4)
+        );
+      } catch {
+        setProduct(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchProduct();
+  }, [params.id, pathname, router]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -121,6 +90,17 @@ export default function ProductDetailPage() {
       // You can integrate with your cart state management here
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-semibold text-gray-600">Loading product...</h2>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -412,13 +392,11 @@ export default function ProductDetailPage() {
         )}
 
         {/* Related Products Section */}
-        <section className="mt-12">
-          <h2 className="text-xl font-bold mb-4">You May Also Like</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {allProducts
-              .filter((p) => p.id !== product.id)
-              .slice(0, 4)
-              .map((relatedProduct) => (
+        {relatedProducts.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-xl font-bold mb-4">You May Also Like</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {relatedProducts.map((relatedProduct) => (
                 <Card
                   key={relatedProduct.id}
                   className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -450,8 +428,9 @@ export default function ProductDetailPage() {
                   </CardContent>
                 </Card>
               ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Mobile Bottom Bar */}

@@ -1,10 +1,10 @@
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppSidebar } from "@/components/app-sidebar";
 import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
+} from "@/components/ui/sidebar";
+import LocaleSwitcher from "@/components/lang/locale-switcher";
 
 export default function DashboardLayout({
   children,
@@ -15,11 +15,14 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-white px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <div className="flex flex-1 items-center justify-between">
-            <h2 className="text-sm font-semibold md:text-base">PhoneShop POS</h2>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex w-full items-center justify-between">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger />
+            </div>
+            <div className="mr-4">
+              <LocaleSwitcher />
+            </div>
           </div>
         </header>
         <main className="flex flex-1 flex-col overflow-y-auto bg-gray-50">

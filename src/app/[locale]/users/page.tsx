@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useLogout } from "@/hooks/use-logout";
+import { getSessionSnapshot } from "@/lib/auth-session";
+import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
+
+// ...existing code...
+import { locales } from "@/i18n/routing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,83 +33,44 @@ import {
   User,
   BadgePercent,
 } from "lucide-react";
+import { Special_Elite } from "next/font/google";
 
-// Type definitions for products
-interface Product {
-  id: number;
-  name: string;
-  brand: string;
-  price: number;
-  originalPrice?: number;
-  image?: string;
-  category: "phone" | "tablet" | "accessories" | "offer";
-  subcategory: string; // brand name
-  rating: number;
-  reviewCount: number;
-  inStock: boolean;
-  isPopular?: boolean;
-  isBestSeller?: boolean;
-}
+// Product type imported from @/lib/api
+// Includes: id, name, brand, price, originalPrice, image, subcategory,
+// rating, reviewCount, inStock, isPopular, isBestSeller, description, specifications
 
 // Type definitions for categories
 interface Category {
   id: string;
   name: string;
   icon: React.ReactNode;
-  subcategories: Brand[];
 }
 
-// Categories configuration (brands will come from database)
 const categories: Category[] = [
   {
     id: "all",
     name: "All Products",
     icon: <Package className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ],
   },
   {
     id: "phone",
     name: "Phones",
     icon: <Smartphone className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ], 
   },
   {
     id: "tablet",
     name: "Tablets",
     icon: <Tablet className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ], // Will be populated from database
   },
   {
     id: "accessories",
     name: "Accessories",
     icon: <Package className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ], // Will be populated from database
   },
   {
     id: "offer",
     name: "Special Offer",
     icon: <BadgePercent className="h-4 w-4" />,
-    subcategories: [
-        { id: "apple", name: "Apple", logo: "https://img.icons8.com/?size=100&id=30840&format=png&color=000000" },
-        { id: "samsung", name: "Samsung", logo: "https://img.icons8.com/?size=100&id=wGYgIlqPWdC2&format=png&color=000000" },
-        { id: "xiaomi", name: "Xiaomi", logo: "https://img.icons8.com/?size=100&id=WovKWSCrsTFO&format=png&color=000000" },
-    ],
   },
 ];
 
@@ -114,6 +81,12 @@ interface Brand {
   logo?: string; // Brand logo image URL
 }
 
+function categoryToBoardKey(category: string) {
+  if (category === "phone") return "phones";
+  if (category === "tablet") return "tablets";
+  if (category === "accessories") return "accessories";
+  return null;
+}
 
 // Type definitions for news/banners
 interface NewsItem {
@@ -125,52 +98,47 @@ interface NewsItem {
   bgColor?: string;
 }
 
-// Placeholder arrays - data will come from database
-const products: Product[] = [];
-const popularProducts: Product[] = [
-    {
-    id: 1,
-    name: "iPhone 15 Pro Max",
-    brand: "Apple",
-    price: 1199,
-    originalPrice: 1299,        // Optional - shows crossed-out price
-    image: "https://media.bakuelectronics.az/media/inventImages/Apple_iPhone_17_Pro_Max_SILVER_2_ELjaqL6.webp",  // Optional - product image URL
-    category: "phone",          // "phone" | "tablet" | "accessories"
-    subcategory: "Apple",       // Brand name for filtering
-    rating: 4.8,                // 0-5 star rating
-    reviewCount: 256,           // Number of reviews
-    inStock: true,              // true = available, false = out of stock
-    isPopular: true,            // Optional - shows "Popular" badge
-    isBestSeller: false,   
-    },
-];
-const bestSellers: Product[] = [];
-// const newsItems: NewsItem[] = []; // News/banner items from database
-
-
 // mock data of News
 const newsItems: NewsItem[] = [
   {
     id: 1,
     title: "iPhone 17 Pro Max",
-    description: "Experience the future of smartphones with our latest arrival.",
-    image: "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png", // <-- Add image URL here
+    description:
+      "Experience the future of smartphones with our latest arrival.",
+    image:
+      "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png",
     link: "#",
   },
   {
     id: 2,
     title: "Galaxy S25 Ultra",
     description: "Pre-order now and get exclusive accessories.",
-    image: "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true", // Can also be a local path in /public folder
+    image:
+      "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true",
     link: "#",
   },
 ];
 
 export default function ShopPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const handleLogout = useLogout();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
+  const [brandsByCategory, setBrandsByCategory] = useState<
+    Record<string, Brand[]>
+  >({
+    phone: [],
+    tablet: [],
+    accessories: [],
+  });
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [cart, setCart] = useState<{ productId: number; quantity: number }[]>([]);
+  const [cart, setCart] = useState<{ productId: string; quantity: number }[]>(
+    [],
+  );
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Auto-swipe for news carousel
@@ -182,7 +150,9 @@ export default function ShopPage() {
 
   const prevSlide = useCallback(() => {
     if (newsItems.length > 0) {
-      setCurrentSlide((prev) => (prev - 1 + newsItems.length) % newsItems.length);
+      setCurrentSlide(
+        (prev) => (prev - 1 + newsItems.length) % newsItems.length,
+      );
     }
   }, []);
 
@@ -197,12 +167,97 @@ export default function ShopPage() {
     return () => clearInterval(interval);
   }, [nextSlide]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      const accessToken = getSessionSnapshot().accessToken;
+
+      if (!accessToken) {
+        const locale = pathname?.split("/").filter(Boolean)[0];
+        const hasLocale =
+          locale && (locales as readonly string[]).includes(locale);
+        const next = `${window.location.pathname}${window.location.search}`;
+        router.push(
+          `${hasLocale ? `/${locale}` : "/en"}/login?next=${encodeURIComponent(next)}`,
+        );
+        return;
+      }
+
+      try {
+        // Fetch brand filters
+        const board = await getCategoryBoard(accessToken);
+        const nextBrands: Record<string, Brand[]> = {
+          phone: [],
+          tablet: [],
+          accessories: [],
+        };
+
+        for (const group of board.data) {
+          if (group.key === "phones") {
+            nextBrands.phone = group.items.map((item) => ({
+              id: item.slug,
+              name: item.name,
+              logo: item.iconUrl,
+            }));
+          } else if (group.key === "tablets") {
+            nextBrands.tablet = group.items.map((item) => ({
+              id: item.slug,
+              name: item.name,
+              logo: item.iconUrl,
+            }));
+          } else if (group.key === "accessories") {
+            nextBrands.accessories = group.items.map((item) => ({
+              id: item.slug,
+              name: item.name,
+              logo: item.iconUrl,
+            }));
+          }
+        }
+
+        setBrandsByCategory(nextBrands);
+
+        // Fetch products
+        const productsResponse = await getProducts(accessToken);
+        const allProducts = productsResponse.data || [];
+        setProducts(allProducts);
+        setPopularProducts(allProducts.filter((p) => p.isPopular));
+        setBestSellers(allProducts.filter((p) => p.isBestSeller));
+      } catch {
+        // Keep filter UI empty if data cannot be loaded.
+      }
+    };
+
+    void fetchData();
+  }, [pathname, router]);
+
+  // Get brands for current category
+  const boardKey = categoryToBoardKey(selectedCategory);
+  const availableBrands = boardKey
+    ? (brandsByCategory[selectedCategory] ?? [])
+    : [];
+  const selectedBrandName =
+    selectedBrand === "all"
+      ? null
+      : (availableBrands
+          .find((brand) => brand.id === selectedBrand)
+          ?.name.toLowerCase() ?? null);
+
+  // Get all subcategory slugs for the selected category
+  const categorySubcategorySlugs =
+    selectedCategory !== "all" && brandsByCategory[selectedCategory]
+      ? brandsByCategory[selectedCategory].map((b) => b.id.toLowerCase())
+      : [];
+
   // Filter products based on category, brand, and search
   const filteredProducts = products.filter((product) => {
+    const productSubcategoryLower = product.subcategory.toLowerCase();
     const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
+      selectedCategory === "all" ||
+      categorySubcategorySlugs.includes(productSubcategoryLower);
     const matchesBrand =
-      selectedBrand === "all" || product.subcategory === selectedBrand;
+      selectedBrand === "all" ||
+      product.subcategory === selectedBrand ||
+      productSubcategoryLower === selectedBrand.toLowerCase() ||
+      productSubcategoryLower === selectedBrandName;
     const matchesSearch =
       searchQuery === "" ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -210,19 +265,15 @@ export default function ShopPage() {
     return matchesCategory && matchesBrand && matchesSearch;
   });
 
-  // Get brands for current category
-  const currentCategory = categories.find((c) => c.id === selectedCategory);
-  const availableBrands = currentCategory?.subcategories || [];
-
   // Add to cart handler
-  const handleAddToCart = (productId: number) => {
+  const handleAddToCart = (productId: string) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.productId === productId);
       if (existing) {
         return prev.map((item) =>
           item.productId === productId
             ? { ...item, quantity: item.quantity + 1 }
-            : item
+            : item,
         );
       }
       return [...prev, { productId, quantity: 1 }];
@@ -231,7 +282,6 @@ export default function ShopPage() {
 
   // Get cart count
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header - Logo + Search + Cart */}
@@ -243,7 +293,9 @@ export default function ShopPage() {
               <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-black">
                 <Smartphone className="h-6 w-6 text-white" />
               </div>
-              <span className="ml-2 text-xl font-bold hidden sm:block">Final Shop</span>
+              <span className="ml-2 text-xl font-bold hidden sm:block">
+                Final Shop
+              </span>
             </div>
 
             {/* Full Search Bar */}
@@ -265,7 +317,12 @@ export default function ShopPage() {
             </div>
 
             {/* Account */}
-            <Button variant="outline" className="relative shrink-0">
+            <Button
+              variant="outline"
+              className="relative shrink-0"
+              onClick={handleLogout}
+              aria-label="Sign out"
+            >
               <User className="h-5 w-5" />
             </Button>
           </div>
@@ -281,7 +338,9 @@ export default function ShopPage() {
               {categories.map((category) => (
                 <Button
                   key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "ghost"}
+                  variant={
+                    selectedCategory === category.id ? "default" : "ghost"
+                  }
                   size="sm"
                   className={
                     selectedCategory === category.id
@@ -306,7 +365,8 @@ export default function ShopPage() {
                   <Button variant="outline" size="sm">
                     {categories.find((c) => c.id === selectedCategory)?.icon}
                     <span className="ml-2">
-                      {categories.find((c) => c.id === selectedCategory)?.name || "Categories"}
+                      {categories.find((c) => c.id === selectedCategory)
+                        ?.name || "Categories"}
                     </span>
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
@@ -330,9 +390,15 @@ export default function ShopPage() {
 
             {/* Quick Links */}
             <div className="hidden md:flex items-center gap-4 text-sm">
-              <a href="#" className="text-gray-600 hover:text-black">Deals</a>
-              <a href="#" className="text-gray-600 hover:text-black">New Arrivals</a>
-              <a href="#" className="text-gray-600 hover:text-black">Best Sellers</a>
+              <a href="#" className="text-gray-600 hover:text-black">
+                Deals
+              </a>
+              <a href="#" className="text-gray-600 hover:text-black">
+                New Arrivals
+              </a>
+              <a href="#" className="text-gray-600 hover:text-black">
+                Best Sellers
+              </a>
             </div>
           </div>
         </div>
@@ -342,118 +408,116 @@ export default function ShopPage() {
       {selectedCategory === "all" && (
         <section className="relative overflow-hidden">
           {newsItems.length > 0 ? (
-          <div className="relative">
-            {/* Carousel Container */}
-            <div
-              className="flex transition-transform duration-500 ease-in-out"
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-            >
-              {newsItems.map((news) => (
-                <div
-                  key={news.id}
-                  className="w-full flex-shrink-0 bg-white"
-                >
-                  {/* Content */}
-                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 min-h-[300px] md:min-h-[400px] py-12 md:py-16">
-                      {/* Text on the left */}
-                      <div className="flex-1 text-black">
-                        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-                          {news.title}
-                        </h2>
-                        <p className="text-lg text-gray-600 mb-6">
-                          {news.description}
-                        </p>
-                        {news.link && (
-                          <Button
-                            asChild
-                            size="lg"
-                            className="bg-black text-white hover:bg-gray-800"
-                          >
-
-                            <a href={news.link}>Buy Now</a>
-                          </Button>
+            <div className="relative">
+              {/* Carousel Container */}
+              <div
+                className="flex transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              >
+                {newsItems.map((news) => (
+                  <div key={news.id} className="w-full flex-shrink-0 bg-white">
+                    {/* Content */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                      <div className="flex flex-col md:flex-row items-center justify-between gap-8 min-h-[300px] md:min-h-[400px] py-12 md:py-16">
+                        {/* Text on the left */}
+                        <div className="flex-1 text-black">
+                          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+                            {news.title}
+                          </h2>
+                          <p className="text-lg text-gray-600 mb-6">
+                            {news.description}
+                          </p>
+                          {news.link && (
+                            <Button
+                              asChild
+                              size="lg"
+                              className="bg-black text-white hover:bg-gray-800"
+                            >
+                              <a href={news.link}>Buy Now</a>
+                            </Button>
+                          )}
+                        </div>
+                        {/* Image on the right */}
+                        {news.image && (
+                          <div className="flex-1 flex justify-center">
+                            <img
+                              src={news.image}
+                              alt={news.title}
+                              className="max-w-full h-auto max-h-64 md:max-h-80 object-contain"
+                            />
+                          </div>
                         )}
                       </div>
-                      {/* Image on the right */}
-                      {news.image && (
-                        <div className="flex-1 flex justify-center">
-                          <img
-                            src={news.image}
-                            alt={news.title}
-                            className="max-w-full h-auto max-h-64 md:max-h-80 object-contain"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Navigation Arrows */}
-            {newsItems.length > 1 && (
-              <>
-                <button
-                  onClick={prevSlide}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors border"
-                  aria-label="Previous slide"
-                >
-                  <ChevronLeft className="h-6 w-6 text-black" />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors border"
-                  aria-label="Next slide"
-                >
-                  <ChevronRight className="h-6 w-6 text-black" />
-                </button>
-              </>
-            )}
-
-            {/* Dots Indicator */}
-            {newsItems.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {newsItems.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => goToSlide(index)}
-                    className={`w-3 h-3 rounded-full transition-colors ${
-                      currentSlide === index
-                        ? "bg-black"
-                        : "bg-gray-300 hover:bg-gray-400"
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
                 ))}
               </div>
-            )}
-          </div>
-        ) : (
-          /* Default Hero when no news items */
-          <div className="bg-white border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-              <div className="max-w-2xl">
-                <Badge className="bg-black text-white mb-4">New Arrivals</Badge>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-black">
-                  Discover the Latest Tech
-                </h1>
-                <p className="text-lg text-gray-600 mb-6">
-                  Shop the newest smartphones, tablets, and accessories from top brands.
-                  Free shipping on orders over $100.
-                </p>
-                <Button
-                  size="lg"
-                  className="bg-black text-white hover:bg-gray-800"
-                  onClick={() => setSelectedCategory("phone")}
-                >
-                  Shop Phones
-                </Button>
+
+              {/* Navigation Arrows */}
+              {newsItems.length > 1 && (
+                <>
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors border"
+                    aria-label="Previous slide"
+                  >
+                    <ChevronLeft className="h-6 w-6 text-black" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors border"
+                    aria-label="Next slide"
+                  >
+                    <ChevronRight className="h-6 w-6 text-black" />
+                  </button>
+                </>
+              )}
+
+              {/* Dots Indicator */}
+              {newsItems.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {newsItems.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={`w-3 h-3 rounded-full transition-colors ${
+                        currentSlide === index
+                          ? "bg-black"
+                          : "bg-gray-300 hover:bg-gray-400"
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Default Hero when no news items */
+            <div className="bg-white border-b">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+                <div className="max-w-2xl">
+                  <Badge className="bg-black text-white mb-4">
+                    New Arrivals
+                  </Badge>
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-black">
+                    Discover the Latest Tech
+                  </h1>
+                  <p className="text-lg text-gray-600 mb-6">
+                    Shop the newest smartphones, tablets, and accessories from
+                    top brands. Free shipping on orders over $100.
+                  </p>
+                  <Button
+                    size="lg"
+                    className="bg-black text-white hover:bg-gray-800"
+                    onClick={() => setSelectedCategory("phone")}
+                  >
+                    Shop Phones
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -563,7 +627,9 @@ export default function ShopPage() {
                                 </span>
                               </div>
                             )}
-                            <span className="text-xs font-medium">{brand.name}</span>
+                            <span className="text-xs font-medium">
+                              {brand.name}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -679,7 +745,7 @@ function ProductCard({
   onAddToCart,
 }: {
   product: Product;
-  onAddToCart: (productId: number) => void;
+  onAddToCart: (productId: string) => void;
 }) {
   const router = useRouter();
   

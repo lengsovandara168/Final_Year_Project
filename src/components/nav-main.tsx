@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Package, ShoppingCart, Users } from "lucide-react";
+import { FolderTree, Home, Package, ShoppingCart, Users } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -12,57 +12,67 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useTranslations } from "next-intl";
 
 const menuItems = [
   {
-    title: "Dashboard",
+    key: "Dashboard.title",
     icon: Home,
-    href: "/en",
+    path: "",
   },
   {
-    title: "Products",
+    key: "Dashboard.stats.products",
     icon: Package,
-    href: "/en/products",
+    path: "/products",
   },
   {
-    title: "Orders",
+    key: "Dashboard.stats.totalOrders",
     icon: ShoppingCart,
-    href: "/en/orders",
+    path: "/orders",
   },
   {
-    title: "Customers",
+    key: "Dashboard.stats.customers",
     icon: Users,
-    href: "/en/customers",
+    path: "/customers",
+  },
+  {
+    key: "ManageCategories",
+    icon: FolderTree,
+    path: "/categories",
   },
 ];
 
 export function NavMain() {
+  const t = useTranslations();
   const pathname = usePathname();
+  const locale = pathname?.split("/").filter(Boolean)[0] || "en";
+  const adminBasePath = `/${locale}/admin`;
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="px-2 py-1.5 text-xs font-semibold">
-        Navigation
+        {t("navigation")}
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const href = `${adminBasePath}${item.path}`;
             const isActive =
-              pathname === item.href || pathname?.startsWith(item.href + "/");
+              pathname === href || pathname?.startsWith(href + "/");
 
             return (
-              <SidebarMenuItem key={item.href}>
+              <SidebarMenuItem key={href}>
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
-                  tooltip={item.title}
+                  tooltip={t(item.key)}
                   size="default"
                   className="h-10"
                 >
-                  <Link href={item.href}>
+                  <Link href={href}>
                     <Icon className="h-4 w-4" />
-                    <span>{item.title}</span>
+                    <span>{t(item.key)}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

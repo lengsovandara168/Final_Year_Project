@@ -1,24 +1,24 @@
 import { redirect } from "next/navigation";
 import { getValidatedServerSession } from "@/lib/auth-server";
 
-type PageProps = {
+type UsersLayoutProps = {
+  children: React.ReactNode;
   params: Promise<{ locale: string }>;
 };
 
-export default async function LocaleRootPage({ params }: PageProps) {
+export default async function UsersLayout({
+  children,
+  params,
+}: UsersLayoutProps) {
   const { locale } = await params;
   const session = await getValidatedServerSession();
   if (!session.isAuthenticated || !session.user) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login?next=/${locale}/users`);
   }
 
-  if (session.user.role === "admin") {
+  if (session.user.role !== "user") {
     redirect(`/${locale}/admin`);
   }
 
-  if (session.user.role === "user") {
-    redirect(`/${locale}/users`);
-  }
-
-  redirect(`/${locale}/login`);
+  return <>{children}</>;
 }

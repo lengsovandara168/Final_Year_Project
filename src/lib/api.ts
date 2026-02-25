@@ -67,7 +67,6 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(url, {
     ...init,
     headers,
-    credentials: "include",
   });
 
   if (!response.ok) {
@@ -114,12 +113,12 @@ export async function apiFetchPublic<T>(path: string, init: RequestInit = {}) {
 export type RegisterRequest = {
   email: string;
   name: string;
-  password: string;
 };
 
 export type RegisterResponse = {
-  message?: string;
-  user_id?: string;
+  ok: boolean;
+  userId: string;
+  email: string;
 };
 
 export async function register(payload: RegisterRequest) {
@@ -131,13 +130,10 @@ export async function register(payload: RegisterRequest) {
 
 export type LoginRequest = {
   email: string;
-  password: string;
 };
 
 export type LoginResponse = {
-  message?: string;
-  access_token?: string;
-  refresh_token?: string;
+  ok: boolean;
 };
 
 export async function login(payload: LoginRequest) {
@@ -168,26 +164,33 @@ export type OtpVerifyRequest = {
 };
 
 export type OtpVerifyResponse = {
-  message?: string;
-  access_token?: string;
-  refresh_token?: string;
+  ok: boolean;
+  userId: string;
+  email: string;
+  role: string;
+  accessToken: string;
 };
 
-export async function verifyOtp(payload: OtpVerifyRequest) {
-  return apiFetch<OtpVerifyResponse>("/v1/auth/otp/verify", {
+export async function verifyRegisterOtp(payload: OtpVerifyRequest) {
+  return apiFetchPublic<OtpVerifyResponse>("/v1/auth/otp/verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export type LogoutRequest = {
-  refresh_token: string;
-};
-
-export async function logout(payload: LogoutRequest) {
-  return apiFetch<{ message?: string }>("/v1/auth/logout", {
+export async function verifyLoginOtp(payload: OtpVerifyRequest) {
+  return apiFetchPublic<OtpVerifyResponse>("/v1/auth/login-verify", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function logout(accessToken: string) {
+  return apiFetch<{ message?: string }>("/v1/auth/logout", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 }
 
@@ -231,7 +234,6 @@ export type Category = {
   name: string;
   parentId?: string | null;
   isActive: boolean;
-  sortOrder: number;
   subcategories?: Category[];
 };
 
@@ -257,7 +259,6 @@ export type CreateCategoryRequest = {
   name: string;
   parentId?: string | null;
   isActive?: boolean;
-  sortOrder?: number;
 };
 
 export async function createCategory(
@@ -277,7 +278,6 @@ export type UpdateCategoryRequest = {
   name?: string;
   parentId?: string | null;
   isActive?: boolean;
-  sortOrder?: number;
 };
 
 export async function updateCategory(
@@ -302,3 +302,195 @@ export async function deleteCategory(id: string, accessToken: string) {
     },
   });
 }
+
+// ===================== Admin Subcategory Endpoints =====================
+
+export type ParentCategory = "phones" | "tablets" | "accessories";
+
+export type UploadedCategoryIcon = {
+  key: string;
+  url?: string;
+  contentType: string;
+  size: number;
+};
+
+export type UploadCategoryIconResponse = {
+  ok: boolean;
+  data: UploadedCategoryIcon;
+};
+
+export async function uploadCategoryIcon(file: File, accessToken: string) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFetch<UploadCategoryIconResponse>("/v1/categories/icons/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+}
+
+export type CreateSubcategoryRequest = {
+  parentCategory: ParentCategory;
+  name: string;
+  slug: string;
+  iconKey: string;
+  iconUrl?: string;
+  isActive?: boolean;
+};
+
+export type Subcategory = {
+  id: string;
+  parentCategory: ParentCategory;
+  name: string;
+  slug: string;
+  iconKey: string;
+  iconUrl?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSubcategoryResponse = {
+  ok: boolean;
+  data: Subcategory;
+};
+
+export async function createSubcategory(
+  payload: CreateSubcategoryRequest,
+  accessToken: string,
+) {
+  return apiFetch<CreateSubcategoryResponse>("/v1/categories", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export type UpdateSubcategoryRequest = {
+  name?: string;
+  slug?: string;
+  iconKey?: string;
+  iconUrl?: string;
+  isActive?: boolean;
+};
+
+export type UpdateSubcategoryResponse = {
+  ok: boolean;
+  data: Subcategory;
+};
+
+export async function updateSubcategory(
+  id: string,
+  payload: UpdateSubcategoryRequest,
+  accessToken: string,
+) {
+  return apiFetch<UpdateSubcategoryResponse>(`/v1/categories/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCategoryGroups(accessToken: string) {
+  return apiFetch<unknown>("/v1/categories", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export type CategoryBoardItem = {
+  id: string;
+  name: string;
+  slug: string;
+  iconUrl?: string;
+  iconKey: string;
+  isActive: boolean;
+};
+
+export type CategoryBoardGroup = {
+  key: ParentCategory;
+  name: string;
+  total: number;
+  items: CategoryBoardItem[];
+};
+
+export type CategoryBoardResponse = {
+  ok: boolean;
+  total: number;
+  data: CategoryBoardGroup[];
+};
+
+export async function getCategoryBoard(accessToken: string) {
+  return apiFetch<CategoryBoardResponse>("/v1/categories/board", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Products API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ProductSpecification = {
+  label: string;
+  value: string;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  originalPrice?: number;
+  image?: string;
+  subcategory: string;
+  rating: number;
+  reviewCount: number;
+  inStock: boolean;
+  isPopular?: boolean;
+  isBestSeller?: boolean;
+  description?: string;
+  specifications?: ProductSpecification[];
+};
+
+export type GetProductsResponse = {
+  ok: boolean;
+  total: number;
+  data: Product[];
+};
+
+export type GetProductResponse = {
+  ok: boolean;
+  data: Product;
+};
+
+export async function getProducts(accessToken: string, subcategorySlug?: string) {
+  const params = subcategorySlug ? `?subcategory=${encodeURIComponent(subcategorySlug)}` : "";
+  return apiFetch<GetProductsResponse>(`/v1/products${params}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function getProductById(accessToken: string, productId: string) {
+  return apiFetch<GetProductResponse>(`/v1/products/${productId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+

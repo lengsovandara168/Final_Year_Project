@@ -1,56 +1,136 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { locales } from "@/i18n/routing";
+import createMiddleware from "next-intl/middleware";
+import { NextRequest, NextResponse } from "next/server";
+import { locales, routing } from "@/i18n/routing";
+import { resolveAuth, applyAuthCookies } from "@/lib/route-protection";
 
 const PUBLIC_FILE = /\.(.*)$/;
-const DEFAULT_LOCALE = "en"; // Default for your AUPP project
+const DEFAULT_LOCALE = "en";
+const i18nMiddleware = createMiddleware(routing);
 
-export function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Redirect absolute root "/" to "/en"
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL(`/${DEFAULT_LOCALE}`, request.url));
-  }
+  const i18nResponse = i18nMiddleware(request);
 
-  // 2. Skip middleware for static assets, API routes, and internal Next files
   if (
-    pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     PUBLIC_FILE.test(pathname)
   ) {
-    return NextResponse.next();
+    return i18nResponse;
   }
 
-  // 3. Extract locale and current route
   const segments = pathname.split("/").filter(Boolean);
   const firstSegment = segments[0];
-  const hasLocale = (locales as readonly string[]).includes(firstSegment);
-
+  const hasLocale = firstSegment
+    ? (locales as readonly string[]).includes(firstSegment)
+    : false;
   const activeLocale = hasLocale ? firstSegment : DEFAULT_LOCALE;
   const routeSegment = hasLocale ? segments[1] : segments[0];
 
-  // 4. Allow public access to auth pages
-  const publicRoutes = ["login", "register", "verify-otp"];
-  if (publicRoutes.includes(routeSegment)) {
-    return NextResponse.next();
+  const auth = await resolveAuth(request);
+  const role = auth.user?.role;
+
+  const withAuthCookies = (response: NextResponse) => {
+    applyAuthCookies(response, auth);
+    return response;
+  };
+
+  const redirectToRoleHome = () => {
+    if (role === "admin") {
+      return withAuthCookies(
+        NextResponse.redirect(new URL(`/${activeLocale}/admin`, request.url)),
+      );
+    }
+
+    if (role === "user") {
+      return withAuthCookies(
+        NextResponse.redirect(new URL(`/${activeLocale}/users`, request.url)),
+      );
+    }
+
+    return withAuthCookies(
+      NextResponse.redirect(new URL(`/${activeLocale}/login`, request.url)),
+    );
+  };
+
+  const publicRoutes = new Set(["login", "register", "verify-otp"]);
+  if (publicRoutes.has(routeSegment ?? "")) {
+    if (auth.isAuthenticated) {
+      return redirectToRoleHome();
+    }
+    return withAuthCookies(i18nResponse);
   }
 
-  // 5. Protected Route Logic
-  const accessToken = request.cookies.get("access_token")?.value;
-
-  if (!accessToken) {
+  const redirectToLogin = () => {
     const loginUrl = request.nextUrl.clone();
-    // Always prefix with locale so Vercel finds the page
     loginUrl.pathname = `/${activeLocale}/login`;
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return withAuthCookies(NextResponse.redirect(loginUrl));
+  };
+
+  if (!auth.isAuthenticated) {
+    return redirectToLogin();
   }
 
-  return NextResponse.next();
+  if (pathname === `/${activeLocale}`) {
+    return redirectToRoleHome();
+  }
+
+  const legacyAdminRoutes = new Set(["products", "orders", "customers"]);
+  const isAdminRoute = routeSegment === "admin" || legacyAdminRoutes.has(routeSegment ?? "");
+  const isUserRoute = routeSegment === "users" || routeSegment === "user";
+
+  if (isAdminRoute && role !== "admin") {
+    const destination =
+      role === "user" ? `/${activeLocale}/users` : `/${activeLocale}/login`;
+    const response = NextResponse.redirect(new URL(destination, request.url));
+    response.cookies.set(
+      "flash_toast",
+      "Unauthorized: You do not have permission to access admin pages.",
+      {
+        path: "/",
+        maxAge: 10,
+        sameSite: "lax",
+      },
+    );
+    return withAuthCookies(response);
+  }
+
+  if (isUserRoute && role !== "user") {
+    const destination =
+      role === "admin" ? `/${activeLocale}/admin` : `/${activeLocale}/login`;
+    const response = NextResponse.redirect(new URL(destination, request.url));
+    response.cookies.set(
+      "flash_toast",
+      "Unauthorized: You do not have permission to access user pages.",
+      {
+        path: "/",
+        maxAge: 10,
+        sameSite: "lax",
+      },
+    );
+    return withAuthCookies(response);
+  }
+
+  if (routeSegment === "user") {
+    return withAuthCookies(
+      NextResponse.redirect(new URL(`/${activeLocale}/users`, request.url)),
+    );
+  }
+
+  if (legacyAdminRoutes.has(routeSegment ?? "") && role === "admin") {
+    return withAuthCookies(
+      NextResponse.redirect(
+        new URL(`/${activeLocale}/admin/${routeSegment}`, request.url),
+      ),
+    );
+  }
+
+  return withAuthCookies(i18nResponse);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!api|_next|_static|_vercel|[\\w-]+\\.\\w+).*)"],
 };
