@@ -8,7 +8,6 @@ type SessionUser = {
 
 type ServerSession = {
   accessToken: string | null;
-  refreshToken: string | null;
   user: SessionUser | null;
 };
 
@@ -17,21 +16,11 @@ type MePayload = {
   userId?: string;
   email?: string;
   role?: string;
-  error?: string;
-  message?: string;
-};
-
-type RefreshPayload = {
-  ok?: boolean;
-  accessToken?: string;
-  error?: string;
-  message?: string;
 };
 
 type ValidatedServerSession = {
   isAuthenticated: boolean;
   user: SessionUser | null;
-  requiresRefresh?: boolean;
 };
 
 function getBackendOrigin() {
@@ -42,11 +31,6 @@ function getBackendOrigin() {
 
 export function getBackendAuthBaseUrl() {
   return getBackendOrigin();
-}
-
-function isExpiredTokenError(payload: { error?: string; message?: string }) {
-  const message = String(payload.error || payload.message || "").toLowerCase();
-  return message.includes("invalid or expired token");
 }
 
 function parseAuthUserCookie(value: string | undefined) {
@@ -77,12 +61,10 @@ function parseAuthUserCookie(value: string | undefined) {
 export async function getServerSession(): Promise<ServerSession> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token")?.value ?? null;
-  const refreshToken = cookieStore.get("refresh_token")?.value ?? null;
   const user = parseAuthUserCookie(cookieStore.get("auth_user")?.value);
 
   return {
     accessToken,
-    refreshToken,
     user,
   };
 }
@@ -99,69 +81,26 @@ async function verifyWithMe(accessToken: string) {
       cache: "no-store",
     });
   } catch {
-    return { ok: false as const, expired: false };
-  }
-
-  if (response.ok) {
-    const data = (await response.json()) as MePayload;
-    if (data.ok && data.userId && data.email && data.role) {
-      return {
-        ok: true as const,
-        user: {
-          id: data.userId,
-          email: data.email,
-          role: data.role,
-        } satisfies SessionUser,
-      };
-    }
-    return { ok: false as const, expired: false };
-  }
-
-  if (response.status === 401) {
-    let body: MePayload = {};
-    try {
-      body = (await response.json()) as MePayload;
-    } catch {
-      body = {};
-    }
-    return {
-      ok: false as const,
-      expired: isExpiredTokenError({
-        error: body.error,
-        message: body.message,
-      }),
-    };
-  }
-
-  return { ok: false as const, expired: false };
-}
-
-export async function refreshAccessTokenOnServer(refreshToken: string) {
-  let response: Response;
-  try {
-    response = await fetch(`${getBackendOrigin()}/v1/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `refresh_token=${encodeURIComponent(refreshToken)}`,
-      },
-      body: JSON.stringify({ refreshToken }),
-      cache: "no-store",
-    });
-  } catch {
-    return null;
+    return { ok: false as const };
   }
 
   if (!response.ok) {
-    return null;
+    return { ok: false as const };
   }
 
-  const data = (await response.json()) as RefreshPayload;
-  if (!data.ok || !data.accessToken) {
-    return null;
+  const data = (await response.json()) as MePayload;
+  if (!data.ok || !data.userId || !data.email || !data.role) {
+    return { ok: false as const };
   }
 
-  return data.accessToken;
+  return {
+    ok: true as const,
+    user: {
+      id: data.userId,
+      email: data.email,
+      role: data.role,
+    } satisfies SessionUser,
+  };
 }
 
 export async function getValidatedServerSession(): Promise<ValidatedServerSession> {
@@ -171,26 +110,12 @@ export async function getValidatedServerSession(): Promise<ValidatedServerSessio
   }
 
   const verified = await verifyWithMe(session.accessToken);
-  if (verified.ok) {
-    return {
-      isAuthenticated: true,
-      user: verified.user,
-    };
-  }
-
-  if (!verified.expired) {
+  if (!verified.ok) {
     return { isAuthenticated: false, user: null };
   }
 
-  if (!session.refreshToken) {
-    return { isAuthenticated: false, user: null };
-  }
-
-  // Server Components cannot reliably persist cookie updates.
-  // The caller should redirect through a route handler that refreshes and sets cookies.
   return {
-    isAuthenticated: false,
-    user: null,
-    requiresRefresh: true,
+    isAuthenticated: true,
+    user: verified.user,
   };
 }

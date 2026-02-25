@@ -10,9 +10,7 @@ type AuthUser = {
 type ResolveAuthResult = {
   isAuthenticated: boolean;
   user: AuthUser | null;
-  requiresRefresh?: boolean;
   nextAccessToken?: string;
-  nextRefreshToken?: string;
   shouldClearAuthCookies?: boolean;
 };
 
@@ -66,26 +64,17 @@ export function applyAuthCookies(
   response: NextResponse,
   result: Pick<
     ResolveAuthResult,
-    "nextAccessToken" | "nextRefreshToken" | "user" | "shouldClearAuthCookies"
+    "nextAccessToken" | "user" | "shouldClearAuthCookies"
   >,
 ) {
   if (result.shouldClearAuthCookies) {
     response.cookies.set("access_token", "", { path: "/", maxAge: 0 });
-    response.cookies.set("refresh_token", "", { path: "/", maxAge: 0 });
     response.cookies.set("auth_user", "", { path: "/", maxAge: 0 });
     return;
   }
 
   if (result.nextAccessToken) {
     response.cookies.set("access_token", result.nextAccessToken, {
-      path: "/",
-      maxAge: COOKIE_MAX_AGE_SECONDS,
-      sameSite: "lax",
-    });
-  }
-
-  if (result.nextRefreshToken) {
-    response.cookies.set("refresh_token", result.nextRefreshToken, {
       path: "/",
       maxAge: COOKIE_MAX_AGE_SECONDS,
       sameSite: "lax",
@@ -103,24 +92,14 @@ export function applyAuthCookies(
 
 export async function resolveAuth(request: NextRequest): Promise<ResolveAuthResult> {
   const accessToken = request.cookies.get("access_token")?.value;
-  const refreshToken = request.cookies.get("refresh_token")?.value;
   const authUser = parseAuthUser(request.cookies.get("auth_user")?.value);
 
   // Fast path for middleware performance: trust existing auth cookies.
-  // Token validity is still enforced by backend APIs; client-side apiFetch handles refresh on 401.
+  // Token validity is enforced by backend APIs on protected endpoints.
   if (accessToken && authUser) {
     return {
       isAuthenticated: true,
       user: authUser,
-    };
-  }
-
-  // If we have refresh token but missing access/user context, route through refresh-session once.
-  if (refreshToken) {
-    return {
-      isAuthenticated: false,
-      user: null,
-      requiresRefresh: true,
     };
   }
 

@@ -13,11 +13,6 @@ export default async function AdminLayout({
 }: AdminLayoutProps) {
   const { locale } = await params;
   const session = await getValidatedServerSession();
-
-  if (session.requiresRefresh) {
-    redirect(`/api/auth/refresh-session?next=/${locale}/admin`);
-  }
-
   if (!session.isAuthenticated || !session.user) {
     redirect(`/${locale}/login?next=/${locale}/admin`);
   }
