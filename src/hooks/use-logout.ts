@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { locales } from "@/i18n/routing";
 import { logout as logoutRequest } from "@/lib/api";
-import { getRefreshTokenFromCookie } from "@/lib/auth-session";
+import { getSessionSnapshot } from "@/lib/auth-session";
 
 export function useLogout() {
   const router = useRouter();
@@ -12,11 +12,11 @@ export function useLogout() {
   const { logout } = useAuth();
 
   return async function handleLogout() {
-    const refreshToken = getRefreshTokenFromCookie();
+    const accessToken = getSessionSnapshot().accessToken;
 
     try {
-      if (refreshToken) {
-        await logoutRequest({ refresh_token: refreshToken });
+      if (accessToken) {
+        await logoutRequest(accessToken);
       }
     } catch (error) {
       console.error("Logout failed:", error);

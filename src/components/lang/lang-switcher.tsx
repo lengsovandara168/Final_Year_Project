@@ -2,10 +2,11 @@
 
 import { type ReactNode, useTransition } from "react";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "@/i18n/routing";
+import { locales } from "@/i18n/routing";
 
 type Props = {
   children: ReactNode;
@@ -19,25 +20,25 @@ export default function LocaleSwitcherSelect({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const pathname = usePathname();
-  const params = useParams();
   const searchParams = useSearchParams();
-  const query = Object.fromEntries(searchParams.entries());
 
   function onToggleLocale() {
     startTransition(() => {
-      // 1. Extract the current locale so it doesn't pollute the new URL
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { locale: _currentLocale, ...restParams } = params;
+      const segments = pathname.split("/").filter(Boolean);
+      const firstSegment = segments[0];
+      const hasLocalePrefix = firstSegment
+        ? (locales as readonly string[]).includes(firstSegment)
+        : false;
 
-      router.replace(
-        // 2. Use the cleaned restParams
-        // @ts-expect-error -- TypeScript will validate matching segments
-        { pathname, params: restParams, query },
-        { locale: toggleLocale },
-      );
+      const normalizedPathname = hasLocalePrefix
+        ? `/${segments.slice(1).join("/")}`
+        : pathname;
+      const queryString = searchParams.toString();
+      const href = queryString
+        ? `${normalizedPathname}?${queryString}`
+        : normalizedPathname;
 
-      // router.refresh() is usually redundant here as router.replace
-      // with a locale change triggers a full page update.
+      router.replace(href, { locale: toggleLocale });
     });
   }
 

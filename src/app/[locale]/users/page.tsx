@@ -27,9 +27,11 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
+import { usePathname, useRouter } from "next/navigation";
 import { useLogout } from "@/hooks/use-logout";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getCategoryBoard } from "@/lib/api";
+import { locales } from "@/i18n/routing";
 
 // Type definitions for products
 interface Product {
@@ -152,6 +154,8 @@ const newsItems: NewsItem[] = [
 ];
 
 export default function ShopPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const handleLogout = useLogout();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
@@ -196,25 +200,16 @@ export default function ShopPage() {
 
   useEffect(() => {
     const fetchBrandFilters = async () => {
-      let accessToken = getSessionSnapshot().accessToken;
+      const accessToken = getSessionSnapshot().accessToken;
 
       if (!accessToken) {
-        try {
-          const nextPath = `${window.location.pathname}${window.location.search}`;
-          await fetch(
-            `/api/auth/refresh-session?next=${encodeURIComponent(nextPath)}`,
-            {
-              method: "GET",
-              credentials: "include",
-            },
-          );
-          accessToken = getSessionSnapshot().accessToken;
-        } catch {
-          accessToken = null;
-        }
-      }
-
-      if (!accessToken) {
+        const locale = pathname?.split("/").filter(Boolean)[0];
+        const hasLocale =
+          locale && (locales as readonly string[]).includes(locale);
+        const next = `${window.location.pathname}${window.location.search}`;
+        router.push(
+          `${hasLocale ? `/${locale}` : "/en"}/login?next=${encodeURIComponent(next)}`,
+        );
         return;
       }
 
@@ -255,7 +250,7 @@ export default function ShopPage() {
     };
 
     void fetchBrandFilters();
-  }, []);
+  }, [pathname, router]);
 
   // Get brands for current category
   const boardKey = categoryToBoardKey(selectedCategory);

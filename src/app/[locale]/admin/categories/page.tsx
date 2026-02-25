@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, ChevronDown, Image as ImageIcon, ImagePlus, Loader2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { getSessionSnapshot } from "@/lib/auth-session";
 import {
@@ -12,6 +13,7 @@ import {
   getCategoryBoard,
   uploadCategoryIcon,
 } from "@/lib/api";
+import { locales } from "@/i18n/routing";
 
 const ICON_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml,image/avif";
 const MAX_ICON_SIZE_BYTES = 5 * 1024 * 1024;
@@ -49,6 +51,8 @@ function toApiMessage(error: unknown) {
 }
 
 export default function ManageCategoriesPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [groups, setGroups] = useState<CategoryBoardGroup[]>(emptyBoardGroups);
   const [isFetching, setIsFetching] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
@@ -69,18 +73,15 @@ export default function ManageCategoriesPage() {
       return snapshot.accessToken;
     }
 
-    try {
-      const nextPath = `${window.location.pathname}${window.location.search}`;
-      await fetch(`/api/auth/refresh-session?next=${encodeURIComponent(nextPath)}`, {
-        method: "GET",
-        credentials: "include",
-      });
-    } catch {
-      return null;
-    }
-
-    return getSessionSnapshot().accessToken;
-  }, []);
+    const locale = pathname?.split("/").filter(Boolean)[0];
+    const hasLocale =
+      locale && (locales as readonly string[]).includes(locale);
+    const next = `${window.location.pathname}${window.location.search}`;
+    router.push(
+      `${hasLocale ? `/${locale}` : "/en"}/login?next=${encodeURIComponent(next)}`,
+    );
+    return null;
+  }, [pathname, router]);
 
   const fetchGroups = useCallback(async () => {
     const accessToken = await ensureAccessToken();

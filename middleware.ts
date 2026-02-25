@@ -1,48 +1,134 @@
 import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
-import { routing } from "@/i18n/routing";
+import { locales, routing } from "@/i18n/routing";
 import { resolveAuth, applyAuthCookies } from "@/lib/route-protection";
 
-// 1. Create the next-intl middleware
+const PUBLIC_FILE = /\.(.*)$/;
+const DEFAULT_LOCALE = "en";
 const i18nMiddleware = createMiddleware(routing);
 
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 2. Handle i18n routing first (adds /en or /km if missing)
-  const response = i18nMiddleware(request);
+  const i18nResponse = i18nMiddleware(request);
 
-  // 3. Skip Auth logic for public files/API
-  if (pathname.includes(".") || pathname.startsWith("/api")) {
-    return response;
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    PUBLIC_FILE.test(pathname)
+  ) {
+    return i18nResponse;
   }
 
-  // 4. Resolve Authentication
-  const auth = await resolveAuth(request);
   const segments = pathname.split("/").filter(Boolean);
-  const activeLocale = segments[0] || "en";
-  const routeSegment = segments[1] || "";
+  const firstSegment = segments[0];
+  const hasLocale = firstSegment
+    ? (locales as readonly string[]).includes(firstSegment)
+    : false;
+  const activeLocale = hasLocale ? firstSegment : DEFAULT_LOCALE;
+  const routeSegment = hasLocale ? segments[1] : segments[0];
 
-  const publicRoutes = ["login", "register", "verify-otp"];
+  const auth = await resolveAuth(request);
+  const role = auth.user?.role;
 
-  // 5. Auth Guard Logic
-  if (!auth.isAuthenticated && !publicRoutes.includes(routeSegment)) {
-    const loginUrl = new URL(`/${activeLocale}/login`, request.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+  const withAuthCookies = (response: NextResponse) => {
+    applyAuthCookies(response, auth);
+    return response;
+  };
+
+  const redirectToRoleHome = () => {
+    if (role === "admin") {
+      return withAuthCookies(
+        NextResponse.redirect(new URL(`/${activeLocale}/admin`, request.url)),
+      );
+    }
+
+    if (role === "user") {
+      return withAuthCookies(
+        NextResponse.redirect(new URL(`/${activeLocale}/users`, request.url)),
+      );
+    }
+
+    return withAuthCookies(
+      NextResponse.redirect(new URL(`/${activeLocale}/login`, request.url)),
+    );
+  };
+
+  const publicRoutes = new Set(["login", "register", "verify-otp"]);
+  if (publicRoutes.has(routeSegment ?? "")) {
+    if (auth.isAuthenticated) {
+      return redirectToRoleHome();
+    }
+    return withAuthCookies(i18nResponse);
   }
 
-  // 6. Role-based Redirection
-  if (pathname === `/${activeLocale}` && auth.isAuthenticated) {
-    const dest = auth.user?.role === "admin" ? "/admin" : "/users";
-    return NextResponse.redirect(
-      new URL(`/${activeLocale}${dest}`, request.url),
+  const redirectToLogin = () => {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = `/${activeLocale}/login`;
+    loginUrl.searchParams.set("next", pathname);
+    return withAuthCookies(NextResponse.redirect(loginUrl));
+  };
+
+  if (!auth.isAuthenticated) {
+    return redirectToLogin();
+  }
+
+  if (pathname === `/${activeLocale}`) {
+    return redirectToRoleHome();
+  }
+
+  const legacyAdminRoutes = new Set(["products", "orders", "customers"]);
+  const isAdminRoute = routeSegment === "admin" || legacyAdminRoutes.has(routeSegment ?? "");
+  const isUserRoute = routeSegment === "users" || routeSegment === "user";
+
+  if (isAdminRoute && role !== "admin") {
+    const destination =
+      role === "user" ? `/${activeLocale}/users` : `/${activeLocale}/login`;
+    const response = NextResponse.redirect(new URL(destination, request.url));
+    response.cookies.set(
+      "flash_toast",
+      "Unauthorized: You do not have permission to access admin pages.",
+      {
+        path: "/",
+        maxAge: 10,
+        sameSite: "lax",
+      },
+    );
+    return withAuthCookies(response);
+  }
+
+  if (isUserRoute && role !== "user") {
+    const destination =
+      role === "admin" ? `/${activeLocale}/admin` : `/${activeLocale}/login`;
+    const response = NextResponse.redirect(new URL(destination, request.url));
+    response.cookies.set(
+      "flash_toast",
+      "Unauthorized: You do not have permission to access user pages.",
+      {
+        path: "/",
+        maxAge: 10,
+        sameSite: "lax",
+      },
+    );
+    return withAuthCookies(response);
+  }
+
+  if (routeSegment === "user") {
+    return withAuthCookies(
+      NextResponse.redirect(new URL(`/${activeLocale}/users`, request.url)),
     );
   }
 
-  // Always apply auth cookies to the response to keep session fresh
-  applyAuthCookies(response, auth);
-  return response;
+  if (legacyAdminRoutes.has(routeSegment ?? "") && role === "admin") {
+    return withAuthCookies(
+      NextResponse.redirect(
+        new URL(`/${activeLocale}/admin/${routeSegment}`, request.url),
+      ),
+    );
+  }
+
+  return withAuthCookies(i18nResponse);
 }
 
 export const config = {

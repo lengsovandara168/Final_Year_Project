@@ -11,27 +11,46 @@ type ResolveAuthResult = {
   isAuthenticated: boolean;
   user: AuthUser | null;
   nextAccessToken?: string;
-  nextRefreshToken?: string;
   shouldClearAuthCookies?: boolean;
-};
-
-type RefreshPayload = {
-  ok?: boolean;
-  accessToken?: string;
-  userId?: string;
-  email?: string;
-  role?: string;
 };
 
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-function hasExpiredTokenError(data: unknown) {
-  if (!data || typeof data !== "object") {
-    return false;
+function parseAuthUser(rawUser: string | undefined) {
+  if (!rawUser) {
+    return null;
   }
-  const payload = data as { error?: unknown; message?: unknown };
-  const message = String(payload.error || payload.message || "").toLowerCase();
-  return message.includes("invalid or expired token");
+
+  const tryParse = (value: string) => {
+    try {
+      const parsed = JSON.parse(value) as Partial<AuthUser>;
+      if (
+        typeof parsed.id === "string" &&
+        typeof parsed.email === "string" &&
+        typeof parsed.role === "string"
+      ) {
+        return {
+          id: parsed.id,
+          email: parsed.email,
+          role: parsed.role,
+        } satisfies AuthUser;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const direct = tryParse(rawUser);
+  if (direct) {
+    return direct;
+  }
+
+  try {
+    return tryParse(decodeURIComponent(rawUser));
+  } catch {
+    return null;
+  }
 }
 
 async function fetchMe(request: NextRequest, accessToken: string) {
@@ -46,81 +65,31 @@ async function fetchMe(request: NextRequest, accessToken: string) {
       cache: "no-store",
     });
   } catch {
-    return {
-      valid: false as const,
-      expired: false,
-    };
-  }
-
-  if (response.ok) {
-    const data = (await response.json()) as {
-      ok?: boolean;
-      userId?: string;
-      email?: string;
-      role?: string;
-    };
-    if (data.ok && data.userId && data.email && data.role) {
-      return {
-        valid: true as const,
-        user: {
-          id: data.userId,
-          email: data.email,
-          role: data.role,
-        },
-      };
-    }
-  }
-
-  if (response.status === 401) {
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch {
-      body = null;
-    }
-    return {
-      valid: false as const,
-      expired: hasExpiredTokenError(body),
-    };
-  }
-
-  return {
-    valid: false as const,
-    expired: false,
-  };
-}
-
-async function refreshAccessToken(request: NextRequest, refreshToken: string) {
-  let response: Response;
-  try {
-    response = await fetch(`${request.nextUrl.origin}/api/v1/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `refresh_token=${encodeURIComponent(refreshToken)}`,
-      },
-      body: JSON.stringify({ refreshToken }),
-      cache: "no-store",
-    });
-  } catch {
-    return null;
+    return { valid: false as const };
   }
 
   if (!response.ok) {
-    return null;
+    return { valid: false as const };
   }
 
-  const data = (await response.json()) as RefreshPayload;
-  if (!data.ok || !data.accessToken) {
-    return null;
-  }
+  const data = (await response.json()) as {
+    ok?: boolean;
+    userId?: string;
+    email?: string;
+    role?: string;
+  };
 
-  const setCookieHeader = response.headers.get("set-cookie");
-  const refreshMatch = setCookieHeader?.match(/refresh_token=([^;]+)/);
+  if (!data.ok || !data.userId || !data.email || !data.role) {
+    return { valid: false as const };
+  }
 
   return {
-    accessToken: data.accessToken,
-    refreshToken: refreshMatch ? decodeURIComponent(refreshMatch[1]) : undefined,
+    valid: true as const,
+    user: {
+      id: data.userId,
+      email: data.email,
+      role: data.role,
+    } satisfies AuthUser,
   };
 }
 
@@ -135,26 +104,17 @@ export function applyAuthCookies(
   response: NextResponse,
   result: Pick<
     ResolveAuthResult,
-    "nextAccessToken" | "nextRefreshToken" | "user" | "shouldClearAuthCookies"
+    "nextAccessToken" | "user" | "shouldClearAuthCookies"
   >,
 ) {
   if (result.shouldClearAuthCookies) {
     response.cookies.set("access_token", "", { path: "/", maxAge: 0 });
-    response.cookies.set("refresh_token", "", { path: "/", maxAge: 0 });
     response.cookies.set("auth_user", "", { path: "/", maxAge: 0 });
     return;
   }
 
   if (result.nextAccessToken) {
     response.cookies.set("access_token", result.nextAccessToken, {
-      path: "/",
-      maxAge: COOKIE_MAX_AGE_SECONDS,
-      sameSite: "lax",
-    });
-  }
-
-  if (result.nextRefreshToken) {
-    response.cookies.set("refresh_token", result.nextRefreshToken, {
       path: "/",
       maxAge: COOKIE_MAX_AGE_SECONDS,
       sameSite: "lax",
@@ -172,56 +132,31 @@ export function applyAuthCookies(
 
 export async function resolveAuth(request: NextRequest): Promise<ResolveAuthResult> {
   const accessToken = request.cookies.get("access_token")?.value;
-  const refreshToken = request.cookies.get("refresh_token")?.value;
+  const authUser = parseAuthUser(request.cookies.get("auth_user")?.value);
 
+  if (accessToken && authUser) {
+    return {
+      isAuthenticated: true,
+      user: authUser,
+    };
+  }
+
+  // Fallback: if access token exists but auth_user is missing/stale, verify via /auth/me once.
   if (accessToken) {
     const me = await fetchMe(request, accessToken);
     if (me.valid) {
       return {
         isAuthenticated: true,
         user: me.user,
+        nextAccessToken: accessToken,
       };
     }
-
-    if (!me.expired) {
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    }
-  }
-
-  if (!refreshToken) {
-    return {
-      isAuthenticated: false,
-      user: null,
-      shouldClearAuthCookies: true,
-    };
-  }
-
-  const refreshed = await refreshAccessToken(request, refreshToken);
-  if (!refreshed?.accessToken) {
-    return {
-      isAuthenticated: false,
-      user: null,
-      shouldClearAuthCookies: true,
-    };
-  }
-
-  const meWithRefreshedToken = await fetchMe(request, refreshed.accessToken);
-  if (!meWithRefreshedToken.valid) {
-    return {
-      isAuthenticated: false,
-      user: null,
-      shouldClearAuthCookies: true,
-    };
   }
 
   return {
-    isAuthenticated: true,
-    user: meWithRefreshedToken.user,
-    nextAccessToken: refreshed.accessToken,
-    nextRefreshToken: refreshed.refreshToken,
+    isAuthenticated: false,
+    user: null,
+    shouldClearAuthCookies: true,
   };
 }
 
