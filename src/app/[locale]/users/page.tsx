@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  LogOut,
   BadgePercent,
 } from "lucide-react";
 import { Special_Elite } from "next/font/google";
@@ -316,14 +317,23 @@ export default function ShopPage() {
             </div>
 
             {/* Account */}
-            <Button
-              variant="outline"
-              className="relative shrink-0"
-              onClick={() => {}}
-              aria-label="Sign out"
-            >
-              <User className="h-5 w-5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="relative shrink-0"
+                  aria-label="Open account menu"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
