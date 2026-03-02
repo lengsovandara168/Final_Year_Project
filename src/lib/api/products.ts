@@ -58,3 +58,20 @@ export async function getProductById(accessToken: string, productId: string) {
     },
   });
 }
+
+export type DeleteProductResponse = {
+  ok: boolean;
+  message: string;
+};
+
+export async function deleteProduct(
+  accessToken: string,
+  productId: string,
+): Promise<DeleteProductResponse> {
+  return apiFetch<DeleteProductResponse>(`/v1/admin/products/${productId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}

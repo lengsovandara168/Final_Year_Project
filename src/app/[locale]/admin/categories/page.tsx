@@ -1,13 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  ChevronDown,
-  Image as ImageIcon,
-  ImagePlus,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { getSessionSnapshot } from "@/lib/auth-session";
@@ -20,6 +14,25 @@ import {
   uploadCategoryIcon,
 } from "@/lib/api";
 import { locales } from "@/i18n/routing";
+import {
+  PHONE_MODELS,
+  TABLET_MODELS,
+  ACCESSORY_MODELS,
+  generateSlug,
+  getBrandName,
+  getModelsByCategory,
+} from "@/lib/models";
+import {
+  BrandSelector,
+  CategoryNameInput,
+  CreateButton,
+  FormMessage,
+  IconUploadSection,
+  ModelSelector,
+  ParentCategorySelect,
+  SlugInput,
+  SubcategoriesDisplay,
+} from "./components";
 
 const ICON_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml,image/avif";
 const MAX_ICON_SIZE_BYTES = 5 * 1024 * 1024;
@@ -52,6 +65,45 @@ function normalizeBoardGroups(data: CategoryBoardGroup[]) {
   });
 }
 
+function getAvailableBrands(
+  category: ParentCategory,
+  customBrands: Record<string, string[]>,
+): { key: string; name: string }[] {
+  const models = getModelsByCategory(category);
+  const predefinedBrands = Object.keys(models).map((key) => ({
+    key,
+    name: getBrandName(key),
+  }));
+
+  const customEntries = (customBrands[category] || []).map((name) => ({
+    key: `custom-${name.toLowerCase()}`,
+    name,
+  }));
+
+  return [...predefinedBrands, ...customEntries];
+}
+
+function getAvailableModels(
+  category: ParentCategory,
+  brandKey: string,
+  customBrands: Record<string, string[]>,
+): { name: string; slug: string }[] {
+  const models = getModelsByCategory(category);
+
+  if (brandKey.startsWith("custom-")) {
+    const customBrandName = brandKey.replace("custom-", "");
+    return (customBrands[category] || [])
+      .filter((name) => name.toLowerCase() === customBrandName.toLowerCase())
+      .flatMap((brandName) => {
+        const customModelKey = `custom-models-${brandName.toLowerCase()}`;
+        const storedModels = localStorage?.getItem(customModelKey);
+        return storedModels ? JSON.parse(storedModels) : [];
+      });
+  }
+
+  return models[brandKey] || [];
+}
+
 function toApiMessage(error: unknown) {
   if (isRecord(error) && typeof error.message === "string") {
     return error.message;
@@ -69,8 +121,20 @@ export default function ManageCategoriesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [parentCategory, setParentCategory] =
     useState<ParentCategory>("phones");
-  const [name, setName] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [customBrandName, setCustomBrandName] = useState("");
+  const [customModelName, setCustomModelName] = useState("");
+  const [useCustomBrand, setUseCustomBrand] = useState(false);
+  const [useCustomModel, setUseCustomModel] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [useCustomName, setUseCustomName] = useState(false);
   const [slug, setSlug] = useState("");
+  const [customBrands, setCustomBrands] = useState<Record<string, string[]>>({
+    phones: [],
+    tablets: [],
+    accessories: [],
+  });
   const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null);
   const [selectedIconName, setSelectedIconName] = useState<string | null>(null);
   const [iconKey, setIconKey] = useState<string | null>(null);
@@ -117,7 +181,54 @@ export default function ManageCategoriesPage() {
 
   useEffect(() => {
     void fetchGroups();
+
+    // Load custom brands from localStorage
+    const loadedCustomBrands = {
+      phones: JSON.parse(localStorage?.getItem("customBrands-phones") || "[]"),
+      tablets: JSON.parse(
+        localStorage?.getItem("customBrands-tablets") || "[]",
+      ),
+      accessories: JSON.parse(
+        localStorage?.getItem("customBrands-accessories") || "[]",
+      ),
+    };
+    setCustomBrands(loadedCustomBrands);
   }, [fetchGroups]);
+
+  useEffect(() => {
+    if (selectedBrand || useCustomBrand || selectedModel) {
+      const displayName = useCustomName
+        ? customName
+        : useCustomBrand
+          ? customBrandName
+          : useCustomModel
+            ? customModelName
+            : selectedModel
+              ? selectedModel
+              : selectedBrand
+                ? getBrandName(selectedBrand)
+                : "";
+
+      if (displayName && !useCustomName) {
+        setSlug(generateSlug(displayName));
+      }
+    }
+  }, [
+    selectedBrand,
+    selectedModel,
+    useCustomBrand,
+    useCustomModel,
+    useCustomName,
+    customName,
+    customBrandName,
+    customModelName,
+  ]);
+
+  useEffect(() => {
+    if (useCustomName && customName) {
+      setSlug(generateSlug(customName));
+    }
+  }, [useCustomName, customName]);
 
   useEffect(
     () => () => {
@@ -184,8 +295,20 @@ export default function ManageCategoriesPage() {
       return;
     }
 
-    if (!name.trim()) {
-      setErrorMessage("Display name is required.");
+    const displayName = useCustomName
+      ? customName
+      : useCustomBrand
+        ? customBrandName
+        : useCustomModel
+          ? customModelName
+          : selectedModel
+            ? selectedModel
+            : selectedBrand
+              ? getBrandName(selectedBrand)
+              : "";
+
+    if (!displayName.trim()) {
+      setErrorMessage("Please select a brand/model or enter a custom name.");
       return;
     }
 
@@ -195,16 +318,48 @@ export default function ManageCategoriesPage() {
     }
 
     if (!iconKey) {
-      setErrorMessage("Please select an icon. It will auto-upload.");
+      setErrorMessage("Please select an icon.");
       return;
     }
 
     try {
       setIsCreating(true);
+
+      // Save custom brand if it's a new one
+      if (useCustomBrand && customBrandName.trim()) {
+        const updatedCustomBrands = { ...customBrands };
+        if (!updatedCustomBrands[parentCategory].includes(customBrandName)) {
+          updatedCustomBrands[parentCategory] = [
+            ...updatedCustomBrands[parentCategory],
+            customBrandName,
+          ];
+          setCustomBrands(updatedCustomBrands);
+          localStorage.setItem(
+            `customBrands-${parentCategory}`,
+            JSON.stringify(updatedCustomBrands[parentCategory]),
+          );
+        }
+      }
+
+      // Save custom model if it's a new one
+      if (useCustomModel && customModelName.trim() && selectedBrand) {
+        const customModelKey = `custom-models-${selectedBrand.toLowerCase()}`;
+        const existingModels = localStorage?.getItem(customModelKey);
+        const modelsList = existingModels ? JSON.parse(existingModels) : [];
+
+        if (!modelsList.some((m: any) => m.name === customModelName)) {
+          modelsList.push({
+            name: customModelName,
+            slug: generateSlug(customModelName),
+          });
+          localStorage.setItem(customModelKey, JSON.stringify(modelsList));
+        }
+      }
+
       const response = await createSubcategory(
         {
           parentCategory,
-          name: name.trim(),
+          name: displayName.trim(),
           slug: slug.trim(),
           iconKey,
           iconUrl: iconUrl ?? undefined,
@@ -213,7 +368,14 @@ export default function ManageCategoriesPage() {
         accessToken,
       );
 
-      setName("");
+      setSelectedBrand(null);
+      setSelectedModel(null);
+      setCustomBrandName("");
+      setCustomModelName("");
+      setUseCustomBrand(false);
+      setUseCustomModel(false);
+      setCustomName("");
+      setUseCustomName(false);
       setSlug("");
       setSelectedIconName(null);
       setIconPreviewUrl((previousUrl) => {
@@ -258,233 +420,105 @@ export default function ManageCategoriesPage() {
         </div>
 
         <div className="space-y-6 px-6 py-6 md:px-8 md:py-8">
-          <div className="space-y-2">
-            <label
-              className="text-sm font-semibold text-zinc-700"
-              htmlFor="parentCategory"
-            >
-              Parent Category
-            </label>
-            <div className="relative">
-              <select
-                id="parentCategory"
-                value={parentCategory}
-                onChange={(event) =>
-                  setParentCategory(event.target.value as ParentCategory)
-                }
-                className="h-14 w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 px-5 text-base font-medium text-zinc-900 outline-none transition focus:ring-2 focus:ring-zinc-900/10"
-              >
-                <option value="phones">Phones</option>
-                <option value="tablets">Tablets</option>
-                <option value="accessories">Accessories</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute top-1/2 right-5 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-            </div>
-          </div>
+          {/* Parent Category */}
+          <ParentCategorySelect
+            parentCategory={parentCategory}
+            onParentCategoryChange={(category) => {
+              setParentCategory(category);
+              setSelectedBrand(null);
+              setSelectedModel(null);
+            }}
+          />
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <label
-                className="text-sm font-semibold text-zinc-700"
-                htmlFor="name"
-              >
-                Display Name
-              </label>
-              <input
-                id="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Apple"
-                className="h-14 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-5 text-base text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
-              />
-            </div>
-            <div className="space-y-2">
-              <label
-                className="text-sm font-semibold text-zinc-700"
-                htmlFor="slug"
-              >
-                Slug
-              </label>
-              <input
-                id="slug"
-                value={slug}
-                onChange={(event) => setSlug(event.target.value)}
-                placeholder="e.g. apple-phones"
-                className="h-14 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-5 font-mono text-base text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
-              />
-            </div>
-          </div>
+          {/* Brand Selector */}
+          <BrandSelector
+            parentCategory={parentCategory}
+            selectedBrand={selectedBrand}
+            useCustomBrand={useCustomBrand}
+            customBrandName={customBrandName}
+            availableBrands={getAvailableBrands(parentCategory, customBrands)}
+            onBrandChange={(brand) => {
+              setSelectedBrand(brand);
+              setSelectedModel(null);
+              setUseCustomModel(false);
+              setCustomModelName("");
+            }}
+            onUseCustomBrandChange={setUseCustomBrand}
+            onCustomBrandNameChange={setCustomBrandName}
+          />
 
-          <div className="space-y-2">
-            <label
-              className="text-sm font-semibold text-zinc-700"
-              htmlFor="icon-upload"
-            >
-              Icon File (max 5MB)
-            </label>
-            <input
-              id="icon-upload"
-              type="file"
-              accept={ICON_ACCEPT}
-              className="sr-only"
-              onChange={async (event) => {
-                const inputElement = event.currentTarget;
-                const file = event.target.files?.[0] ?? null;
-                if (file) {
-                  await uploadIconImmediately(file);
-                }
-                inputElement.value = "";
-              }}
+          {/* Model Selector */}
+          {!useCustomBrand && selectedBrand && (
+            <ModelSelector
+              selectedBrand={selectedBrand}
+              selectedModel={selectedModel}
+              useCustomModel={useCustomModel}
+              customModelName={customModelName}
+              availableModels={getAvailableModels(
+                parentCategory,
+                selectedBrand,
+                customBrands,
+              )}
+              onModelChange={setSelectedModel}
+              onUseCustomModelChange={setUseCustomModel}
+              onCustomModelNameChange={setCustomModelName}
             />
-            <label
-              htmlFor="icon-upload"
-              className="group flex min-h-32 cursor-pointer flex-col items-center justify-center gap-5 rounded-3xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center transition-colors hover:border-zinc-400"
-            >
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-200 text-zinc-500 transition-colors group-hover:bg-zinc-300">
-                {isUploadingIcon ? (
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                ) : (
-                  <ImageIcon className="h-8 w-8" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <p className="text-2xl font-semibold text-zinc-900">
-                  {selectedIconName ? "Change Icon" : "Choose Icon"}
-                </p>
-                <p className="text-base text-zinc-400">
-                  PNG, JPEG, WEBP, SVG, AVIF. Up to 5MB.
-                </p>
-              </div>
-            </label>
-            {selectedIconName ? (
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-zinc-900">
-                      {selectedIconName}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {isUploadingIcon
-                        ? "Uploading..."
-                        : iconKey
-                          ? "Uploaded and ready"
-                          : "Not uploaded"}
-                    </p>
-                  </div>
-                  {iconKey && !isUploadingIcon ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  ) : isUploadingIcon ? (
-                    <ImagePlus className="h-5 w-5 text-zinc-500" />
-                  ) : null}
-                </div>
-                {iconPreviewUrl || iconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={iconUrl ?? iconPreviewUrl ?? ""}
-                    alt="Selected category icon preview"
-                    className="mt-4 h-20 w-20 rounded-xl border border-zinc-200 bg-white object-contain p-1"
-                  />
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+          )}
 
-          {iconKey ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm">
-              <p className="font-semibold text-zinc-800">Uploaded icon key</p>
-              <p className="break-all text-zinc-500">{iconKey}</p>
-            </div>
-          ) : null}
+          {/* Category Name Input */}
+          <CategoryNameInput
+            selectedBrand={selectedBrand}
+            selectedModel={selectedModel}
+            useCustomBrand={useCustomBrand}
+            useCustomModel={useCustomModel}
+            useCustomName={useCustomName}
+            customName={customName}
+            customBrandName={customBrandName}
+            customModelName={customModelName}
+            onUseCustomNameChange={setUseCustomName}
+            onCustomNameChange={setCustomName}
+          />
 
-          {errorMessage ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          ) : null}
+          {/* Slug Input */}
+          <SlugInput slug={slug} onSlugChange={setSlug} />
 
-          {successMessage ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              {successMessage}
-            </div>
-          ) : null}
+          {/* Icon Upload Section */}
+          <IconUploadSection
+            selectedIconName={selectedIconName}
+            iconPreviewUrl={iconPreviewUrl}
+            iconUrl={iconUrl}
+            iconKey={iconKey}
+            isUploadingIcon={isUploadingIcon}
+            onFileSelect={uploadIconImmediately}
+          />
 
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={onCreateSubcategory}
-              disabled={isCreating || isUploadingIcon || !iconKey}
-              className="inline-flex h-14 items-center justify-center rounded-2xl bg-zinc-900 px-10 text-lg font-semibold text-white shadow-lg shadow-zinc-900/10 transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isCreating ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : null}
-              Create Subcategory
-            </button>
-          </div>
+          {/* Error/Success Messages */}
+          <FormMessage message={errorMessage} type="error" />
+          <FormMessage message={successMessage} type="success" />
+
+          {/* Create Button */}
+          <CreateButton
+            isLoading={isCreating}
+            isDisabled={
+              isCreating ||
+              isUploadingIcon ||
+              !iconKey ||
+              (!useCustomBrand && !selectedBrand) ||
+              (useCustomBrand && !customBrandName.trim()) ||
+              (!useCustomBrand &&
+                selectedBrand &&
+                !useCustomModel &&
+                !selectedModel) ||
+              (useCustomModel && !customModelName.trim()) ||
+              !slug.trim()
+            }
+            onClick={onCreateSubcategory}
+          />
         </div>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
-          Current Subcategories
-        </h2>
-        {isFetching ? (
-          <div className="flex items-center text-sm text-zinc-500">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading categories...
-          </div>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-3">
-            {groups.map((group) => (
-              <div
-                key={group.key}
-                className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
-              >
-                <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-6 py-5">
-                  <h3 className="text-2xl font-bold text-zinc-900">
-                    {group.name}
-                  </h3>
-                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-400">
-                    {group.total}
-                  </span>
-                </div>
-                <div className="min-h-35 space-y-3 px-6 py-5">
-                  {group.total === 0 ? (
-                    <p className="text-base italic text-zinc-400">
-                      No subcategories yet.
-                    </p>
-                  ) : (
-                    group.items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3">
-                        {item.iconUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.iconUrl}
-                            alt={`${item.name} icon`}
-                            className="h-8 w-8 rounded-lg border border-zinc-100 bg-zinc-50 object-contain p-1"
-                          />
-                        ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-100 bg-zinc-50 text-zinc-400">
-                            <ImageIcon className="h-4 w-4" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-semibold text-zinc-900">
-                            {item.name}
-                          </p>
-                          <p className="text-[11px] font-mono text-zinc-400">
-                            {item.slug}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Subcategories Display */}
+      <SubcategoriesDisplay groups={groups} isFetching={isFetching} />
     </div>
   );
 }
