@@ -1,201 +1,67 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getTranslations } from "next-intl/server";
+import { getDashboardData } from "@/lib/api";
+import { cookies } from "next/headers";
+import { StatsCards } from "@/components/dashboard/stats-cards";
+import { TopSellingProducts } from "@/components/dashboard/TopSellingProducts";
+import { RecentOrders } from "@/components/dashboard/RecentOrders";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Package, ShoppingCart, Users } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { AlertCircle } from "lucide-react";
 
-// Dummy data
-function getStats(t: ReturnType<typeof useTranslations>) {
-  return [
-    {
-      title: t("Dashboard.stats.totalRevenue"),
-      value: "$45,231.89",
-      change: t("Dashboard.stats.changeRevenue"),
-      icon: DollarSign,
-    },
-    {
-      title: t("Dashboard.stats.products"),
-      value: "234",
-      change: t("Dashboard.stats.changeProducts"),
-      icon: Package,
-    },
-    {
-      title: t("Dashboard.stats.totalOrders"),
-      value: "1,234",
-      change: t("Dashboard.stats.changeOrders"),
-      icon: ShoppingCart,
-    },
-    {
-      title: t("Dashboard.stats.customers"),
-      value: "573",
-      change: t("Dashboard.stats.changeCustomers"),
-      icon: Users,
-    },
-  ];
-}
+export default async function DashboardPage() {
+  const t = await getTranslations("Dashboard");
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value || "";
 
-const topSellingProducts = [
-  {
-    name: "iPhone 15 Pro Max",
-    brand: "Apple",
-    sales: 145,
-    revenue: "$174,000",
-  },
-  {
-    name: "Galaxy S24 Ultra",
-    brand: "Samsung",
-    sales: 132,
-    revenue: "$158,400",
-  },
-  { name: "iPhone 15", brand: "Apple", sales: 98, revenue: "$98,000" },
-  { name: "Galaxy Z Fold 5", brand: "Samsung", sales: 76, revenue: "$136,800" },
-  { name: "iPhone 14 Pro", brand: "Apple", sales: 67, revenue: "$67,000" },
-];
+  let data;
+  let error: string | null = null;
 
-const recentOrders = [
-  {
-    id: "#ORD-001",
-    customer: "John Doe",
-    items: 2,
-    total: "$2,399",
-    status: "completed",
-  },
-  {
-    id: "#ORD-002",
-    customer: "Jane Smith",
-    items: 1,
-    total: "$1,199",
-    status: "processing",
-  },
-  {
-    id: "#ORD-003",
-    customer: "Mike Johnson",
-    items: 3,
-    total: "$3,597",
-    status: "completed",
-  },
-  {
-    id: "#ORD-004",
-    customer: "Sarah Williams",
-    items: 1,
-    total: "$1,799",
-    status: "pending",
-  },
-  {
-    id: "#ORD-005",
-    customer: "David Brown",
-    items: 2,
-    total: "$2,398",
-    status: "processing",
-  },
-];
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "completed":
-      return "bg-black text-white";
-    case "processing":
-      return "bg-gray-800 text-white";
-    case "pending":
-      return "bg-gray-400 text-white";
-    default:
-      return "bg-gray-200";
+  if (!accessToken) {
+    error = "No access token found. Please log in.";
+  } else {
+    try {
+      data = await getDashboardData(accessToken);
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+      error =
+        err && typeof err === "object" && "message" in err
+          ? String(err.message)
+          : "Failed to load dashboard data";
+    }
   }
-};
 
-export default function DashboardPage() {
-  const t = useTranslations();
-  const stats = getStats(t);
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-bold md:text-3xl">
-          {t("Dashboard.title")}
-        </h1>
-        <p className="text-sm text-gray-500 md:text-base">
-          {t("Dashboard.welcome")}
-        </p>
+      <div className="mb-6 md:mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
+          <p className="text-sm text-gray-500 md:text-base">{t("welcome")}</p>
+        </div>
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+          Real-time Data
+        </Badge>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  {stat.title}
-                </CardTitle>
-                <Icon className="h-4 w-4 text-gray-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-gray-500 mt-1">{stat.change}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-red-900">Error loading dashboard</p>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
 
-      {/* Top Selling Products & Recent Orders */}
+      <StatsCards stats={data?.stats} />
+
       <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
-        {/* Top Selling Products */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Dashboard.topSelling")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topSellingProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="font-medium">{product.name}</p>
-                    <p className="text-sm text-gray-500">{product.brand}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{product.revenue}</p>
-                    <p className="text-sm text-gray-500">
-                      {product.sales} {t("Dashboard.sold")}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <TopSellingProducts products={data?.topSellingProducts} />
+        <RecentOrders orders={data?.recentOrders} />
+      </div>
 
-        {/* Recent Orders */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Dashboard.recentOrders")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium">{order.id}</p>
-                    <p className="text-sm text-gray-500">{order.customer}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="font-medium">{order.total}</p>
-                      <p className="text-sm text-gray-500">
-                        {order.items} {t("Dashboard.items")}
-                      </p>
-                    </div>
-                    <Badge className={getStatusColor(order.status)}>
-                      {t(`Dashboard.status.${order.status}`)}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <p className="text-sm text-amber-800">
+          <span className="font-semibold">Note:</span> Orders and customers data will be available once backend implements the corresponding endpoints.
+        </p>
       </div>
     </div>
   );

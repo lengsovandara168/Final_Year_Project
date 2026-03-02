@@ -22,8 +22,7 @@ export function NavUser() {
   const { user } = useAuth();
   const handleSignOut = useLogout();
 
-  const displayInitial = user?.email?.charAt(0)?.toUpperCase() || "U";
-  const displayName = user?.email || "User";
+  const displayName = user?.name || "User";
   const displayEmail = user?.email || "No email";
 
   return (
@@ -37,7 +36,7 @@ export function NavUser() {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-black text-white text-xs">
-                  {displayInitial}
+                  {displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">

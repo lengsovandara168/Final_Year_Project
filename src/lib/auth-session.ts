@@ -4,9 +4,11 @@ export type SessionUser = {
   id: string;
   email: string;
   role: string;
+  name: string;
 };
 
 export type AuthSessionPayload = {
+  name: string;
   userId: string;
   email: string;
   role: string;
@@ -36,7 +38,11 @@ function getCookieValue(name: string) {
   return null;
 }
 
-function setCookie(name: string, value: string, maxAgeSeconds = 60 * 60 * 24 * 7) {
+function setCookie(
+  name: string,
+  value: string,
+  maxAgeSeconds = 60 * 60 * 24 * 7,
+) {
   if (typeof document === "undefined") {
     return;
   }
@@ -49,6 +55,7 @@ export function persistAuthSession(payload: AuthSessionPayload) {
     id: payload.userId,
     email: payload.email,
     role: payload.role,
+    name: payload.name,
   };
 
   setCookie("access_token", payload.accessToken);
@@ -87,11 +94,13 @@ export function getSessionSnapshot(): SessionSnapshot {
     try {
       const parsed = JSON.parse(rawUser) as Partial<SessionUser>;
       if (
+        typeof parsed.name === "string" &&
         typeof parsed.id === "string" &&
         typeof parsed.email === "string" &&
         typeof parsed.role === "string"
       ) {
         user = {
+          name: parsed.name,
           id: parsed.id,
           email: parsed.email,
           role: parsed.role,

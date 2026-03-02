@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth-session";
 
 interface User {
+  name: string;
   id: string;
   email: string;
   role: string;
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     persistAuthSession(payload);
     setUser({
       id: payload.userId,
+      name: payload.name,
       email: payload.email,
       role: payload.role,
     });

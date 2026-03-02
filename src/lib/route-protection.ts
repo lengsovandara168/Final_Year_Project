@@ -130,7 +130,9 @@ export function applyAuthCookies(
   }
 }
 
-export async function resolveAuth(request: NextRequest): Promise<ResolveAuthResult> {
+export async function resolveAuth(
+  request: NextRequest,
+): Promise<ResolveAuthResult> {
   const accessToken = request.cookies.get("access_token")?.value;
   const authUser = parseAuthUser(request.cookies.get("auth_user")?.value);
 
@@ -169,7 +171,8 @@ export async function requireAdmin(request: NextRequest, locale: string) {
   }
 
   if (auth.user?.role !== "admin") {
-    const destination = auth.user?.role === "user" ? `/${locale}/users` : `/${locale}/login`;
+    const destination =
+      auth.user?.role === "user" ? `/${locale}/users` : `/${locale}/login`;
     const response = NextResponse.redirect(new URL(destination, request.url));
     applyAuthCookies(response, auth);
     return response;
@@ -187,7 +190,8 @@ export async function requireUser(request: NextRequest, locale: string) {
   }
 
   if (auth.user?.role !== "user") {
-    const destination = auth.user?.role === "admin" ? `/${locale}/admin` : `/${locale}/login`;
+    const destination =
+      auth.user?.role === "admin" ? `/${locale}/admin` : `/${locale}/login`;
     const response = NextResponse.redirect(new URL(destination, request.url));
     applyAuthCookies(response, auth);
     return response;
