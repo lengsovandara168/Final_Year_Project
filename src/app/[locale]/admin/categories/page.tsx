@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Image as ImageIcon, ImagePlus, Loader2 } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Image as ImageIcon,
+  ImagePlus,
+  Loader2,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { getSessionSnapshot } from "@/lib/auth-session";
@@ -17,7 +23,11 @@ import { locales } from "@/i18n/routing";
 
 const ICON_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml,image/avif";
 const MAX_ICON_SIZE_BYTES = 5 * 1024 * 1024;
-const PARENT_CATEGORIES: ParentCategory[] = ["phones", "tablets", "accessories"];
+const PARENT_CATEGORIES: ParentCategory[] = [
+  "phones",
+  "tablets",
+  "accessories",
+];
 
 const emptyBoardGroups = (): CategoryBoardGroup[] => [
   { key: "phones", name: "Phones", total: 0, items: [] },
@@ -57,7 +67,8 @@ export default function ManageCategoriesPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [parentCategory, setParentCategory] = useState<ParentCategory>("phones");
+  const [parentCategory, setParentCategory] =
+    useState<ParentCategory>("phones");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null);
@@ -74,8 +85,7 @@ export default function ManageCategoriesPage() {
     }
 
     const locale = pathname?.split("/").filter(Boolean)[0];
-    const hasLocale =
-      locale && (locales as readonly string[]).includes(locale);
+    const hasLocale = locale && (locales as readonly string[]).includes(locale);
     const next = `${window.location.pathname}${window.location.search}`;
     router.push(
       `${hasLocale ? `/${locale}` : "/en"}/login?next=${encodeURIComponent(next)}`,
@@ -131,7 +141,9 @@ export default function ManageCategoriesPage() {
     }
 
     if (!ICON_ACCEPT.split(",").includes(file.type)) {
-      setErrorMessage("Invalid file type. Please upload PNG, JPEG, WEBP, SVG, or AVIF.");
+      setErrorMessage(
+        "Invalid file type. Please upload PNG, JPEG, WEBP, SVG, or AVIF.",
+      );
       return;
     }
 
@@ -229,27 +241,37 @@ export default function ManageCategoriesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl p-4 md:p-8 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 md:text-5xl">Manage Categories</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 md:text-5xl">
+          Manage Categories
+        </h1>
         <p className="text-base text-zinc-500">
-          Upload icon and create subcategories under phones, tablets, or accessories.
+          Upload icon and create subcategories under phones, tablets, or
+          accessories.
         </p>
       </div>
 
       <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-100 px-6 py-5 md:px-8">
-          <h2 className="text-2xl font-semibold text-zinc-900">Create Subcategory</h2>
+          <h2 className="text-2xl font-semibold text-zinc-900">
+            Create Subcategory
+          </h2>
         </div>
 
         <div className="space-y-6 px-6 py-6 md:px-8 md:py-8">
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-zinc-700" htmlFor="parentCategory">
+            <label
+              className="text-sm font-semibold text-zinc-700"
+              htmlFor="parentCategory"
+            >
               Parent Category
             </label>
             <div className="relative">
               <select
                 id="parentCategory"
                 value={parentCategory}
-                onChange={(event) => setParentCategory(event.target.value as ParentCategory)}
+                onChange={(event) =>
+                  setParentCategory(event.target.value as ParentCategory)
+                }
                 className="h-14 w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 px-5 text-base font-medium text-zinc-900 outline-none transition focus:ring-2 focus:ring-zinc-900/10"
               >
                 <option value="phones">Phones</option>
@@ -262,7 +284,10 @@ export default function ManageCategoriesPage() {
 
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-zinc-700" htmlFor="name">
+              <label
+                className="text-sm font-semibold text-zinc-700"
+                htmlFor="name"
+              >
                 Display Name
               </label>
               <input
@@ -274,7 +299,10 @@ export default function ManageCategoriesPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-zinc-700" htmlFor="slug">
+              <label
+                className="text-sm font-semibold text-zinc-700"
+                htmlFor="slug"
+              >
                 Slug
               </label>
               <input
@@ -288,7 +316,10 @@ export default function ManageCategoriesPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-zinc-700" htmlFor="icon-upload">
+            <label
+              className="text-sm font-semibold text-zinc-700"
+              htmlFor="icon-upload"
+            >
               Icon File (max 5MB)
             </label>
             <input
@@ -307,7 +338,7 @@ export default function ManageCategoriesPage() {
             />
             <label
               htmlFor="icon-upload"
-              className="group flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-5 rounded-3xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center transition-colors hover:border-zinc-400"
+              className="group flex min-h-32 cursor-pointer flex-col items-center justify-center gap-5 rounded-3xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center transition-colors hover:border-zinc-400"
             >
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-200 text-zinc-500 transition-colors group-hover:bg-zinc-300">
                 {isUploadingIcon ? (
@@ -329,7 +360,9 @@ export default function ManageCategoriesPage() {
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-zinc-900">{selectedIconName}</p>
+                    <p className="truncate text-sm font-semibold text-zinc-900">
+                      {selectedIconName}
+                    </p>
                     <p className="text-xs text-zinc-500">
                       {isUploadingIcon
                         ? "Uploading..."
@@ -382,7 +415,9 @@ export default function ManageCategoriesPage() {
               disabled={isCreating || isUploadingIcon || !iconKey}
               className="inline-flex h-14 items-center justify-center rounded-2xl bg-zinc-900 px-10 text-lg font-semibold text-white shadow-lg shadow-zinc-900/10 transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isCreating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+              {isCreating ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : null}
               Create Subcategory
             </button>
           </div>
@@ -390,7 +425,9 @@ export default function ManageCategoriesPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Current Subcategories</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
+          Current Subcategories
+        </h2>
         {isFetching ? (
           <div className="flex items-center text-sm text-zinc-500">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -399,16 +436,23 @@ export default function ManageCategoriesPage() {
         ) : (
           <div className="grid gap-5 md:grid-cols-3">
             {groups.map((group) => (
-              <div key={group.key} className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+              <div
+                key={group.key}
+                className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
+              >
                 <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-6 py-5">
-                  <h3 className="text-2xl font-bold text-zinc-900">{group.name}</h3>
+                  <h3 className="text-2xl font-bold text-zinc-900">
+                    {group.name}
+                  </h3>
                   <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-400">
                     {group.total}
                   </span>
                 </div>
-                <div className="min-h-[140px] space-y-3 px-6 py-5">
+                <div className="min-h-35 space-y-3 px-6 py-5">
                   {group.total === 0 ? (
-                    <p className="text-base italic text-zinc-400">No subcategories yet.</p>
+                    <p className="text-base italic text-zinc-400">
+                      No subcategories yet.
+                    </p>
                   ) : (
                     group.items.map((item) => (
                       <div key={item.id} className="flex items-center gap-3">
@@ -425,8 +469,12 @@ export default function ManageCategoriesPage() {
                           </div>
                         )}
                         <div>
-                          <p className="text-sm font-semibold text-zinc-900">{item.name}</p>
-                          <p className="text-[11px] font-mono text-zinc-400">{item.slug}</p>
+                          <p className="text-sm font-semibold text-zinc-900">
+                            {item.name}
+                          </p>
+                          <p className="text-[11px] font-mono text-zinc-400">
+                            {item.slug}
+                          </p>
                         </div>
                       </div>
                     ))

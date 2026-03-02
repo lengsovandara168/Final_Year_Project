@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, Info } from "lucide-react";
 
 // Dummy customer data
 const customers = [
@@ -102,6 +102,14 @@ export default function CustomersPage() {
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold md:text-3xl">Customer Database</h1>
         <p className="text-sm text-gray-500 md:text-base">Manage customer profiles and track loyalty</p>
+      </div>
+
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+        <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="font-semibold text-blue-900">Coming Soon: Real Customer Data</p>
+          <p className="text-sm text-blue-700">This page currently shows sample data. Real customer information will be available once the backend implements the customers endpoint.</p>
+        </div>
       </div>
 
       <Card>

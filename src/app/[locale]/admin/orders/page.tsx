@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, ChevronDown, Eye } from "lucide-react";
+import { Search, ChevronDown, Eye, Info } from "lucide-react";
 
 // Dummy order data
 const orders = [
@@ -125,6 +125,14 @@ export default function OrdersPage() {
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold md:text-3xl">Order Management</h1>
         <p className="text-sm text-gray-500 md:text-base">Track and manage orders from POS and online store</p>
+      </div>
+
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+        <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="font-semibold text-blue-900">Coming Soon: Real Orders Data</p>
+          <p className="text-sm text-blue-700">This page currently shows sample data. Real orders will be available once the backend implements the orders endpoint.</p>
+        </div>
       </div>
 
       <Card>

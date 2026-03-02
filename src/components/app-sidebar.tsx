@@ -25,7 +25,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem className="mx-auto my-4 group-data-[collapsible=icon]:my-2">
             <Link
-              href={`/${locale}/dashboard/admin`}
+              href={`/${locale}/admin`}
               className="flex items-center justify-center px-2 py-1 rounded-md transition-colors hover:bg-sidebar-accent"
             >
               {/* Logo for expanded state */}

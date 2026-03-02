@@ -72,6 +72,7 @@ export default function VerifyOtpPage() {
         email: response.email,
         role: response.role,
         accessToken: response.accessToken,
+        name: response.email.split("@")[0] || "User",
       });
 
       setSuccess("OTP verified successfully. Redirecting...");
