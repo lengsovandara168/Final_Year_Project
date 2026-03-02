@@ -10,112 +10,72 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Eye, Info } from "lucide-react";
+import { Search, Eye, AlertCircle } from "lucide-react";
+import { getCustomers } from "@/lib/api/customers";
+import { cookies } from "next/headers";
 
-// Dummy customer data
-const customers = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@email.com",
-    phone: "+1 (555) 123-4567",
-    totalOrders: 12,
-    totalSpent: "$14,388",
-    joinedDate: "2025-08-15",
-    initials: "JD",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@email.com",
-    phone: "+1 (555) 234-5678",
-    totalOrders: 8,
-    totalSpent: "$9,592",
-    joinedDate: "2025-09-22",
-    initials: "JS",
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    email: "mike.j@email.com",
-    phone: "+1 (555) 345-6789",
-    totalOrders: 15,
-    totalSpent: "$17,985",
-    joinedDate: "2025-07-10",
-    initials: "MJ",
-  },
-  {
-    id: 4,
-    name: "Sarah Williams",
-    email: "sarah.w@email.com",
-    phone: "+1 (555) 456-7890",
-    totalOrders: 5,
-    totalSpent: "$5,995",
-    joinedDate: "2025-11-03",
-    initials: "SW",
-  },
-  {
-    id: 5,
-    name: "David Brown",
-    email: "david.b@email.com",
-    phone: "+1 (555) 567-8901",
-    totalOrders: 10,
-    totalSpent: "$11,990",
-    joinedDate: "2025-10-18",
-    initials: "DB",
-  },
-  {
-    id: 6,
-    name: "Emma Davis",
-    email: "emma.d@email.com",
-    phone: "+1 (555) 678-9012",
-    totalOrders: 6,
-    totalSpent: "$7,194",
-    joinedDate: "2025-12-05",
-    initials: "ED",
-  },
-  {
-    id: 7,
-    name: "James Wilson",
-    email: "james.w@email.com",
-    phone: "+1 (555) 789-0123",
-    totalOrders: 9,
-    totalSpent: "$10,791",
-    joinedDate: "2025-09-01",
-    initials: "JW",
-  },
-  {
-    id: 8,
-    name: "Olivia Martinez",
-    email: "olivia.m@email.com",
-    phone: "+1 (555) 890-1234",
-    totalOrders: 7,
-    totalSpent: "$8,393",
-    joinedDate: "2025-10-27",
-    initials: "OM",
-  },
-];
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
-export default function CustomersPage() {
+export default async function CustomersPage() {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value || "";
+
+  let customers = [];
+  let error: string | null = null;
+
+  if (!accessToken) {
+    error = "No access token found. Please log in.";
+  } else {
+    try {
+      const response = await getCustomers(accessToken);
+      customers = response.data;
+    } catch (err) {
+      console.error("Failed to fetch customers:", err);
+      // Gracefully handle missing endpoint - show empty state instead of error
+      error =
+        err && typeof err === "object" && "message" in err
+          ? String(err.message)
+          : "Customers endpoint not yet implemented. Please check back soon.";
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold md:text-3xl">Customer Database</h1>
-        <p className="text-sm text-gray-500 md:text-base">Manage customer profiles and track loyalty</p>
+        <p className="text-sm text-gray-500 md:text-base">
+          Manage customer profiles and track loyalty
+        </p>
       </div>
 
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-        <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-semibold text-blue-900">Coming Soon: Real Customer Data</p>
-          <p className="text-sm text-blue-700">This page currently shows sample data. Real customer information will be available once the backend implements the customers endpoint.</p>
+      {error && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-blue-900">
+              Customers Endpoint Coming Soon
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              Once implemented, real customer data will appear here
+              automatically.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>All Customers</CardTitle>
+            <CardTitle>
+              All Customers {customers.length > 0 && `(${customers.length})`}
+            </CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
               <Input placeholder="Search customers..." className="pl-8" />
@@ -123,46 +83,68 @@ export default function CustomersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Total Orders</TableHead>
-                <TableHead>Total Spent</TableHead>
-                <TableHead>Joined Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-gray-200 text-gray-700">
-                          {customer.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{customer.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-500">{customer.email}</TableCell>
-                  <TableCell className="text-gray-500">{customer.phone}</TableCell>
-                  <TableCell>{customer.totalOrders}</TableCell>
-                  <TableCell className="font-medium">{customer.totalSpent}</TableCell>
-                  <TableCell className="text-gray-500">{customer.joinedDate}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>          </div>        </CardContent>
+          {customers.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg font-medium">No customers found</p>
+              <p className="text-sm">
+                Customers will appear here once you have registrations
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Total Orders</TableHead>
+                    <TableHead>Total Spent</TableHead>
+                    <TableHead>Joined Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customers.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-black text-white text-xs">
+                              {getInitials(customer.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium">{customer.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {customer.email}
+                      </TableCell>
+                      <TableCell>{customer.phone || "-"}</TableCell>
+                      <TableCell className="text-center">
+                        {customer.totalOrders}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        $
+                        {typeof customer.totalSpent === "number"
+                          ? customer.totalSpent.toFixed(2)
+                          : customer.totalSpent}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {customer.joinedDate}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
