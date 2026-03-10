@@ -5,6 +5,7 @@ type AuthUser = {
   id: string;
   email: string;
   role: string;
+  name?: string;
 };
 
 type ResolveAuthResult = {
@@ -33,6 +34,7 @@ function parseAuthUser(rawUser: string | undefined) {
           id: parsed.id,
           email: parsed.email,
           role: parsed.role,
+          name: typeof parsed.name === "string" ? parsed.name : undefined,
         } satisfies AuthUser;
       }
     } catch {

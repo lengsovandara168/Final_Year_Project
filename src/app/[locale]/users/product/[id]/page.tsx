@@ -28,6 +28,56 @@ import {
 
 // Product type is imported from @/lib/api
 
+function buildProductTemplateKey(product: Product) {
+  const priceKey = Number(product.price ?? 0).toFixed(2);
+  const originalPriceKey =
+    product.originalPrice == null ? "none" : Number(product.originalPrice).toFixed(2);
+
+  if (product.templateId?.trim()) {
+    return `template:${product.templateId.trim()}:price:${priceKey}:original:${originalPriceKey}`;
+  }
+
+  const normalizedName = product.name.trim().toLowerCase();
+  const normalizedStorage = product.storage?.trim().toLowerCase() ?? "";
+  const normalizedColor = product.color?.trim().toLowerCase() ?? "";
+  return `legacy:${product.subcategoryId}:${normalizedName}:${normalizedStorage}:${normalizedColor}:price:${priceKey}:original:${originalPriceKey}`;
+}
+
+function deduplicateProductTemplates(products: Product[]) {
+  const grouped = new Map<string, Product>();
+
+  for (const product of products) {
+    const key = buildProductTemplateKey(product);
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, product);
+      continue;
+    }
+
+    const preferred = !existing.inStock && product.inStock ? product : existing;
+    const maxOriginalPrice = Math.max(existing.originalPrice ?? 0, product.originalPrice ?? 0);
+    const mergedOriginalPrice = preferred.originalPrice ?? (maxOriginalPrice || undefined);
+
+    grouped.set(key, {
+      ...preferred,
+      image: preferred.image || existing.image || product.image,
+      description: preferred.description || existing.description || product.description,
+      storage: preferred.storage || existing.storage || product.storage,
+      color: preferred.color || existing.color || product.color,
+      price: preferred.price,
+      originalPrice: mergedOriginalPrice,
+      rating: Math.max(existing.rating, product.rating),
+      reviewCount: Math.max(existing.reviewCount, product.reviewCount),
+      inStock: existing.inStock || product.inStock,
+      isPopular: Boolean(existing.isPopular || product.isPopular),
+      isBestSeller: Boolean(existing.isBestSeller || product.isBestSeller),
+    });
+  }
+
+  return Array.from(grouped.values());
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -58,13 +108,24 @@ export default function ProductDetailPage() {
         setIsLoading(true);
         const productId = params.id as string;
         const response = await getProductById(accessToken, productId);
-        setProduct(response.data || null);
+        const loadedProduct = response.data || null;
+        setProduct(loadedProduct);
 
         // Fetch related products
         const productsResponse = await getProducts(accessToken);
         const allProducts = productsResponse.data || [];
+        const currentTemplateKey = loadedProduct
+          ? buildProductTemplateKey(loadedProduct)
+          : null;
+        const uniqueTemplateProducts = deduplicateProductTemplates(allProducts);
         setRelatedProducts(
-          allProducts.filter((p) => p.id !== productId).slice(0, 4)
+          uniqueTemplateProducts
+            .filter((p) => {
+              if (p.id === productId) return false;
+              if (!currentTemplateKey) return true;
+              return buildProductTemplateKey(p) !== currentTemplateKey;
+            })
+            .slice(0, 4),
         );
       } catch {
         setProduct(null);
@@ -133,7 +194,7 @@ export default function ProductDetailPage() {
                 <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-black">
                   <Smartphone className="h-6 w-6 text-white" />
                 </div>
-                <span className="ml-2 text-xl font-bold hidden sm:block">Final Shop</span>
+                <span className="ml-2 text-xl font-bold hidden sm:block">LDHS Shop</span>
               </div>
             </div>
 
@@ -221,12 +282,16 @@ export default function ProductDetailPage() {
 
           {/* Right Column - Product Info */}
           <div className="space-y-6">
-            {/* Brand & Name */}
+            {/* Product Header */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">{product.brand}</p>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                 {product.name}
               </h1>
+              {(product.storage || product.color) && (
+                <p className="text-sm text-gray-500 mt-1">
+                  {[product.storage, product.color].filter(Boolean).join(" • ")}
+                </p>
+              )}
             </div>
 
             {/* Rating */}
@@ -382,7 +447,7 @@ export default function ProductDetailPage() {
                     key={idx}
                     className="flex justify-between py-3 border-b last:border-0"
                   >
-                    <span className="text-gray-600">{spec.label}</span>
+                    <span className="text-gray-600">{spec.key}</span>
                     <span className="font-medium text-right">{spec.value}</span>
                   </div>
                 ))}
@@ -417,10 +482,14 @@ export default function ProductDetailPage() {
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="text-xs text-gray-500">{relatedProduct.brand}</p>
                       <h3 className="text-sm font-medium line-clamp-1">
                         {relatedProduct.name}
                       </h3>
+                      {(relatedProduct.storage || relatedProduct.color) && (
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                          {[relatedProduct.storage, relatedProduct.color].filter(Boolean).join(" • ")}
+                        </p>
+                      )}
                       <p className="text-sm font-bold mt-1">
                         {formatPrice(relatedProduct.price)}
                       </p>
