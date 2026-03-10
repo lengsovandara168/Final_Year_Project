@@ -132,7 +132,11 @@ export default async function OrdersPage() {
       const response = await getOrders(accessToken);
       orders = response.data;
     } catch (err) {
-      console.error("Failed to fetch orders:", err);
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message?: string }).message)
+          : "Unknown error";
+      console.error("Failed to fetch orders:", message);
       hasError = true;
     }
   }

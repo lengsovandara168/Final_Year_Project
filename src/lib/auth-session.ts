@@ -94,13 +94,13 @@ export function getSessionSnapshot(): SessionSnapshot {
     try {
       const parsed = JSON.parse(rawUser) as Partial<SessionUser>;
       if (
-        typeof parsed.name === "string" &&
         typeof parsed.id === "string" &&
         typeof parsed.email === "string" &&
         typeof parsed.role === "string"
       ) {
+        const fallbackName = parsed.email.split("@")[0] || "User";
         user = {
-          name: parsed.name,
+          name: typeof parsed.name === "string" ? parsed.name : fallbackName,
           id: parsed.id,
           email: parsed.email,
           role: parsed.role,

@@ -23,7 +23,7 @@ export async function TopSellingProducts({
             <div key={index} className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium">{product.name}</p>
-                <p className="text-sm text-gray-500">{product.brand}</p>
+                <p className="text-sm text-gray-500">{product.subtitle}</p>
               </div>
               <div className="text-right">
                 <p className="font-medium">

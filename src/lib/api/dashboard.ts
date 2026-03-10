@@ -1,7 +1,7 @@
 // f:/AUPP/2026/FYP/FYP_Project/src/lib/api/dashboard.ts
 
 import { getProducts } from "./products";
-import { getCategories } from "./categories";
+import { getCategories, getCategoryBoard } from "./categories";
 
 export type DashboardStats = {
   totalRevenue: number;
@@ -16,7 +16,7 @@ export type DashboardStats = {
 
 export type TopProduct = {
   name: string;
-  brand: string;
+  subtitle: string;
   sales: number;
   revenue: number;
 };
@@ -45,9 +45,11 @@ export async function getDashboardData(
 ): Promise<DashboardData> {
   try {
     // Fetch real data from available endpoints
-    const [productsResponse, categoriesResponse] = await Promise.allSettled([
+    const [productsResponse, categoriesResponse, boardResponse] =
+      await Promise.allSettled([
       getProducts(accessToken),
       getCategories(accessToken),
+      getCategoryBoard(accessToken),
     ]);
 
     // Extract products data
@@ -61,6 +63,15 @@ export async function getDashboardData(
     const categories =
       categoriesResponse.status === "fulfilled" ? categoriesResponse.value : [];
     const totalCategories = categories.length;
+    const subcategoryNameById = new Map<string, string>();
+
+    if (boardResponse.status === "fulfilled") {
+      for (const group of boardResponse.value.data) {
+        for (const item of group.items) {
+          subcategoryNameById.set(item.id, item.name);
+        }
+      }
+    }
 
     // Calculate stats with real product data
     const stats: DashboardStats = {
@@ -79,7 +90,8 @@ export async function getDashboardData(
       .slice(0, 5)
       .map((product, index) => ({
         name: product.name,
-        brand: product.brand,
+        subtitle:
+          subcategoryNameById.get(product.subcategoryId) || "Unknown brand",
         sales: Math.max(50 - index * 5, 10), // Mock sales data
         revenue: product.price * Math.max(50 - index * 5, 10),
       }));

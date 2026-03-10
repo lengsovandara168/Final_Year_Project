@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderTree, Home, Package, ShoppingCart, Users } from "lucide-react";
+import { Home, Package, ShoppingCart, Users } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -34,11 +34,6 @@ const menuItems = [
     key: "Dashboard.stats.customers",
     icon: Users,
     path: "/customers",
-  },
-  {
-    key: "ManageCategories",
-    icon: FolderTree,
-    path: "/categories",
   },
 ];
 
