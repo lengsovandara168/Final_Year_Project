@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter, usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
+import { useCart } from "@/contexts/cart-context";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getProductById, getProducts, type Product } from "@/lib/api";
 import { locales } from "@/i18n/routing";
@@ -82,6 +84,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { addToCart, getCartCount } = useCart();
+  const cartCount = getCartCount();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,9 +150,7 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (product) {
-      // Add to cart logic here
-      console.log(`Added ${quantity} x ${product.name} to cart`);
-      // You can integrate with your cart state management here
+      addToCart(product, quantity);
     }
   };
 
@@ -212,8 +214,17 @@ export default function ProductDetailPage() {
               <Button variant="ghost" size="icon">
                 <Share2 className="h-5 w-5" />
               </Button>
-              <Button variant="outline" className="relative">
+              <Button 
+                variant="outline" 
+                className="relative"
+                onClick={() => router.push("/users/cart")}
+              >
                 <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
               </Button>
             </div>
           </div>
