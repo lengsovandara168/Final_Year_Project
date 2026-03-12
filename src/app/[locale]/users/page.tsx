@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { useLogout } from "@/hooks/use-logout";
+import { useCart } from "@/contexts/cart-context";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
 
@@ -278,10 +280,8 @@ export default function ShopPage() {
   });
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [failedBrandLogos, setFailedBrandLogos] = useState<Record<string, boolean>>({});
-  const [cart, setCart] = useState<{ productId: string; quantity: number }[]>(
-    [],
-  );
   const [currentSlide, setCurrentSlide] = useState(0);
+  const { addToCart, getCartCount } = useCart();
 
   // Auto-swipe for news carousel
   const nextSlide = useCallback(() => {
@@ -401,21 +401,14 @@ export default function ShopPage() {
 
   // Add to cart handler
   const handleAddToCart = (productId: string) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.productId === productId);
-      if (existing) {
-        return prev.map((item) =>
-          item.productId === productId
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        );
-      }
-      return [...prev, { productId, quantity: 1 }];
-    });
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      addToCart(product);
+    }
   };
 
   // Get cart count
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartCount = getCartCount();
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header - Logo + Search + Cart */}
@@ -449,6 +442,21 @@ export default function ShopPage() {
                 </Button>
               </div>
             </div>
+
+            {/* Cart */}
+            <Button
+              variant="outline"
+              className="relative shrink-0"
+              onClick={() => router.push("/users/cart")}
+              aria-label="Shopping cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+            </Button>
 
             {/* Account */}
             <DropdownMenu>
@@ -533,13 +541,13 @@ export default function ShopPage() {
 
             {/* Quick Links */}
             <div className="hidden md:flex items-center gap-4 text-sm">
-              <a href="/" className="text-gray-600 hover:text-black">
+              <a href="#" className="text-gray-600 hover:text-black">
                 Deals
               </a>
-              <a href="/" className="text-gray-600 hover:text-black">
+              <a href="#" className="text-gray-600 hover:text-black">
                 New Arrivals
               </a>
-              <a href="/" className="text-gray-600 hover:text-black">
+              <a href="#" className="text-gray-600 hover:text-black">
                 Best Sellers
               </a>
             </div>
