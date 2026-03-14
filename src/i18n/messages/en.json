@@ -26,5 +26,8 @@
       "pending": "Pending"
     }
     
+  },
+  "POS": {
+    "title": "POS / Stock"
   }
 }

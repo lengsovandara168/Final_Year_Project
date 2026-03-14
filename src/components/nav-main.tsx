@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Package, ShoppingCart, Users } from "lucide-react";
+import { Home, Package, ShoppingCart, Users, Zap } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -34,6 +34,11 @@ const menuItems = [
     key: "Dashboard.stats.customers",
     icon: Users,
     path: "/customers",
+  },
+  {
+    key: "POS.title",
+    icon: Zap,
+    path: "/pos/stock",
   },
 ];
 

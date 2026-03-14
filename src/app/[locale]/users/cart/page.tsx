@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useCart } from "@/contexts/cart-context";
+import {
+  createDraftOrderSummary,
+  generatePaymentLine,
+  calculatePaymentsTotal,
+  type OrderSummaryV2,
+  type ShippingAddress,
+  type PaymentLine,
+  type TradeInItem,
+} from "@/lib/api";
+import { normalizeAmount } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,32 +39,16 @@ import {
 
 type CheckoutStep = "cart" | "shipping" | "payment" | "confirmation";
 
-type ShippingAddress = {
-  fullName: string;
-  phone: string;
-  address: string;
-  city: string;
-  zipCode: string;
-};
-
-type OrderItem = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-};
-
-type OrderSummary = {
-  orderNumber: string;
-  createdAt: string;
-  items: OrderItem[];
-  shippingAddress: ShippingAddress;
-  total: number;
+type TradeInForm = {
+  model: string;
+  imei: string;
+  offeredAmount: string;
 };
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, getCartTotal, clearCart } =
+    useCart();
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: "",
@@ -64,17 +58,26 @@ export default function CartPage() {
     zipCode: "",
   });
   const [showErrors, setShowErrors] = useState(false);
-  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [orderSummary, setOrderSummary] = useState<OrderSummaryV2 | null>(null);
+  const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([
+    generatePaymentLine(0, "khqr"),
+  ]);
+  const [tradeInEnabled, setTradeInEnabled] = useState(false);
+  const [tradeInForm, setTradeInForm] = useState<TradeInForm>({
+    model: "",
+    imei: "",
+    offeredAmount: "",
+  });
 
   const stepOrder: CheckoutStep[] = ["cart", "shipping", "payment"];
   const isCartComplete = items.length > 0;
-  const isShippingComplete =
-    !!(
-      shippingAddress.fullName.trim() &&
-      shippingAddress.phone.trim() &&
-      shippingAddress.address.trim() &&
-      shippingAddress.city.trim()
-    );
+  const isShippingComplete = !!(
+    shippingAddress.fullName.trim() &&
+    shippingAddress.phone.trim() &&
+    shippingAddress.address.trim() &&
+    shippingAddress.city.trim()
+  );
 
   let maxAvailableStepIndex = 0; // cart is always available
   if (isCartComplete) maxAvailableStepIndex = 1; // shipping available
@@ -99,7 +102,34 @@ export default function CartPage() {
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 100 ? 0 : 9.99;
-  const total = subtotal + shipping;
+  const tradeInAmount = tradeInEnabled
+    ? normalizeAmount(Number(tradeInForm.offeredAmount) || 0)
+    : 0;
+  const total = normalizeAmount(
+    Math.max(subtotal + shipping - tradeInAmount, 0),
+  );
+  const totalPaid = calculatePaymentsTotal(paymentLines);
+  const paymentShortfall = normalizeAmount(Math.max(total - totalPaid, 0));
+  const changeDue = normalizeAmount(Math.max(totalPaid - total, 0));
+
+  const resetPaymentLines = (nextTotal: number) => {
+    setPaymentLines([generatePaymentLine(nextTotal, "khqr")]);
+  };
+
+  const updatePaymentLine = (lineId: string, patch: Partial<PaymentLine>) => {
+    setPaymentLines((prev) =>
+      prev.map((line) => (line.id === lineId ? { ...line, ...patch } : line)),
+    );
+  };
+
+  const removePaymentLine = (lineId: string) => {
+    setPaymentLines((prev) => {
+      if (prev.length === 1) {
+        return prev;
+      }
+      return prev.filter((line) => line.id !== lineId);
+    });
+  };
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity >= 1) {
@@ -110,45 +140,80 @@ export default function CartPage() {
   const handleCheckout = () => {
     if (step === "cart" && items.length > 0) {
       setShowErrors(false);
+      setPaymentError(null);
       setStep("shipping");
     } else if (step === "shipping") {
       // Validate shipping
-      const isValid = 
-        shippingAddress.fullName.trim() && 
-        shippingAddress.phone.trim() && 
-        shippingAddress.address.trim() && 
+      const isValid =
+        shippingAddress.fullName.trim() &&
+        shippingAddress.phone.trim() &&
+        shippingAddress.address.trim() &&
         shippingAddress.city.trim();
-      
+
       if (!isValid) {
         setShowErrors(true);
         return;
       }
       setShowErrors(false);
+      resetPaymentLines(total);
+      setPaymentError(null);
       setStep("payment");
     } else if (step === "payment") {
-      // Process payment (KHQR) and record order summary for receipt
-      const orderNumber = `ORD-${Date.now()}`;
-      const createdAt = new Date().toISOString();
-      const orderItems: OrderItem[] = items.map((item) => ({
+      const sanitizedPayments = paymentLines.map((line) => ({
+        ...line,
+        amount: normalizeAmount(line.amount),
+      }));
+
+      if (sanitizedPayments.some((line) => line.amount <= 0)) {
+        setPaymentError("Each payment line must be greater than $0.00.");
+        return;
+      }
+
+      if (paymentShortfall > 0) {
+        setPaymentError(
+          `Insufficient payment. You still need ${formatPrice(paymentShortfall)}.`,
+        );
+        return;
+      }
+
+      const orderItems = items.map((item) => ({
         id: item.product.id,
         name: item.product.name,
         price: item.product.price,
         quantity: item.quantity,
+        imei: item.product.imei,
       }));
 
-      const summary: OrderSummary = {
-        orderNumber,
-        createdAt,
+      const tradeIns: TradeInItem[] =
+        tradeInEnabled && tradeInAmount > 0
+          ? [
+              {
+                id: `tradein-${Date.now()}`,
+                model: tradeInForm.model.trim() || "Used phone",
+                imei: tradeInForm.imei.trim() || undefined,
+                offeredAmount: tradeInAmount,
+              },
+            ]
+          : [];
+
+      const summary = createDraftOrderSummary({
         items: orderItems,
         shippingAddress: { ...shippingAddress },
-        total,
-      };
+        subtotal,
+        shipping,
+        tradeIns,
+        payments: sanitizedPayments,
+      });
 
       setOrderSummary(summary);
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("lastOrderSummary", JSON.stringify(summary));
+        window.localStorage.setItem(
+          "lastOrderSummaryV2",
+          JSON.stringify(summary),
+        );
       }
       setShowErrors(false);
+      setPaymentError(null);
       setStep("confirmation");
       clearCart();
     }
@@ -158,10 +223,13 @@ export default function CartPage() {
     if (!orderSummary) return;
 
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("lastOrderSummary", JSON.stringify(orderSummary));
+      window.localStorage.setItem(
+        "lastOrderSummaryV2",
+        JSON.stringify(orderSummary),
+      );
       const receiptPath = window.location.pathname.replace(
         "/users/cart",
-        "/users/cart/receipt"
+        `/users/cart/receipt?order=${encodeURIComponent(orderSummary.orderNumber)}`,
       );
       window.open(receiptPath, "_blank");
     }
@@ -177,15 +245,20 @@ export default function CartPage() {
             <h2 className="text-2xl font-bold mb-2">Order Confirmed!</h2>
             {orderSummary && (
               <>
-                  <p className="text-gray-600 mb-4">
-                    Thank you for your purchase. Your order has been placed successfully.
-                  </p>
-                  <Button onClick={handleViewReceipt} className="w-full mb-3">
-                    Click here to view receipt
-                  </Button>
+                <p className="text-gray-600 mb-4">
+                  Thank you for your purchase. Your order has been placed
+                  successfully.
+                </p>
+                <Button onClick={handleViewReceipt} className="w-full mb-3">
+                  Click here to view receipt
+                </Button>
               </>
             )}
-            <Button onClick={() => router.push("/users")} className="w-full" variant={orderSummary ? "outline" : "default"}>
+            <Button
+              onClick={() => router.push("/users")}
+              className="w-full"
+              variant={orderSummary ? "outline" : "default"}
+            >
               Continue Shopping
             </Button>
           </CardContent>
@@ -201,11 +274,15 @@ export default function CartPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => {
-                if (step === "cart") router.push("/users");
-                else if (step === "shipping") setStep("cart");
-                else if (step === "payment") setStep("shipping");
-              }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (step === "cart") router.push("/users");
+                  else if (step === "shipping") setStep("cart");
+                  else if (step === "payment") setStep("shipping");
+                }}
+              >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               <h1 className="text-xl font-bold">
@@ -214,7 +291,7 @@ export default function CartPage() {
                 {step === "payment" && "Payment"}
               </h1>
             </div>
-            
+
             {/* Breadcrumb Steps */}
             <div className="hidden md:block">
               <Breadcrumb>
@@ -249,7 +326,8 @@ export default function CartPage() {
                         <MapPin className="h-4 w-4" />
                         <span className="text-sm">Shipping</span>
                       </BreadcrumbPage>
-                    ) : maxAvailableStepIndex >= stepOrder.indexOf("shipping") ? (
+                    ) : maxAvailableStepIndex >=
+                      stepOrder.indexOf("shipping") ? (
                       <BreadcrumbLink asChild>
                         <button
                           type="button"
@@ -277,7 +355,8 @@ export default function CartPage() {
                         <CreditCard className="h-4 w-4" />
                         <span className="text-sm">Payment</span>
                       </BreadcrumbPage>
-                    ) : maxAvailableStepIndex >= stepOrder.indexOf("payment") ? (
+                    ) : maxAvailableStepIndex >=
+                      stepOrder.indexOf("payment") ? (
                       <BreadcrumbLink asChild>
                         <button
                           type="button"
@@ -307,8 +386,12 @@ export default function CartPage() {
           <Card className="text-center py-16">
             <CardContent>
               <ShoppingCart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-600 mb-2">Your cart is empty</h2>
-              <p className="text-gray-500 mb-6">Add some products to your cart to continue shopping.</p>
+              <h2 className="text-xl font-semibold text-gray-600 mb-2">
+                Your cart is empty
+              </h2>
+              <p className="text-gray-500 mb-6">
+                Add some products to your cart to continue shopping.
+              </p>
               <Button onClick={() => router.push("/users")}>
                 Continue Shopping
               </Button>
@@ -325,7 +408,7 @@ export default function CartPage() {
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           {/* Product Image */}
-                          <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                             {item.product.image ? (
                               <img
                                 src={item.product.image}
@@ -341,11 +424,17 @@ export default function CartPage() {
 
                           {/* Product Info */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm line-clamp-2">{item.product.name}</h3>
+                            <h3 className="font-medium text-sm line-clamp-2">
+                              {item.product.name}
+                            </h3>
                             <p className="text-xs text-gray-500 mt-1">
-                              {[item.product.storage, item.product.color].filter(Boolean).join(" • ")}
+                              {[item.product.storage, item.product.color]
+                                .filter(Boolean)
+                                .join(" • ")}
                             </p>
-                            <p className="font-bold mt-2">{formatPrice(item.product.price)}</p>
+                            <p className="font-bold mt-2">
+                              {formatPrice(item.product.price)}
+                            </p>
                           </div>
 
                           {/* Quantity Controls */}
@@ -364,17 +453,29 @@ export default function CartPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.product.id,
+                                    item.quantity - 1,
+                                  )
+                                }
                                 disabled={item.quantity <= 1}
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
-                              <span className="w-8 text-center font-medium">{item.quantity}</span>
+                              <span className="w-8 text-center font-medium">
+                                {item.quantity}
+                              </span>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.product.id,
+                                    item.quantity + 1,
+                                  )
+                                }
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
@@ -398,49 +499,116 @@ export default function CartPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">Full Name <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-medium mb-1">
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
                         <Input
-                          placeholder={showErrors && !shippingAddress.fullName.trim() ? "Please fill in this field" : "Chan Thida"}
+                          placeholder={
+                            showErrors && !shippingAddress.fullName.trim()
+                              ? "Please fill in this field"
+                              : "Chan Thida"
+                          }
                           value={shippingAddress.fullName}
-                          onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
-                          className={showErrors && !shippingAddress.fullName.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
+                          onChange={(e) =>
+                            setShippingAddress({
+                              ...shippingAddress,
+                              fullName: e.target.value,
+                            })
+                          }
+                          className={
+                            showErrors && !shippingAddress.fullName.trim()
+                              ? "border-red-500 focus-visible:ring-red-500"
+                              : ""
+                          }
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Phone Number <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-medium mb-1">
+                          Phone Number <span className="text-red-500">*</span>
+                        </label>
                         <Input
-                          placeholder={showErrors && !shippingAddress.phone.trim() ? "Please fill in this field" : "012 345 678"}
+                          placeholder={
+                            showErrors && !shippingAddress.phone.trim()
+                              ? "Please fill in this field"
+                              : "012 345 678"
+                          }
                           value={shippingAddress.phone}
-                          onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
-                          className={showErrors && !shippingAddress.phone.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
+                          onChange={(e) =>
+                            setShippingAddress({
+                              ...shippingAddress,
+                              phone: e.target.value,
+                            })
+                          }
+                          className={
+                            showErrors && !shippingAddress.phone.trim()
+                              ? "border-red-500 focus-visible:ring-red-500"
+                              : ""
+                          }
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Street Address <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium mb-1">
+                        Street Address <span className="text-red-500">*</span>
+                      </label>
                       <Input
-                        placeholder={showErrors && !shippingAddress.address.trim() ? "Please fill in this field" : "Toul Songkae No.12 streat 99"}
+                        placeholder={
+                          showErrors && !shippingAddress.address.trim()
+                            ? "Please fill in this field"
+                            : "Toul Songkae No.12 streat 99"
+                        }
                         value={shippingAddress.address}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, address: e.target.value })}
-                        className={showErrors && !shippingAddress.address.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
+                        onChange={(e) =>
+                          setShippingAddress({
+                            ...shippingAddress,
+                            address: e.target.value,
+                          })
+                        }
+                        className={
+                          showErrors && !shippingAddress.address.trim()
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">City/Province <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-medium mb-1">
+                          City/Province <span className="text-red-500">*</span>
+                        </label>
                         <Input
-                          placeholder={showErrors && !shippingAddress.city.trim() ? "Please fill in this field" : "Phnom Penh"}
+                          placeholder={
+                            showErrors && !shippingAddress.city.trim()
+                              ? "Please fill in this field"
+                              : "Phnom Penh"
+                          }
                           value={shippingAddress.city}
-                          onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                          className={showErrors && !shippingAddress.city.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
+                          onChange={(e) =>
+                            setShippingAddress({
+                              ...shippingAddress,
+                              city: e.target.value,
+                            })
+                          }
+                          className={
+                            showErrors && !shippingAddress.city.trim()
+                              ? "border-red-500 focus-visible:ring-red-500"
+                              : ""
+                          }
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">ZIP Code</label>
+                        <label className="block text-sm font-medium mb-1">
+                          ZIP Code
+                        </label>
                         <Input
                           placeholder="10001"
                           value={shippingAddress.zipCode}
-                          onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })}
+                          onChange={(e) =>
+                            setShippingAddress({
+                              ...shippingAddress,
+                              zipCode: e.target.value,
+                            })
+                          }
                         />
                       </div>
                     </div>
@@ -452,12 +620,159 @@ export default function CartPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <CardTitle className="h-5 w-5" />
                       Payment
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* KHQR payment image goes here. */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Split Payments</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setPaymentLines((prev) => [
+                              ...prev,
+                              generatePaymentLine(0, "cash"),
+                            ])
+                          }
+                        >
+                          Add Split
+                        </Button>
+                      </div>
+
+                      {paymentLines.map((line, index) => (
+                        <div
+                          key={line.id}
+                          className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-lg p-3"
+                        >
+                          <div className="md:col-span-4">
+                            <label className="block text-xs font-medium mb-1">
+                              Method
+                            </label>
+                            <select
+                              className="w-full border rounded-md px-3 py-2 text-sm bg-white"
+                              value={line.method}
+                              onChange={(e) =>
+                                updatePaymentLine(line.id, {
+                                  method: e.target
+                                    .value as PaymentLine["method"],
+                                })
+                              }
+                            >
+                              <option value="khqr">KHQR</option>
+                              <option value="cash">Cash</option>
+                              <option value="card">Card</option>
+                            </select>
+                          </div>
+
+                          <div className="md:col-span-4">
+                            <label className="block text-xs font-medium mb-1">
+                              Amount
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={line.amount}
+                              onChange={(e) =>
+                                updatePaymentLine(line.id, {
+                                  amount: normalizeAmount(
+                                    Number(e.target.value) || 0,
+                                  ),
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div className="md:col-span-3">
+                            <label className="block text-xs font-medium mb-1">
+                              Reference
+                            </label>
+                            <Input
+                              placeholder="Txn ID (optional)"
+                              value={line.reference ?? ""}
+                              onChange={(e) =>
+                                updatePaymentLine(line.id, {
+                                  reference: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div className="md:col-span-1 flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500"
+                              disabled={paymentLines.length <= 1}
+                              onClick={() => removePaymentLine(line.id)}
+                              aria-label={`Remove payment line ${index + 1}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Trade-in (Optional)</h3>
+                        <Button
+                          type="button"
+                          variant={tradeInEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTradeInEnabled((prev) => !prev)}
+                        >
+                          {tradeInEnabled ? "Enabled" : "Enable"}
+                        </Button>
+                      </div>
+
+                      {tradeInEnabled && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <Input
+                            placeholder="Device model"
+                            value={tradeInForm.model}
+                            onChange={(e) =>
+                              setTradeInForm((prev) => ({
+                                ...prev,
+                                model: e.target.value,
+                              }))
+                            }
+                          />
+                          <Input
+                            placeholder="Trade-in IMEI"
+                            value={tradeInForm.imei}
+                            onChange={(e) =>
+                              setTradeInForm((prev) => ({
+                                ...prev,
+                                imei: e.target.value,
+                              }))
+                            }
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Offer amount"
+                            value={tradeInForm.offeredAmount}
+                            onChange={(e) =>
+                              setTradeInForm((prev) => ({
+                                ...prev,
+                                offeredAmount: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {paymentError && (
+                      <p className="text-sm text-red-600">{paymentError}</p>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -473,11 +788,16 @@ export default function CartPage() {
                   {/* Items Summary */}
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {items.map((item) => (
-                      <div key={item.product.id} className="flex justify-between text-sm">
-                        <span className="text-gray-600 truncate max-w-[200px]">
+                      <div
+                        key={item.product.id}
+                        className="flex justify-between text-sm"
+                      >
+                        <span className="text-gray-600 truncate max-w-50">
                           {item.product.name} × {item.quantity}
                         </span>
-                        <span>{formatPrice(item.product.price * item.quantity)}</span>
+                        <span>
+                          {formatPrice(item.product.price * item.quantity)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -489,10 +809,16 @@ export default function CartPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Shipping</span>
-                      <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
+                      <span>
+                        {shipping === 0 ? "Free" : formatPrice(shipping)}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                    </div>
+                    {tradeInAmount > 0 && (
+                      <div className="flex justify-between text-sm text-green-700">
+                        <span>Trade-in Credit</span>
+                        <span>-{formatPrice(tradeInAmount)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t pt-4">
@@ -507,15 +833,39 @@ export default function CartPage() {
                     )}
                   </div>
 
+                  {step === "payment" && (
+                    <div className="border-t pt-4 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Amount Paid</span>
+                        <span>{formatPrice(totalPaid)}</span>
+                      </div>
+                      {paymentShortfall > 0 ? (
+                        <div className="flex justify-between text-amber-700 font-medium">
+                          <span>Remaining</span>
+                          <span>{formatPrice(paymentShortfall)}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between text-green-700 font-medium">
+                          <span>Change Due</span>
+                          <span>{formatPrice(changeDue)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Shipping Address Summary (shown in payment step) */}
                   {step === "payment" && (
                     <div className="border-t pt-4">
                       <p className="text-sm font-medium mb-2">Shipping to:</p>
                       <p className="text-sm text-gray-600">
-                        Name: {shippingAddress.fullName}<br />
+                        Name: {shippingAddress.fullName}
+                        <br />
                         Tel: {shippingAddress.phone} <br />
-                        Address: {shippingAddress.address}<br />
-                        City/Province: {shippingAddress.city}, {shippingAddress.zipCode}<br />
+                        Address: {shippingAddress.address}
+                        <br />
+                        City/Province: {shippingAddress.city},{" "}
+                        {shippingAddress.zipCode}
+                        <br />
                       </p>
                     </div>
                   )}
@@ -524,11 +874,17 @@ export default function CartPage() {
                     className="w-full bg-black text-white hover:bg-gray-800"
                     size="lg"
                     onClick={handleCheckout}
-                    disabled={step === "cart" && items.length === 0}
+                    disabled={
+                      (step === "cart" && items.length === 0) ||
+                      (step === "payment" && paymentShortfall > 0)
+                    }
                   >
                     {step === "cart" && "Proceed to Checkout"}
                     {step === "shipping" && "Continue to Payment"}
-                    {step === "payment" && `Pay ${formatPrice(total)}`}
+                    {step === "payment" &&
+                      (paymentShortfall > 0
+                        ? `Need ${formatPrice(paymentShortfall)} more`
+                        : `Pay ${formatPrice(total)}`)}
                   </Button>
 
                   {step === "cart" && (
