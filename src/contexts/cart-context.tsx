@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { Product } from "@/lib/api";
-import { CartToast, type CartToastData } from "@/components/ui/cart-toast";
 
 export type CartItem = {
   product: Product;
@@ -26,7 +25,6 @@ const CART_STORAGE_KEY = "shopping_cart";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [toastData, setToastData] = useState<CartToastData>(null);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -60,13 +58,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
       }
       return [...prev, { product, quantity }];
-    });
-    
-    // Show toast notification
-    setToastData({
-      productName: product.name,
-      productImage: product.image,
-      quantity,
     });
   }, []);
 
@@ -108,7 +99,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-      <CartToast data={toastData} onClose={() => setToastData(null)} />
     </CartContext.Provider>
   );
 }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getValidatedServerSession } from "@/lib/auth-server";
 import { CartProvider } from "@/contexts/cart-context";
+import { Toaster } from "@/components/ui/sonner";
 
 type UsersLayoutProps = {
   children: React.ReactNode;
@@ -21,5 +22,10 @@ export default async function UsersLayout({
     redirect(`/${locale}/admin`);
   }
 
-  return <CartProvider>{children}</CartProvider>;
+  return (
+    <CartProvider>
+      {children}
+      <Toaster position="top-right"/>
+    </CartProvider>
+  );
 }
