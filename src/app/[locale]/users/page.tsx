@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useLogout } from "@/hooks/use-logout";
@@ -34,8 +34,16 @@ import {
   LogOut,
   BadgePercent,
 } from "lucide-react";
-import { Special_Elite } from "next/font/google";
+import { useAddToCartWithToast } from "@/hooks/use-add-to-cart";
 import { locales } from "@/i18n/routing";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 // Product type imported from @/lib/api
 // Includes: id, name, imei, price, originalPrice, image, subcategoryId,
@@ -281,33 +289,40 @@ export default function ShopPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [failedBrandLogos, setFailedBrandLogos] = useState<Record<string, boolean>>({});
   const [currentSlide, setCurrentSlide] = useState(0);
-  const { addToCart, getCartCount } = useCart();
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const { getCartCount } = useCart();
+  const addToCartWithToast = useAddToCartWithToast();
+  const [totalSlides, setTotalSlides] = useState(0);
 
-  // Auto-swipe for news carousel
-  const nextSlide = useCallback(() => {
-    if (newsItems.length > 0) {
-      setCurrentSlide((prev) => (prev + 1) % newsItems.length);
-    }
-  }, []);
-
-  const prevSlide = useCallback(() => {
-    if (newsItems.length > 0) {
-      setCurrentSlide(
-        (prev) => (prev - 1 + newsItems.length) % newsItems.length,
-      );
-    }
-  }, []);
-
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-  };
-
-  // Auto-swipe effect
+  // Sync current slide & total slides with carousel API
   useEffect(() => {
-    if (newsItems.length <= 1) return;
-    const interval = setInterval(nextSlide, 5000); // Auto-swipe every 5 seconds
+    if (!carouselApi) return;
+
+    const update = () => {
+      setCurrentSlide(carouselApi.selectedScrollSnap());
+      setTotalSlides(carouselApi.scrollSnapList().length);
+    };
+
+    update();
+    carouselApi.on("select", update);
+    carouselApi.on("reInit", update);
+
+    return () => {
+      carouselApi.off("select", update);
+      carouselApi.off("reInit", update);
+    };
+  }, [carouselApi]);
+
+  // Auto-play the carousel every 5 seconds
+  useEffect(() => {
+    if (!carouselApi || totalSlides <= 1) return;
+
+    const interval = setInterval(() => {
+      carouselApi.scrollNext();
+    }, 5000);
+
     return () => clearInterval(interval);
-  }, [nextSlide]);
+  }, [carouselApi, totalSlides]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -403,7 +418,7 @@ export default function ShopPage() {
   const handleAddToCart = (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (product) {
-      addToCart(product);
+      addToCartWithToast(product, 1);
     }
   };
 
@@ -443,39 +458,42 @@ export default function ShopPage() {
               </div>
             </div>
 
-            {/* Cart */}
-            <Button
-              variant="outline"
-              className="relative shrink-0"
-              onClick={() => router.push("/users/cart")}
-              aria-label="Shopping cart"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              )}
-            </Button>
+            {/* Cart + Account (aligned to the right) */}
+            <div className="flex items-center gap-4 shrink-0">
+              {/* Cart on the left */}
+              <Button
+                variant="outline"
+                className="relative shrink-0"
+                onClick={() => router.push("/users/cart")}
+                aria-label="Shopping cart"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Button>
 
-            {/* Account */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="relative shrink-0"
-                  aria-label="Open account menu"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              {/* Account on the right */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="relative shrink-0"
+                    aria-label="Open account menu"
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
@@ -560,77 +578,65 @@ export default function ShopPage() {
         <section className="relative overflow-hidden">
           {newsItems.length > 0 ? (
             <div className="relative">
-              {/* Carousel Container */}
-              <div
-                className="flex transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              <Carousel
+                opts={{ loop: true }}
+                setApi={setCarouselApi}
+                className="w-full"
               >
-                {newsItems.map((news) => (
-                  <div key={news.id} className="w-full flex-shrink-0 bg-white">
-                    {/* Content */}
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                      <div className="flex flex-col md:flex-row items-center justify-between gap-8 min-h-[300px] md:min-h-[400px] py-12 md:py-16">
-                        {/* Text on the left */}
-                        <div className="flex-1 text-black">
-                          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-                            {news.title}
-                          </h2>
-                          <p className="text-lg text-gray-600 mb-6">
-                            {news.description}
-                          </p>
-                          {news.link && (
-                            <Button
-                              asChild
-                              size="lg"
-                              className="bg-black text-white hover:bg-gray-800"
-                            >
-                              <a href={news.link}>Buy Now</a>
-                            </Button>
+                <CarouselContent>
+                  {newsItems.map((news) => (
+                    <CarouselItem key={news.id} className="bg-white">
+                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-8 min-h-[300px] md:min-h-[400px] py-12 md:py-16">
+                          {/* Text on the left */}
+                          <div className="flex-1 text-black">
+                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+                              {news.title}
+                            </h2>
+                            <p className="text-lg text-gray-600 mb-6">
+                              {news.description}
+                            </p>
+                            {news.link && (
+                              <Button
+                                asChild
+                                size="lg"
+                                className="bg-black text-white hover:bg-gray-800"
+                              >
+                                <a href={news.link}>Buy Now</a>
+                              </Button>
+                            )}
+                          </div>
+                          {/* Image on the right */}
+                          {news.image && (
+                            <div className="flex-1 flex justify-center">
+                              <img
+                                src={news.image}
+                                alt={news.title}
+                                className="max-w-full h-auto max-h-64 md:max-h-80 object-contain"
+                              />
+                            </div>
                           )}
                         </div>
-                        {/* Image on the right */}
-                        {news.image && (
-                          <div className="flex-1 flex justify-center">
-                            <img
-                              src={news.image}
-                              alt={news.title}
-                              className="max-w-full h-auto max-h-64 md:max-h-80 object-contain"
-                            />
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
 
-              {/* Navigation Arrows */}
-              {newsItems.length > 1 && (
-                <>
-                  <button
-                    onClick={prevSlide}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors border"
-                    aria-label="Previous slide"
-                  >
-                    <ChevronLeft className="h-6 w-6 text-black" />
-                  </button>
-                  <button
-                    onClick={nextSlide}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 shadow-lg transition-colors border"
-                    aria-label="Next slide"
-                  >
-                    <ChevronRight className="h-6 w-6 text-black" />
-                  </button>
-                </>
-              )}
+                {newsItems.length > 1 && (
+                  <>
+                    <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 border shadow-lg" />
+                    <CarouselNext className="right-4 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 border shadow-lg" />
+                  </>
+                )}
+              </Carousel>
 
               {/* Dots Indicator */}
-              {newsItems.length > 1 && (
+              {newsItems.length > 1 && totalSlides > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                  {newsItems.map((_, index) => (
+                  {Array.from({ length: totalSlides }).map((_, index) => (
                     <button
                       key={index}
-                      onClick={() => goToSlide(index)}
+                      onClick={() => carouselApi?.scrollTo(index)}
                       className={`w-3 h-3 rounded-full transition-colors ${
                         currentSlide === index
                           ? "bg-black"

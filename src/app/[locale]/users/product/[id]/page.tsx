@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useCart } from "@/contexts/cart-context";
+import { useAddToCartWithToast } from "@/hooks/use-add-to-cart";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getProductById, getProducts, type Product } from "@/lib/api";
 import { locales } from "@/i18n/routing";
@@ -84,7 +85,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { addToCart, getCartCount } = useCart();
+  const { getCartCount } = useCart();
+  const addToCartWithToast = useAddToCartWithToast();
   const cartCount = getCartCount();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -150,7 +152,7 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart(product, quantity);
+      addToCartWithToast(product, quantity);
     }
   };
 

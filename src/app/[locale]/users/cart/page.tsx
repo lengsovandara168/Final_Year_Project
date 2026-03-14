@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
   ChevronLeft,
   ShoppingCart,
   Package,
@@ -15,34 +23,72 @@ import {
   Plus,
   Trash2,
   CreditCard,
-  Truck,
   MapPin,
   CheckCircle,
 } from "lucide-react";
 
 type CheckoutStep = "cart" | "shipping" | "payment" | "confirmation";
 
+type ShippingAddress = {
+  fullName: string;
+  phone: string;
+  address: string;
+  city: string;
+  zipCode: string;
+};
+
+type OrderItem = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+};
+
+type OrderSummary = {
+  orderNumber: string;
+  createdAt: string;
+  items: OrderItem[];
+  shippingAddress: ShippingAddress;
+  total: number;
+};
+
 export default function CartPage() {
   const router = useRouter();
   const { items, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart();
   const [step, setStep] = useState<CheckoutStep>("cart");
-  const [shippingAddress, setShippingAddress] = useState({
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: "",
     phone: "",
     address: "",
     city: "",
-    state: "",
     zipCode: "",
-    country: "",
-  });
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
-  const [cardInfo, setCardInfo] = useState({
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    cardName: "",
   });
   const [showErrors, setShowErrors] = useState(false);
+  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
+
+  const stepOrder: CheckoutStep[] = ["cart", "shipping", "payment"];
+  const isCartComplete = items.length > 0;
+  const isShippingComplete =
+    !!(
+      shippingAddress.fullName.trim() &&
+      shippingAddress.phone.trim() &&
+      shippingAddress.address.trim() &&
+      shippingAddress.city.trim()
+    );
+
+  let maxAvailableStepIndex = 0; // cart is always available
+  if (isCartComplete) maxAvailableStepIndex = 1; // shipping available
+  if (isShippingComplete) maxAvailableStepIndex = 2; // payment available
+
+  const handleStepClick = (target: CheckoutStep) => {
+    if (target === step) return;
+    const targetIndex = stepOrder.indexOf(target);
+
+    if (targetIndex !== -1 && targetIndex <= maxAvailableStepIndex) {
+      setShowErrors(false);
+      setStep(target);
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -53,8 +99,7 @@ export default function CartPage() {
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 100 ? 0 : 9.99;
-  const tax = subtotal * 0.1;
-  const total = subtotal + shipping + tax;
+  const total = subtotal + shipping;
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity >= 1) {
@@ -72,8 +117,7 @@ export default function CartPage() {
         shippingAddress.fullName.trim() && 
         shippingAddress.phone.trim() && 
         shippingAddress.address.trim() && 
-        shippingAddress.city.trim() && 
-        shippingAddress.country.trim();
+        shippingAddress.city.trim();
       
       if (!isValid) {
         setShowErrors(true);
@@ -82,22 +126,44 @@ export default function CartPage() {
       setShowErrors(false);
       setStep("payment");
     } else if (step === "payment") {
-      // Validate payment
-      if (paymentMethod === "card") {
-        const isValid = 
-          cardInfo.cardNumber.trim() && 
-          cardInfo.cardName.trim() && 
-          cardInfo.expiryDate.trim() && 
-          cardInfo.cvv.trim();
-        
-        if (!isValid) {
-          setShowErrors(true);
-          return;
-        }
+      // Process payment (KHQR) and record order summary for receipt
+      const orderNumber = `ORD-${Date.now()}`;
+      const createdAt = new Date().toISOString();
+      const orderItems: OrderItem[] = items.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity,
+      }));
+
+      const summary: OrderSummary = {
+        orderNumber,
+        createdAt,
+        items: orderItems,
+        shippingAddress: { ...shippingAddress },
+        total,
+      };
+
+      setOrderSummary(summary);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("lastOrderSummary", JSON.stringify(summary));
       }
-      // Process payment
+      setShowErrors(false);
       setStep("confirmation");
       clearCart();
+    }
+  };
+
+  const handleViewReceipt = () => {
+    if (!orderSummary) return;
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("lastOrderSummary", JSON.stringify(orderSummary));
+      const receiptPath = window.location.pathname.replace(
+        "/users/cart",
+        "/users/cart/receipt"
+      );
+      window.open(receiptPath, "_blank");
     }
   };
 
@@ -109,13 +175,17 @@ export default function CartPage() {
           <CardContent className="pt-6 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Order Confirmed!</h2>
-            <p className="text-gray-600 mb-6">
-              Thank you for your purchase. Your order has been placed successfully.
-            </p>
-            <p className="text-sm text-gray-500 mb-6">
-              Order confirmation has been sent to your email.
-            </p>
-            <Button onClick={() => router.push("/users")} className="w-full">
+            {orderSummary && (
+              <>
+                  <p className="text-gray-600 mb-4">
+                    Thank you for your purchase. Your order has been placed successfully.
+                  </p>
+                  <Button onClick={handleViewReceipt} className="w-full mb-3">
+                    Click here to view receipt
+                  </Button>
+              </>
+            )}
+            <Button onClick={() => router.push("/users")} className="w-full" variant={orderSummary ? "outline" : "default"}>
               Continue Shopping
             </Button>
           </CardContent>
@@ -145,22 +215,88 @@ export default function CartPage() {
               </h1>
             </div>
             
-            {/* Progress Steps */}
-            <div className="hidden md:flex items-center gap-2">
-              <div className={`flex items-center gap-1 ${step === "cart" ? "text-black" : "text-gray-400"}`}>
-                <ShoppingCart className="h-4 w-4" />
-                <span className="text-sm">Cart</span>
-              </div>
-              <ChevronLeft className="h-4 w-4 rotate-180 text-gray-300" />
-              <div className={`flex items-center gap-1 ${step === "shipping" ? "text-black" : "text-gray-400"}`}>
-                <MapPin className="h-4 w-4" />
-                <span className="text-sm">Shipping</span>
-              </div>
-              <ChevronLeft className="h-4 w-4 rotate-180 text-gray-300" />
-              <div className={`flex items-center gap-1 ${step === "payment" ? "text-black" : "text-gray-400"}`}>
-                <CreditCard className="h-4 w-4" />
-                <span className="text-sm">Payment</span>
-              </div>
+            {/* Breadcrumb Steps */}
+            <div className="hidden md:block">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {/* Cart step */}
+                  <BreadcrumbItem>
+                    {step === "cart" ? (
+                      <BreadcrumbPage className="flex items-center gap-1">
+                        <ShoppingCart className="h-4 w-4" />
+                        <span className="text-sm">Cart</span>
+                      </BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <button
+                          type="button"
+                          onClick={() => handleStepClick("cart")}
+                          className="flex items-center gap-1 text-sm"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                          <span>Cart</span>
+                        </button>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+
+                  <BreadcrumbSeparator />
+
+                  {/* Shipping step */}
+                  <BreadcrumbItem>
+                    {step === "shipping" ? (
+                      <BreadcrumbPage className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-sm">Shipping</span>
+                      </BreadcrumbPage>
+                    ) : maxAvailableStepIndex >= stepOrder.indexOf("shipping") ? (
+                      <BreadcrumbLink asChild>
+                        <button
+                          type="button"
+                          onClick={() => handleStepClick("shipping")}
+                          className="flex items-center gap-1 text-sm"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          <span>Shipping</span>
+                        </button>
+                      </BreadcrumbLink>
+                    ) : (
+                      <span className="flex items-center gap-1 text-sm text-gray-400 cursor-not-allowed">
+                        <MapPin className="h-4 w-4" />
+                        <span>Shipping</span>
+                      </span>
+                    )}
+                  </BreadcrumbItem>
+
+                  <BreadcrumbSeparator />
+
+                  {/* Payment step */}
+                  <BreadcrumbItem>
+                    {step === "payment" ? (
+                      <BreadcrumbPage className="flex items-center gap-1">
+                        <CreditCard className="h-4 w-4" />
+                        <span className="text-sm">Payment</span>
+                      </BreadcrumbPage>
+                    ) : maxAvailableStepIndex >= stepOrder.indexOf("payment") ? (
+                      <BreadcrumbLink asChild>
+                        <button
+                          type="button"
+                          onClick={() => handleStepClick("payment")}
+                          className="flex items-center gap-1 text-sm"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          <span>Payment</span>
+                        </button>
+                      </BreadcrumbLink>
+                    ) : (
+                      <span className="flex items-center gap-1 text-sm text-gray-400 cursor-not-allowed">
+                        <CreditCard className="h-4 w-4" />
+                        <span>Payment</span>
+                      </span>
+                    )}
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
             </div>
           </div>
         </div>
@@ -264,7 +400,7 @@ export default function CartPage() {
                       <div>
                         <label className="block text-sm font-medium mb-1">Full Name <span className="text-red-500">*</span></label>
                         <Input
-                          placeholder={showErrors && !shippingAddress.fullName.trim() ? "Please fill in this field" : "John Doe"}
+                          placeholder={showErrors && !shippingAddress.fullName.trim() ? "Please fill in this field" : "Chan Thida"}
                           value={shippingAddress.fullName}
                           onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
                           className={showErrors && !shippingAddress.fullName.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -273,7 +409,7 @@ export default function CartPage() {
                       <div>
                         <label className="block text-sm font-medium mb-1">Phone Number <span className="text-red-500">*</span></label>
                         <Input
-                          placeholder={showErrors && !shippingAddress.phone.trim() ? "Please fill in this field" : "+1 234 567 8900"}
+                          placeholder={showErrors && !shippingAddress.phone.trim() ? "Please fill in this field" : "012 345 678"}
                           value={shippingAddress.phone}
                           onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
                           className={showErrors && !shippingAddress.phone.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -283,28 +419,20 @@ export default function CartPage() {
                     <div>
                       <label className="block text-sm font-medium mb-1">Street Address <span className="text-red-500">*</span></label>
                       <Input
-                        placeholder={showErrors && !shippingAddress.address.trim() ? "Please fill in this field" : "123 Main Street, Apt 4B"}
+                        placeholder={showErrors && !shippingAddress.address.trim() ? "Please fill in this field" : "Toul Songkae No.12 streat 99"}
                         value={shippingAddress.address}
                         onChange={(e) => setShippingAddress({ ...shippingAddress, address: e.target.value })}
                         className={showErrors && !shippingAddress.address.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
                       />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">City <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-medium mb-1">City/Province <span className="text-red-500">*</span></label>
                         <Input
-                          placeholder={showErrors && !shippingAddress.city.trim() ? "Please fill in this field" : "New York"}
+                          placeholder={showErrors && !shippingAddress.city.trim() ? "Please fill in this field" : "Phnom Penh"}
                           value={shippingAddress.city}
                           onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
                           className={showErrors && !shippingAddress.city.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">State/Province</label>
-                        <Input
-                          placeholder="NY"
-                          value={shippingAddress.state}
-                          onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
                         />
                       </div>
                       <div>
@@ -316,15 +444,6 @@ export default function CartPage() {
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Country <span className="text-red-500">*</span></label>
-                      <Input
-                        placeholder={showErrors && !shippingAddress.country.trim() ? "Please fill in this field" : "United States"}
-                        value={shippingAddress.country}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
-                        className={showErrors && !shippingAddress.country.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
-                      />
-                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -333,90 +452,12 @@ export default function CartPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      Payment Method
+                      <CardTitle className="h-5 w-5" />
+                      Payment
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Payment Method Selection */}
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        className={`flex-1 p-4 border-2 rounded-lg text-left transition-colors ${
-                          paymentMethod === "card" ? "border-black bg-gray-50" : "border-gray-200"
-                        }`}
-                        onClick={() => setPaymentMethod("card")}
-                      >
-                        <CreditCard className="h-6 w-6 mb-2" />
-                        <p className="font-medium">Credit/Debit Card</p>
-                        <p className="text-sm text-gray-500">Pay securely with your card</p>
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex-1 p-4 border-2 rounded-lg text-left transition-colors ${
-                          paymentMethod === "cod" ? "border-black bg-gray-50" : "border-gray-200"
-                        }`}
-                        onClick={() => setPaymentMethod("cod")}
-                      >
-                        <Truck className="h-6 w-6 mb-2" />
-                        <p className="font-medium">Cash on Delivery</p>
-                        <p className="text-sm text-gray-500">Pay when you receive</p>
-                      </button>
-                    </div>
-
-                    {/* Card Details */}
-                    {paymentMethod === "card" && (
-                      <div className="space-y-4 pt-4 border-t">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Card Number <span className="text-red-500">*</span></label>
-                          <Input
-                            placeholder={showErrors && !cardInfo.cardNumber.trim() ? "Please fill in this field" : "1234 5678 9012 3456"}
-                            value={cardInfo.cardNumber}
-                            onChange={(e) => setCardInfo({ ...cardInfo, cardNumber: e.target.value })}
-                            className={showErrors && !cardInfo.cardNumber.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Cardholder Name <span className="text-red-500">*</span></label>
-                          <Input
-                            placeholder={showErrors && !cardInfo.cardName.trim() ? "Please fill in this field" : "JOHN DOE"}
-                            value={cardInfo.cardName}
-                            onChange={(e) => setCardInfo({ ...cardInfo, cardName: e.target.value })}
-                            className={showErrors && !cardInfo.cardName.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Expiry Date <span className="text-red-500">*</span></label>
-                            <Input
-                              placeholder={showErrors && !cardInfo.expiryDate.trim() ? "Please fill in this field" : "MM/YY"}
-                              value={cardInfo.expiryDate}
-                              onChange={(e) => setCardInfo({ ...cardInfo, expiryDate: e.target.value })}
-                              className={showErrors && !cardInfo.expiryDate.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">CVV <span className="text-red-500">*</span></label>
-                            <Input
-                              type="password"
-                              placeholder={showErrors && !cardInfo.cvv.trim() ? "Please fill in this field" : "123"}
-                              maxLength={4}
-                              value={cardInfo.cvv}
-                              onChange={(e) => setCardInfo({ ...cardInfo, cvv: e.target.value })}
-                              className={showErrors && !cardInfo.cvv.trim() ? "border-red-500 focus-visible:ring-red-500" : ""}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {paymentMethod === "cod" && (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-800">
-                          You will pay {formatPrice(total)} when your order is delivered.
-                        </p>
-                      </div>
-                    )}
+                    {/* KHQR payment image goes here. */}
                   </CardContent>
                 </Card>
               )}
@@ -451,8 +492,6 @@ export default function CartPage() {
                       <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax (10%)</span>
-                      <span>{formatPrice(tax)}</span>
                     </div>
                   </div>
 
@@ -473,10 +512,10 @@ export default function CartPage() {
                     <div className="border-t pt-4">
                       <p className="text-sm font-medium mb-2">Shipping to:</p>
                       <p className="text-sm text-gray-600">
-                        {shippingAddress.fullName}<br />
-                        {shippingAddress.address}<br />
-                        {shippingAddress.city}, {shippingAddress.state} {shippingAddress.zipCode}<br />
-                        {shippingAddress.country}
+                        Name: {shippingAddress.fullName}<br />
+                        Tel: {shippingAddress.phone} <br />
+                        Address: {shippingAddress.address}<br />
+                        City/Province: {shippingAddress.city}, {shippingAddress.zipCode}<br />
                       </p>
                     </div>
                   )}
