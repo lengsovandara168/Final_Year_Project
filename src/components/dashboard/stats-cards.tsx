@@ -1,7 +1,7 @@
 // f:/AUPP/2026/FYP/FYP_Project/src/components/dashboard/stats-cards.tsx
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Package, ShoppingCart, Users } from "lucide-react";
+import { DollarSign, Package, ShoppingCart, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { DashboardStats } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,10 +17,10 @@ export async function StatsCards({ locale, stats }: StatsCardsProps) {
   const statItems = [
     {
       title: t("stats.totalRevenue"),
-      value: stats?.totalRevenue
-        ? `$${stats.totalRevenue.toLocaleString()}`
-        : ".00",
-      change: stats?.revenueChange
+      value: stats?.totalRevenue !== undefined
+        ? `$${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : "$0.00",
+      change: stats?.revenueChange !== undefined
         ? `${stats.revenueChange > 0 ? "+" : ""}${stats.revenueChange}%`
         : "0%",
       description: t("stats.changeRevenue"),
@@ -28,8 +28,8 @@ export async function StatsCards({ locale, stats }: StatsCardsProps) {
     },
     {
       title: t("stats.products"),
-      value: stats?.products?.toString() || "0",
-      change: stats?.productsChange
+      value: stats?.products !== undefined ? stats.products.toString() : "0",
+      change: stats?.productsChange !== undefined
         ? `${stats.productsChange > 0 ? "+" : ""}${stats.productsChange}%`
         : "0%",
       description: t("stats.changeProducts"),
@@ -37,8 +37,8 @@ export async function StatsCards({ locale, stats }: StatsCardsProps) {
     },
     {
       title: t("stats.totalOrders"),
-      value: stats?.totalOrders?.toString() || "0",
-      change: stats?.ordersChange
+      value: stats?.totalOrders !== undefined ? stats.totalOrders.toString() : "0",
+      change: stats?.ordersChange !== undefined
         ? `${stats.ordersChange > 0 ? "+" : ""}${stats.ordersChange}%`
         : "0%",
       description: t("stats.changeOrders"),
@@ -46,8 +46,8 @@ export async function StatsCards({ locale, stats }: StatsCardsProps) {
     },
     {
       title: t("stats.customers"),
-      value: stats?.customers?.toString() || "0",
-      change: stats?.customersChange
+      value: stats?.customers !== undefined ? stats.customers.toString() : "0",
+      change: stats?.customersChange !== undefined
         ? `${stats.customersChange > 0 ? "+" : ""}${stats.customersChange}%`
         : "0%",
       description: t("stats.changeCustomers"),
@@ -69,12 +69,17 @@ export async function StatsCards({ locale, stats }: StatsCardsProps) {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                {stat.change.startsWith("+") ? (
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-red-500" />
+                )}
                 <span
                   className={
                     stat.change.startsWith("+")
                       ? "text-green-600"
-                      : "text-red-600"
+                      : "text-red-500"
                   }
                 >
                   {stat.change}

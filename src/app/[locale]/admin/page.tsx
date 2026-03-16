@@ -4,6 +4,11 @@ import { cookies } from "next/headers";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { TopSellingProducts } from "@/components/dashboard/TopSellingProducts";
 import { RecentOrders } from "@/components/dashboard/RecentOrders";
+import { OrderStatusCard } from "@/components/dashboard/OrderStatusCard";
+import { InventoryHealthCard } from "@/components/dashboard/InventoryHealthCard";
+import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
+import { IncomeAnalyticsChart } from "@/components/dashboard/IncomeAnalyticsChart";
+import { ProductTypeAnalysisChart } from "@/components/dashboard/ProductTypeAnalysisChart";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle } from "lucide-react";
 
@@ -56,19 +61,48 @@ export default async function DashboardPage({
         </div>
       )}
 
+      {/* KPI summary cards */}
       <StatsCards locale={locale} stats={data?.stats} />
 
-      <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
+      {/* Income analytics chart */}
+      <div className="mb-6 md:mb-8">
+        <IncomeAnalyticsChart
+          locale={locale}
+          incomeAnalytics={
+            data?.incomeAnalytics ?? { monthly: [], yearly: [] }
+          }
+        />
+      </div>
+
+      <div className="mb-6 md:mb-8">
+        <ProductTypeAnalysisChart
+          items={data?.productTypeAnalytics ?? []}
+        />
+      </div>
+
+      {/* Analytics row — order status + inventory health */}
+      <div className="mb-6 grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
+        <OrderStatusCard
+          locale={locale}
+          ordersByStatus={data?.ordersByStatus ?? {}}
+          totalOrders={data?.stats.totalOrders ?? 0}
+        />
+        <InventoryHealthCard
+          locale={locale}
+          stockHealth={
+            data?.stockHealth ?? { inStock: 0, outOfStock: 0, total: 0 }
+          }
+        />
+      </div>
+
+      {/* Top products + recent orders */}
+      <div className="mb-6 grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
         <TopSellingProducts locale={locale} products={data?.topSellingProducts} />
         <RecentOrders locale={locale} orders={data?.recentOrders} />
       </div>
 
-      <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-sm text-amber-800">
-          <span className="font-semibold">{t("noteLabel")}</span>{" "}
-          {t("noteMessage")}
-        </p>
-      </div>
+      {/* Quick navigation actions */}
+      <QuickActionsCard locale={locale} />
     </div>
   );
 }

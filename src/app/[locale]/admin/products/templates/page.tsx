@@ -3,11 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertCircle, Check, CheckCircle2, ChevronDown, Loader2, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import FileUploadDemo from "@/components/file-upload-demo";
 import { locales } from "@/i18n/routing";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import {
@@ -25,6 +32,12 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 type ParentCategory = "phones" | "tablets" | "accessories";
 type BrandLibraryItem = { name: string; domain: string };
 type BrandOption = { name: string; logoUrl?: string };
+
+const STORAGE_PRESETS: Record<ParentCategory, string[]> = {
+  phones: ["64GB", "128GB", "256GB", "512GB", "1TB", "2TB"],
+  tablets: ["64GB", "128GB", "256GB", "512GB", "1TB", "2TB"],
+  accessories: [],
+};
 
 const BRAND_LIBRARY: Record<ParentCategory, BrandLibraryItem[]> = {
   phones: [
@@ -192,14 +205,19 @@ export default function ProductTemplatesPage() {
     accessories: [],
   });
 
-  const [templateForm, setTemplateForm] = useState<TemplateFormState>(initialTemplateForm);
+  const [templateForm, setTemplateForm] =
+    useState<TemplateFormState>(initialTemplateForm);
   const [templateSearch, setTemplateSearch] = useState("");
   const [isBrandPickerOpen, setIsBrandPickerOpen] = useState(false);
   const [brandQuery, setBrandQuery] = useState("");
-  const [failedBrandLogos, setFailedBrandLogos] = useState<Record<string, boolean>>({});
+  const [failedBrandLogos, setFailedBrandLogos] = useState<
+    Record<string, boolean>
+  >({});
 
   const [imageUrl, setImageUrl] = useState("");
-  const [uploadedImageName, setUploadedImageName] = useState<string | null>(null);
+  const [uploadedImageName, setUploadedImageName] = useState<string | null>(
+    null,
+  );
 
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -258,7 +276,8 @@ export default function ProductTemplatesPage() {
     void loadData();
   }, [loadData]);
 
-  const availableBrands = subcategoriesByParent[templateForm.parentCategory] ?? [];
+  const availableBrands =
+    subcategoriesByParent[templateForm.parentCategory] ?? [];
   const brandOptions = useMemo(() => {
     const byName = new Map<string, BrandOption>();
     const libraryByName = new Map(
@@ -287,16 +306,22 @@ export default function ProductTemplatesPage() {
       });
     }
 
-    return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(byName.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }, [availableBrands, templateForm.parentCategory]);
 
   const selectedBrandOption = brandOptions.find(
-    (item) => item.name.toLowerCase() === templateForm.subcategoryName.trim().toLowerCase(),
+    (item) =>
+      item.name.toLowerCase() ===
+      templateForm.subcategoryName.trim().toLowerCase(),
   );
   const filteredBrandOptions = useMemo(() => {
     const normalized = brandQuery.trim().toLowerCase();
     if (!normalized) return brandOptions;
-    return brandOptions.filter((item) => item.name.toLowerCase().includes(normalized));
+    return brandOptions.filter((item) =>
+      item.name.toLowerCase().includes(normalized),
+    );
   }, [brandOptions, brandQuery]);
 
   useEffect(() => {
@@ -390,7 +415,9 @@ export default function ProductTemplatesPage() {
       return;
     }
 
-    const specParse = parseTemplateSpecifications(templateForm.specificationsText);
+    const specParse = parseTemplateSpecifications(
+      templateForm.specificationsText,
+    );
     if (specParse.error) {
       setError(specParse.error);
       return;
@@ -436,9 +463,7 @@ export default function ProductTemplatesPage() {
       <div className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
-          <p className="text-sm text-gray-500 md:text-base">
-            {t("subtitle")}
-          </p>
+          <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button asChild variant="outline">
@@ -482,13 +507,15 @@ export default function ProductTemplatesPage() {
               </label>
               <select
                 value={templateForm.parentCategory}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const parentCategory = e.target.value as ParentCategory;
                   setTemplateForm((prev) => ({
                     ...prev,
-                    parentCategory: e.target.value as ParentCategory,
+                    parentCategory,
                     subcategoryName: "",
-                  }))
-                }
+                    storage: "",
+                  }));
+                }}
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               >
                 <option value="phones">{t("phones")}</option>
@@ -511,17 +538,29 @@ export default function ProductTemplatesPage() {
                     <img
                       src={
                         selectedBrandOption
-                          ? failedBrandLogos[normalizeBrandKey(selectedBrandOption.name)]
-                            ? buildFallbackBrandLogoUrl(selectedBrandOption.name)
+                          ? failedBrandLogos[
+                              normalizeBrandKey(selectedBrandOption.name)
+                            ]
+                            ? buildFallbackBrandLogoUrl(
+                                selectedBrandOption.name,
+                              )
                             : (selectedBrandOption.logoUrl ??
-                              buildFallbackBrandLogoUrl(selectedBrandOption.name))
-                          : buildFallbackBrandLogoUrl(templateForm.subcategoryName.trim())
+                              buildFallbackBrandLogoUrl(
+                                selectedBrandOption.name,
+                              ))
+                          : buildFallbackBrandLogoUrl(
+                              templateForm.subcategoryName.trim(),
+                            )
                       }
                       onError={() => {
                         if (!selectedBrandOption?.logoUrl) return;
-                        const normalized = normalizeBrandKey(selectedBrandOption.name);
+                        const normalized = normalizeBrandKey(
+                          selectedBrandOption.name,
+                        );
                         setFailedBrandLogos((prev) =>
-                          prev[normalized] ? prev : { ...prev, [normalized]: true },
+                          prev[normalized]
+                            ? prev
+                            : { ...prev, [normalized]: true },
                         );
                       }}
                       alt={`${templateForm.subcategoryName || "Brand"} logo`}
@@ -561,15 +600,22 @@ export default function ProductTemplatesPage() {
                             <span className="flex items-center gap-2">
                               <img
                                 src={
-                                  failedBrandLogos[normalizeBrandKey(brand.name)]
+                                  failedBrandLogos[
+                                    normalizeBrandKey(brand.name)
+                                  ]
                                     ? buildFallbackBrandLogoUrl(brand.name)
-                                    : (brand.logoUrl ?? buildFallbackBrandLogoUrl(brand.name))
+                                    : (brand.logoUrl ??
+                                      buildFallbackBrandLogoUrl(brand.name))
                                 }
                                 onError={() => {
                                   if (!brand.logoUrl) return;
-                                  const normalized = normalizeBrandKey(brand.name);
+                                  const normalized = normalizeBrandKey(
+                                    brand.name,
+                                  );
                                   setFailedBrandLogos((prev) =>
-                                    prev[normalized] ? prev : { ...prev, [normalized]: true },
+                                    prev[normalized]
+                                      ? prev
+                                      : { ...prev, [normalized]: true },
                                   );
                                 }}
                                 alt={`${brand.name} logo`}
@@ -577,12 +623,16 @@ export default function ProductTemplatesPage() {
                               />
                               {brand.name}
                             </span>
-                            {isSelected && <Check className="h-4 w-4 text-black" />}
+                            {isSelected && (
+                              <Check className="h-4 w-4 text-black" />
+                            )}
                           </button>
                         );
                       })}
                       {filteredBrandOptions.length === 0 && (
-                        <p className="px-2 py-2 text-sm text-gray-500">{t("noBrandsFound")}</p>
+                        <p className="px-2 py-2 text-sm text-gray-500">
+                          {t("noBrandsFound")}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -607,13 +657,24 @@ export default function ProductTemplatesPage() {
               <label className="text-sm font-medium">
                 {t("storage")} <span className="text-red-600">*</span>
               </label>
-              <Input
-                placeholder={t("storagePlaceholder")}
+              <select
                 value={templateForm.storage}
-                onChange={(e) =>
-                  setTemplateForm((prev) => ({ ...prev, storage: e.target.value }))
-                }
-              />
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setTemplateForm((prev) => ({
+                    ...prev,
+                    storage: value,
+                  }));
+                }}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">{t("selectStorage")}</option>
+                {STORAGE_PRESETS[templateForm.parentCategory].map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
@@ -624,7 +685,10 @@ export default function ProductTemplatesPage() {
                 placeholder={t("colorPlaceholder")}
                 value={templateForm.color}
                 onChange={(e) =>
-                  setTemplateForm((prev) => ({ ...prev, color: e.target.value }))
+                  setTemplateForm((prev) => ({
+                    ...prev,
+                    color: e.target.value,
+                  }))
                 }
               />
             </div>
@@ -635,7 +699,10 @@ export default function ProductTemplatesPage() {
                 placeholder={t("descriptionPlaceholder")}
                 value={templateForm.description}
                 onChange={(e) =>
-                  setTemplateForm((prev) => ({ ...prev, description: e.target.value }))
+                  setTemplateForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
                 }
               />
             </div>
@@ -646,7 +713,10 @@ export default function ProductTemplatesPage() {
             <textarea
               value={templateForm.specificationsText}
               onChange={(e) =>
-                setTemplateForm((prev) => ({ ...prev, specificationsText: e.target.value }))
+                setTemplateForm((prev) => ({
+                  ...prev,
+                  specificationsText: e.target.value,
+                }))
               }
               placeholder={t("specificationsPlaceholder")}
               className="mt-2 min-h-24 w-full rounded-md border border-input px-3 py-2 text-sm"
@@ -655,35 +725,37 @@ export default function ProductTemplatesPage() {
 
           <div className="mt-4 space-y-3">
             <p className="text-sm font-medium">{t("templateImage")}</p>
-            <p className="text-xs text-gray-500">
-              {t("templateImageHint")}
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex">
-                <input
-                  type="file"
-                  accept={IMAGE_ACCEPT}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void onUploadImage(file);
-                  }}
-                />
-                <span className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm">
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("uploading")}
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" /> {t("uploadImage")}
-                    </>
-                  )}
+            <p className="text-xs text-gray-500">{t("templateImageHint")}</p>
+            <div className="space-y-3">
+              <FileUploadDemo
+                className="max-w-none min-h-55"
+                onFilesChange={(files) => {
+                  const file = files[0];
+                  if (file) {
+                    void onUploadImage(file);
+                  }
+                }}
+              />
+              <p className="text-xs text-gray-500">
+                {t("uploadImageDemoHint")}
+              </p>
+              {isUploading && (
+                <span className="inline-flex items-center text-sm text-gray-600">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("uploading")}
                 </span>
-              </label>
-              {uploadedImageName && <span className="text-sm text-gray-600">{uploadedImageName}</span>}
+              )}
+              {uploadedImageName && (
+                <span className="text-sm text-gray-600">
+                  {uploadedImageName}
+                </span>
+              )}
             </div>
-            {imageUrl && <p className="break-all text-xs text-gray-600">{t("imageUrl", { url: imageUrl })}</p>}
+            {imageUrl && (
+              <p className="break-all text-xs text-gray-600">
+                {t("imageUrl", { url: imageUrl })}
+              </p>
+            )}
           </div>
 
           <div className="mt-4 flex items-center gap-2 text-sm">
@@ -691,7 +763,10 @@ export default function ProductTemplatesPage() {
               type="checkbox"
               checked={templateForm.isActive}
               onChange={(e) =>
-                setTemplateForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                setTemplateForm((prev) => ({
+                  ...prev,
+                  isActive: e.target.checked,
+                }))
               }
             />
             <span>{t("templateActive")}</span>
@@ -705,7 +780,8 @@ export default function ProductTemplatesPage() {
             >
               {isCreatingTemplate ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("creatingTemplate")}
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                  {t("creatingTemplate")}
                 </>
               ) : (
                 t("createTemplate")
@@ -717,7 +793,9 @@ export default function ProductTemplatesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("templates", { count: filteredTemplates.length })}</CardTitle>
+          <CardTitle>
+            {t("templates", { count: filteredTemplates.length })}
+          </CardTitle>
           <Input
             placeholder={t("searchTemplatePlaceholder")}
             value={templateSearch}
@@ -737,7 +815,9 @@ export default function ProductTemplatesPage() {
               {filteredTemplates.map((template) => (
                 <div key={template.id} className="rounded-md border p-3">
                   <p className="font-medium">{templateLabel(template)}</p>
-                  <p className="text-sm text-gray-600">{t("brand", { brand: template.subcategoryName || "-" })}</p>
+                  <p className="text-sm text-gray-600">
+                    {t("brand", { brand: template.subcategoryName || "-" })}
+                  </p>
                 </div>
               ))}
             </div>

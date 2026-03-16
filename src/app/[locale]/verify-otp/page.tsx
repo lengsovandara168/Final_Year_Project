@@ -1,14 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { login, verifyLoginOtp, verifyRegisterOtp, type ApiError } from "@/lib/api";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  login,
+  verifyLoginOtp,
+  verifyRegisterOtp,
+  type ApiError,
+} from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { locales } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import { RefreshCwIcon } from "lucide-react";
 
 type VerifyFlow = "register" | "login";
 
@@ -33,6 +60,8 @@ export default function VerifyOtpPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendOpen, setIsResendOpen] = useState(false);
+  const lastSubmittedCodeRef = useRef<string>("");
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("verifyEmail");
@@ -43,7 +72,9 @@ export default function VerifyOtpPage() {
 
     if (!storedEmail) {
       const localePrefix = getLocalePrefix(pathname);
-      router.push(`${localePrefix}/${resolvedFlow === "login" ? "login" : "register"}`);
+      router.push(
+        `${localePrefix}/${resolvedFlow === "login" ? "login" : "register"}`,
+      );
       return;
     }
 
@@ -51,13 +82,12 @@ export default function VerifyOtpPage() {
     setFlow(resolvedFlow);
   }, [pathname, router, searchParams]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const verifyCode = async (otpCode: string) => {
     setError("");
     setSuccess("");
     setIsLoading(true);
 
-    if (!code || code.length !== 6) {
+    if (!otpCode || otpCode.length !== 6) {
       setError(t("invalidCode"));
       setIsLoading(false);
       return;
@@ -66,8 +96,8 @@ export default function VerifyOtpPage() {
     try {
       const response =
         flow === "login"
-          ? await verifyLoginOtp({ email, code })
-          : await verifyRegisterOtp({ email, code });
+          ? await verifyLoginOtp({ email, code: otpCode })
+          : await verifyRegisterOtp({ email, code: otpCode });
 
       setSession({
         userId: response.userId,
@@ -106,6 +136,26 @@ export default function VerifyOtpPage() {
     }
   };
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isLoading) return;
+    await verifyCode(code);
+  };
+
+  useEffect(() => {
+    if (!email || isLoading) return;
+
+    if (code.length < 6) {
+      lastSubmittedCodeRef.current = "";
+      return;
+    }
+
+    if (code.length === 6 && lastSubmittedCodeRef.current !== code) {
+      lastSubmittedCodeRef.current = code;
+      void verifyCode(code);
+    }
+  }, [code, email, isLoading]);
+
   const handleResend = async () => {
     setError("");
     setSuccess("");
@@ -129,63 +179,101 @@ export default function VerifyOtpPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold mb-2 text-center">{t("title")}</h1>
-        <p className="text-sm text-gray-600 mb-6 text-center">
-          {t.rich("subtitle", {
-            email: () => <strong>{email}</strong>,
-          })}
-        </p>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-md">
+        <Card className="mx-auto max-w-md">
+          <CardHeader>
+            <CardTitle>{t("title")}</CardTitle>
+            <CardDescription>
+              {t.rich("subtitle", {
+                email: () => <span className="font-medium">{email}</span>,
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Field>
+              <FieldLabel htmlFor="otp-verification">
+                {t("verificationCode")}
+              </FieldLabel>
+              <InputOTP
+                maxLength={6}
+                id="otp-verification"
+                value={code}
+                disabled={isLoading}
+                onChange={(value) =>
+                  setCode(value.replace(/\D/g, "").slice(0, 6))
+                }
+                required
+              >
+                <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                </InputOTPGroup>
+                <InputOTPSeparator className="mx-2" />
+                <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+              <FieldDescription>
+                <button
+                  type="button"
+                  className="underline underline-offset-4 transition-colors hover:text-primary"
+                  onClick={() => setIsResendOpen(true)}
+                >
+                  {t("resendPrompt")}
+                </button>
+              </FieldDescription>
+            </Field>
 
-        {error ? (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        ) : null}
+            {error ? (
+              <div className="mt-4 rounded border border-red-400 bg-red-100 p-3 text-red-700">
+                {error}
+              </div>
+            ) : null}
 
-        {success ? (
-          <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-            {success}
-          </div>
-        ) : null}
+            {success ? (
+              <div className="mt-4 rounded border border-green-400 bg-green-100 p-3 text-green-700">
+                {success}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      </form>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="code" className="block text-sm font-medium mb-1">
-              {t("verificationCode")}
-            </label>
-            <Input
-              id="code"
-              type="text"
-              name="code"
-              value={code}
-              onChange={(event) =>
-                setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              placeholder={t("codePlaceholder")}
-              maxLength={6}
-              required
-              className="text-center text-2xl tracking-widest"
-            />
-          </div>
-
-          <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-            {isLoading ? t("verifying") : t("verifyOtp")}
-          </Button>
-        </form>
-
-        <p className="text-center mt-4 text-sm text-gray-600">
-          {t("resendPrompt")} {" "}
-          <button
-            type="button"
-            className="text-blue-600 hover:underline"
-            onClick={handleResend}
-          >
-            {t("resend")}
-          </button>
-        </p>
-      </Card>
+      <Dialog open={isResendOpen} onOpenChange={setIsResendOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("resend")}</DialogTitle>
+            <DialogDescription>
+              {t.rich("subtitle", {
+                email: () => <span className="font-medium">{email}</span>,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsResendOpen(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                await handleResend();
+                setIsResendOpen(false);
+              }}
+            >
+              <RefreshCwIcon />
+              {t("resend")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
