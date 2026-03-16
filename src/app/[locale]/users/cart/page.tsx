@@ -247,21 +247,16 @@ export default function CartPage() {
             <h2 className="text-2xl font-bold mb-2">{t("confirmedTitle")}</h2>
             {orderSummary && (
               <>
-                <p className="text-gray-600 mb-4">
-                  Thank you for your purchase. Your order has been placed
-                  successfully.
-                </p>
-                <Button onClick={handleViewReceipt} className="w-full mb-3">
-                  Click here to view receipt
-                </Button>
+                  <p className="text-gray-600 mb-4">
+                    {t("confirmedMessage")}
+                  </p>
+                  <Button onClick={handleViewReceipt} className="w-full mb-3">
+                    {t("viewReceipt")}
+                  </Button>
               </>
             )}
-            <Button
-              onClick={() => router.push("/users")}
-              className="w-full"
-              variant={orderSummary ? "outline" : "default"}
-            >
-              Continue Shopping
+            <Button onClick={() => router.push("/users")} className="w-full" variant={orderSummary ? "outline" : "default"}>
+              {t("continueShopping")}
             </Button>
           </CardContent>
         </Card>
@@ -388,12 +383,8 @@ export default function CartPage() {
           <Card className="text-center py-16">
             <CardContent>
               <ShoppingCart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-600 mb-2">
-                Your cart is empty
-              </h2>
-              <p className="text-gray-500 mb-6">
-                Add some products to your cart to continue shopping.
-              </p>
+              <h2 className="text-xl font-semibold text-gray-600 mb-2">{t("emptyTitle")}</h2>
+              <p className="text-gray-500 mb-6">{t("emptyMessage")}</p>
               <Button onClick={() => router.push("/users")}>
                 {t("continueShopping")}
               </Button>
@@ -501,15 +492,9 @@ export default function CartPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">
-                          Full Name <span className="text-red-500">*</span>
-                        </label>
+                        <label className="block text-sm font-medium mb-1">{t("fullName")} <span className="text-red-500">*</span></label>
                         <Input
-                          placeholder={
-                            showErrors && !shippingAddress.fullName.trim()
-                              ? "Please fill in this field"
-                              : "Chan Thida"
-                          }
+                          placeholder={showErrors && !shippingAddress.fullName.trim() ? t("requiredField") : "Chan Thida"}
                           value={shippingAddress.fullName}
                           onChange={(e) =>
                             setShippingAddress({
@@ -525,15 +510,9 @@ export default function CartPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">
-                          Phone Number <span className="text-red-500">*</span>
-                        </label>
+                        <label className="block text-sm font-medium mb-1">{t("phoneNumber")} <span className="text-red-500">*</span></label>
                         <Input
-                          placeholder={
-                            showErrors && !shippingAddress.phone.trim()
-                              ? "Please fill in this field"
-                              : "012 345 678"
-                          }
+                          placeholder={showErrors && !shippingAddress.phone.trim() ? t("requiredField") : "012 345 678"}
                           value={shippingAddress.phone}
                           onChange={(e) =>
                             setShippingAddress({
@@ -550,15 +529,9 @@ export default function CartPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Street Address <span className="text-red-500">*</span>
-                      </label>
+                      <label className="block text-sm font-medium mb-1">{t("streetAddress")} <span className="text-red-500">*</span></label>
                       <Input
-                        placeholder={
-                          showErrors && !shippingAddress.address.trim()
-                            ? "Please fill in this field"
-                            : "Toul Songkae No.12 streat 99"
-                        }
+                        placeholder={showErrors && !shippingAddress.address.trim() ? t("requiredField") : "Toul Songkae No.12 streat 99"}
                         value={shippingAddress.address}
                         onChange={(e) =>
                           setShippingAddress({
@@ -575,15 +548,9 @@ export default function CartPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">
-                          City/Province <span className="text-red-500">*</span>
-                        </label>
+                        <label className="block text-sm font-medium mb-1">{t("cityProvince")} <span className="text-red-500">*</span></label>
                         <Input
-                          placeholder={
-                            showErrors && !shippingAddress.city.trim()
-                              ? "Please fill in this field"
-                              : "Phnom Penh"
-                          }
+                          placeholder={showErrors && !shippingAddress.city.trim() ? t("requiredField") : "Phnom Penh"}
                           value={shippingAddress.city}
                           onChange={(e) =>
                             setShippingAddress({
@@ -599,9 +566,7 @@ export default function CartPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">
-                          ZIP Code
-                        </label>
+                        <label className="block text-sm font-medium mb-1">{t("zipCode")}</label>
                         <Input
                           placeholder="10001"
                           value={shippingAddress.zipCode}
@@ -623,7 +588,7 @@ export default function CartPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CardTitle className="h-5 w-5" />
-                      Payment
+                      {t("paymentTitle")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -811,10 +776,17 @@ export default function CartPage() {
                       <span>{formatPrice(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
+<<<<<<< HEAD
                       <span className="text-gray-600">Shipping</span>
                       <span>
                         {shipping === 0 ? "Free" : formatPrice(shipping)}
                       </span>
+=======
+                      <span className="text-gray-600">{t("shippingCost")}</span>
+                      <span>{shipping === 0 ? t("free") : formatPrice(shipping)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                     </div>
                     {tradeInAmount > 0 && (
                       <div className="flex justify-between text-sm text-green-700">
@@ -859,6 +831,7 @@ export default function CartPage() {
                   {/* Shipping Address Summary (shown in payment step) */}
                   {step === "payment" && (
                     <div className="border-t pt-4">
+<<<<<<< HEAD
                       <p className="text-sm font-medium mb-2">
                         {t("shippingTo")}
                       </p>
@@ -871,6 +844,14 @@ export default function CartPage() {
                         City/Province: {shippingAddress.city},{" "}
                         {shippingAddress.zipCode}
                         <br />
+=======
+                      <p className="text-sm font-medium mb-2">{t("shippingTo")}</p>
+                      <p className="text-sm text-gray-600">
+                        {t("stockEntryName")}: {shippingAddress.fullName}<br />
+                        {t("tel")}: {shippingAddress.phone} <br />
+                        {t("address")}: {shippingAddress.address}<br />
+                        {t("cityProvince")}: {shippingAddress.city}, {shippingAddress.zipCode}<br />
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                       </p>
                     </div>
                   )}
@@ -884,9 +865,9 @@ export default function CartPage() {
                       (step === "payment" && paymentShortfall > 0)
                     }
                   >
-                    {step === "cart" && "Proceed to Checkout"}
-                    {step === "shipping" && "Continue to Payment"}
-                    {step === "payment" && `Pay ${formatPrice(total)}`}
+                    {step === "cart" && t("proceedToCheckout")}
+                    {step === "shipping" && t("continueToPayment")}
+                    {step === "payment" && t("payAmount", { amount: formatPrice(total) })}
                   </Button>
 
                   {step === "cart" && (

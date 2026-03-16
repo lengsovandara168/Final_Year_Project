@@ -154,7 +154,9 @@ export default function ProductsPage() {
       <div className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
-          <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
+          <p className="text-sm text-gray-500 md:text-base">
+            {t("subtitle")}
+          </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button asChild className="bg-black text-white hover:bg-gray-800">
@@ -181,9 +183,13 @@ export default function ProductsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+<<<<<<< HEAD
             <CardTitle>
               {t("inventory", { count: filteredProducts.length })}
             </CardTitle>
+=======
+            <CardTitle>{t("inventory", { count: filteredProducts.length })}</CardTitle>
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
               <Input
@@ -238,6 +244,7 @@ export default function ProductsPage() {
                             ? `$${product.price.toFixed(2)}`
                             : "-"}
                         </TableCell>
+<<<<<<< HEAD
                         <TableCell>
                           {subcategoryNameById.get(product.subcategoryId) ||
                             t("unknown")}
@@ -246,6 +253,11 @@ export default function ProductsPage() {
                           <Badge
                             className={getStockBadge(Boolean(product.inStock))}
                           >
+=======
+                        <TableCell>{subcategoryNameById.get(product.subcategoryId) || t("unknown")}</TableCell>
+                        <TableCell>
+                          <Badge className={getStockBadge(Boolean(product.inStock))}>
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                             {product.inStock ? t("inStock") : t("outOfStock")}
                           </Badge>
                         </TableCell>

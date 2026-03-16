@@ -121,7 +121,7 @@ export default async function CustomersPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>{t("allCustomers", { count: customers.length })}</CardTitle>
+            <CardTitle>{t("allCustomers", { count: customers.length > 0 ? `(${customers.length})` : "" })}</CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
               <Input placeholder={t("searchPlaceholder")} className="pl-8" />

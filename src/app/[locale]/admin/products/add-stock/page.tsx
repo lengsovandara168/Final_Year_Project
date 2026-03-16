@@ -151,10 +151,7 @@ export default function AddStockPage() {
       return;
     }
 
-    if (
-      parsedOriginalPrice !== undefined &&
-      Number.isNaN(parsedOriginalPrice)
-    ) {
+    if (parsedOriginalPrice !== undefined && Number.isNaN(parsedOriginalPrice)) {
       setError(t("invalidOriginalPrice"));
       return;
     }
@@ -176,9 +173,13 @@ export default function AddStockPage() {
       );
 
       setStockForm((prev) => ({ ...prev, imei: "" }));
+<<<<<<< HEAD
       setSuccess(
         t("stockAdded", { name: created.data.name, imei: created.data.imei }),
       );
+=======
+      setSuccess(t("stockAdded", { name: created.data.name, imei: created.data.imei }));
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
     } catch (stockError) {
       setError(toErrorMessage(stockError));
     } finally {
@@ -191,7 +192,13 @@ export default function AddStockPage() {
       <div className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
+<<<<<<< HEAD
           <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
+=======
+          <p className="text-sm text-gray-500 md:text-base">
+            {t("subtitle")}
+          </p>
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button asChild variant="outline">
@@ -236,9 +243,13 @@ export default function AddStockPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1 md:col-span-2">
+<<<<<<< HEAD
                 <label className="text-sm font-medium">
                   {t("searchTemplate")}
                 </label>
+=======
+                <label className="text-sm font-medium">{t("searchTemplate")}</label>
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                 <Input
                   placeholder={t("searchPlaceholder")}
                   value={templateSearch}
@@ -270,9 +281,13 @@ export default function AddStockPage() {
                     {templateLabel(templateById.get(selectedTemplateId)!)}
                   </p>
                   <p className="text-gray-600">
+<<<<<<< HEAD
                     {t("brand")}:{" "}
                     {templateById.get(selectedTemplateId)!.subcategoryName ||
                       "-"}
+=======
+                    {t("brand")}: {templateById.get(selectedTemplateId)!.subcategoryName || "-"}
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                   </p>
                 </div>
               )}
@@ -294,7 +309,13 @@ export default function AddStockPage() {
                     }
                   }}
                 />
+<<<<<<< HEAD
                 <p className="text-xs text-gray-500">{t("imeiTip")}</p>
+=======
+                <p className="text-xs text-gray-500">
+                  {t("imeiTip")}
+                </p>
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
               </div>
 
               <div className="space-y-1">
@@ -312,9 +333,13 @@ export default function AddStockPage() {
               </div>
 
               <div className="space-y-1">
+<<<<<<< HEAD
                 <label className="text-sm font-medium">
                   {t("originalPrice")}
                 </label>
+=======
+                <label className="text-sm font-medium">{t("originalPrice")}</label>
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                 <Input
                   placeholder={t("originalPricePlaceholder")}
                   type="number"
@@ -378,8 +403,12 @@ export default function AddStockPage() {
                 >
                   {isAddingStock ? (
                     <>
+<<<<<<< HEAD
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                       {t("addingStock")}
+=======
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("addingStock")}
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                     </>
                   ) : (
                     t("addProduct")

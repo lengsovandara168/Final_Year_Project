@@ -46,7 +46,7 @@ export function FlashToast() {
   }
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-[100] max-w-sm rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-lg">
+    <div className="pointer-events-none fixed right-4 top-4 z-100 max-w-sm rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-lg">
       {message}
     </div>
   );

@@ -5,14 +5,10 @@ import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { IconPackage, IconShoppingCart, IconUsers } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { BadgeDollarSign, LayoutDashboard, LogOut } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { LayoutDashboard, LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useLogout } from "@/hooks/use-logout";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 import Image from "next/image";
 
@@ -23,7 +19,7 @@ export default function SidebarDemo({
 }) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
-  const locale = useLocale();
+  const locale = pathname?.split("/").filter(Boolean)[0] || "en";
   const adminBasePath = `/${locale}/admin`;
   const handleLogout = useLogout();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -55,13 +51,6 @@ export default function SidebarDemo({
       href: `${adminBasePath}/customers`,
       icon: (
         <IconUsers className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
-    },
-    {
-      label: t("sales"),
-      href: `${adminBasePath}/sales`,
-      icon: (
-        <BadgeDollarSign className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
   ];
@@ -139,9 +128,7 @@ export default function SidebarDemo({
                   disabled={isLoggingOut}
                 >
                   <LogOut className="size-4" />
-                  <span>
-                    {isLoggingOut ? `${t("logout")}...` : t("logout")}
-                  </span>
+                  <span>{isLoggingOut ? `${t("logout")}...` : t("logout")}</span>
                 </button>
               </PopoverContent>
             </Popover>

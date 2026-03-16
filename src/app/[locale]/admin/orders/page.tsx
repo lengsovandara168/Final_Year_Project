@@ -64,6 +64,7 @@ function ErrorAlert({ title, description }: { title: string; description: string
 }
 
 function OrdersTable({ data, t }: { data: Order[]; t: Awaited<ReturnType<typeof getTranslations>> }) {
+<<<<<<< HEAD
   const statusLabel = (status: string) => {
     const normalized = status.toLowerCase();
     if (normalized === "pending") return t("pending");
@@ -72,6 +73,8 @@ function OrdersTable({ data, t }: { data: Order[]; t: Awaited<ReturnType<typeof 
     return status;
   };
 
+=======
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -172,7 +175,7 @@ export default async function OrdersPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>{t("allOrders", { count: orders.length })}</CardTitle>
+            <CardTitle>{t("allOrders", { count: orders.length > 0 ? `(${orders.length})` : "" })}</CardTitle>
             <div className="flex flex-col gap-4 sm:flex-row">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

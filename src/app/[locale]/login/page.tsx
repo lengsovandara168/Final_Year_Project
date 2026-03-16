@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { locales } from "@/i18n/routing";
 import { login } from "@/lib/api";
 import { useTranslations } from "next-intl";
+<<<<<<< HEAD
 import path from "path";
+=======
+>>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
 
 export default function LoginPage() {
   const t = useTranslations("AuthLogin");
@@ -20,6 +23,8 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const pathLocale = pathname?.split("/").filter(Boolean)[0];
+  const localePrefix = pathLocale ? `/${pathLocale}` : "/en";
 
   const localePrefix = pathname ? `/${path.basename(pathname)}` : "/en";
 
@@ -63,10 +68,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6 rounded-lg border bg-card p-6 shadow-sm">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-foreground">
-            {t("title")}
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+          <h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("subtitle")}
+          </p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
