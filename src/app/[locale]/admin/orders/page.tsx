@@ -19,6 +19,7 @@ import {
 import { Search, ChevronDown, Eye, AlertCircle } from "lucide-react";
 import { getOrders, type Order } from "@/lib/api/orders";
 import { cookies } from "next/headers";
+import { getTranslations } from "next-intl/server";
 
 function getStatusColor(status: string) {
   const colors: Record<string, string> = {
@@ -35,45 +36,47 @@ function getSourceBadge(source: string) {
     : "bg-green-100 text-green-800";
 }
 
-function EmptyState() {
+function EmptyState({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div className="text-center py-12 text-gray-500">
-      <p className="text-lg font-medium">No orders found</p>
-      <p className="text-sm">Orders will appear here once you have sales</p>
+      <p className="text-lg font-medium">{title}</p>
+      <p className="text-sm">{subtitle}</p>
     </div>
   );
 }
 
-function ErrorAlert() {
+function ErrorAlert({ title, description }: { title: string; description: string }) {
   return (
     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
       <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
       <div className="flex-1">
-        <p className="font-semibold text-blue-900">
-          Orders Endpoint Coming Soon
-        </p>
-        <p className="text-sm text-blue-700 mt-1">
-          Once implemented, real order data will appear here automatically.
-        </p>
+        <p className="font-semibold text-blue-900">{title}</p>
+        <p className="text-sm text-blue-700 mt-1">{description}</p>
       </div>
     </div>
   );
 }
 
-function OrdersTable({ data }: { data: Order[] }) {
+function OrdersTable({ data, t }: { data: Order[]; t: Awaited<ReturnType<typeof getTranslations>> }) {
   return (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Order ID</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Items</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t("orderId")}</TableHead>
+            <TableHead>{t("customer")}</TableHead>
+            <TableHead>{t("items")}</TableHead>
+            <TableHead>{t("total")}</TableHead>
+            <TableHead>{t("date")}</TableHead>
+            <TableHead>{t("status")}</TableHead>
+            <TableHead>{t("source")}</TableHead>
+            <TableHead className="text-right">{t("actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -104,7 +107,7 @@ function OrdersTable({ data }: { data: Order[] }) {
                   variant="outline"
                   className={getSourceBadge(order.source || "")}
                 >
-                  {order.source || "Online"}
+                  {order.source || t("online")}
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
@@ -121,6 +124,7 @@ function OrdersTable({ data }: { data: Order[] }) {
 }
 
 export default async function OrdersPage() {
+  const t = await getTranslations("AdminOrders");
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token")?.value || "";
 
@@ -144,44 +148,51 @@ export default async function OrdersPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-bold md:text-3xl">Order Management</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
         <p className="text-sm text-gray-500 md:text-base">
-          Track and manage orders from POS and online store
+          {t("subtitle")}
         </p>
       </div>
 
-      {hasError && <ErrorAlert />}
+      {hasError && (
+        <ErrorAlert
+          title={t("endpointSoonTitle")}
+          description={t("endpointSoonDesc")}
+        />
+      )}
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>
-              All Orders {orders.length > 0 && `(${orders.length})`}
-            </CardTitle>
+            <CardTitle>{t("allOrders", { count: orders.length > 0 ? `(${orders.length})` : "" })}</CardTitle>
             <div className="flex flex-col gap-4 sm:flex-row">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                    Filter Status
+                    {t("filterStatus")}
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>All</DropdownMenuItem>
-                  <DropdownMenuItem>Pending</DropdownMenuItem>
-                  <DropdownMenuItem>Processing</DropdownMenuItem>
-                  <DropdownMenuItem>Completed</DropdownMenuItem>
+                  <DropdownMenuItem>{t("all")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("pending")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("processing")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("completed")}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                <Input placeholder="Search orders..." className="pl-8" />
+                <Input placeholder={t("searchPlaceholder")} className="pl-8" />
               </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? <EmptyState /> : <OrdersTable data={orders} />}
+          {orders.length === 0 ? (
+            <EmptyState title={t("emptyTitle")} subtitle={t("emptySubtitle")} />
+          ) : (
+            <OrdersTable data={orders} t={t} />
+          )}
         </CardContent>
       </Card>
     </div>

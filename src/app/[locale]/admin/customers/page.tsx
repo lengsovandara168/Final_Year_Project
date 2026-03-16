@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Eye, AlertCircle } from "lucide-react";
 import { getCustomers, type Customer } from "@/lib/api/customers";
 import { cookies } from "next/headers";
+import { getTranslations } from "next-intl/server";
 
 function getInitials(name: string): string {
   return name
@@ -16,42 +17,40 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function EmptyState() {
+function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center py-12 text-gray-500">
-      <p className="text-lg font-medium">No customers found</p>
-      <p className="text-sm">Customers will appear here once you have registrations</p>
+      <p className="text-lg font-medium">{title}</p>
+      <p className="text-sm">{subtitle}</p>
     </div>
   );
 }
 
-function ErrorAlert() {
+function ErrorAlert({ title, description }: { title: string; description: string }) {
   return (
     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
       <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
       <div className="flex-1">
-        <p className="font-semibold text-blue-900">Customers Endpoint Coming Soon</p>
-        <p className="text-sm text-blue-700 mt-1">
-          Once implemented, real customer data will appear here automatically.
-        </p>
+        <p className="font-semibold text-blue-900">{title}</p>
+        <p className="text-sm text-blue-700 mt-1">{description}</p>
       </div>
     </div>
   );
 }
 
-function CustomersTable({ data }: { data: Customer[] }) {
+function CustomersTable({ data, t }: { data: Customer[]; t: Awaited<ReturnType<typeof getTranslations>> }) {
   return (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Total Orders</TableHead>
-            <TableHead>Total Spent</TableHead>
-            <TableHead>Joined Date</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t("name")}</TableHead>
+            <TableHead>{t("email")}</TableHead>
+            <TableHead>{t("phone")}</TableHead>
+            <TableHead>{t("totalOrders")}</TableHead>
+            <TableHead>{t("totalSpent")}</TableHead>
+            <TableHead>{t("joinedDate")}</TableHead>
+            <TableHead className="text-right">{t("actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -88,6 +87,7 @@ function CustomersTable({ data }: { data: Customer[] }) {
 }
 
 export default async function CustomersPage() {
+  const t = await getTranslations("AdminCustomers");
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token")?.value || "";
 
@@ -107,24 +107,33 @@ export default async function CustomersPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-bold md:text-3xl">Customer Database</h1>
-        <p className="text-sm text-gray-500 md:text-base">Manage customer profiles and track loyalty</p>
+        <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
+        <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
       </div>
 
-      {hasError && <ErrorAlert />}
+      {hasError && (
+        <ErrorAlert
+          title={t("endpointSoonTitle")}
+          description={t("endpointSoonDesc")}
+        />
+      )}
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>All Customers {customers.length > 0 && `(${customers.length})`}</CardTitle>
+            <CardTitle>{t("allCustomers", { count: customers.length > 0 ? `(${customers.length})` : "" })}</CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-              <Input placeholder="Search customers..." className="pl-8" />
+              <Input placeholder={t("searchPlaceholder")} className="pl-8" />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {customers.length === 0 ? <EmptyState /> : <CustomersTable data={customers} />}
+          {customers.length === 0 ? (
+            <EmptyState title={t("emptyTitle")} subtitle={t("emptySubtitle")} />
+          ) : (
+            <CustomersTable data={customers} t={t} />
+          )}
         </CardContent>
       </Card>
     </div>

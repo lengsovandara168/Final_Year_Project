@@ -4,13 +4,15 @@ import { TopProduct } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface TopSellingProductsProps {
+  locale: string;
   products?: TopProduct[];
 }
 
 export async function TopSellingProducts({
+  locale,
   products,
 }: TopSellingProductsProps) {
-  const t = await getTranslations("Dashboard");
+  const t = await getTranslations({ locale, namespace: "Dashboard" });
 
   return (
     <Card>

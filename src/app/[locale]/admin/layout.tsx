@@ -22,5 +22,5 @@ export default async function AdminLayout({
     redirect(`/${locale}/users`);
   }
 
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return <DashboardLayout locale={locale}>{children}</DashboardLayout>;
 }

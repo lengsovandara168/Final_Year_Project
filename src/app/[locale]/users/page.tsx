@@ -44,6 +44,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { useTranslations } from "next-intl";
 
 // Product type imported from @/lib/api
 // Includes: id, name, imei, price, originalPrice, image, subcategoryId,
@@ -55,34 +56,6 @@ interface Category {
   name: string;
   icon: React.ReactNode;
 }
-
-const categories: Category[] = [
-  {
-    id: "all",
-    name: "All Products",
-    icon: <Package className="h-4 w-4" />,
-  },
-  {
-    id: "phone",
-    name: "Phones",
-    icon: <Smartphone className="h-4 w-4" />,
-  },
-  {
-    id: "tablet",
-    name: "Tablets",
-    icon: <Tablet className="h-4 w-4" />,
-  },
-  {
-    id: "accessories",
-    name: "Accessories",
-    icon: <Package className="h-4 w-4" />,
-  },
-  {
-    id: "offer",
-    name: "Special Offer",
-    icon: <BadgePercent className="h-4 w-4" />,
-  },
-];
 
 // Type definitions for brands
 interface Brand {
@@ -192,7 +165,9 @@ function categoryToBoardKey(category: string) {
 function buildProductTemplateKey(product: Product) {
   const priceKey = Number(product.price ?? 0).toFixed(2);
   const originalPriceKey =
-    product.originalPrice == null ? "none" : Number(product.originalPrice).toFixed(2);
+    product.originalPrice == null
+      ? "none"
+      : Number(product.originalPrice).toFixed(2);
 
   if (product.templateId?.trim()) {
     return `template:${product.templateId.trim()}:price:${priceKey}:original:${originalPriceKey}`;
@@ -217,13 +192,18 @@ function deduplicateProductTemplates(products: Product[]) {
     }
 
     const preferred = !existing.inStock && product.inStock ? product : existing;
-    const maxOriginalPrice = Math.max(existing.originalPrice ?? 0, product.originalPrice ?? 0);
-    const mergedOriginalPrice = preferred.originalPrice ?? (maxOriginalPrice || undefined);
+    const maxOriginalPrice = Math.max(
+      existing.originalPrice ?? 0,
+      product.originalPrice ?? 0,
+    );
+    const mergedOriginalPrice =
+      preferred.originalPrice ?? (maxOriginalPrice || undefined);
 
     grouped.set(key, {
       ...preferred,
       image: preferred.image || existing.image || product.image,
-      description: preferred.description || existing.description || product.description,
+      description:
+        preferred.description || existing.description || product.description,
       storage: preferred.storage || existing.storage || product.storage,
       color: preferred.color || existing.color || product.color,
       price: preferred.price,
@@ -249,28 +229,8 @@ interface NewsItem {
   bgColor?: string;
 }
 
-// mock data of News
-const newsItems: NewsItem[] = [
-  {
-    id: 1,
-    title: "iPhone 17 Pro Max",
-    description:
-      "Experience the future of smartphones with our latest arrival.",
-    image:
-      "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png",
-    link: "#",
-  },
-  {
-    id: 2,
-    title: "Galaxy S25 Ultra",
-    description: "Pre-order now and get exclusive accessories.",
-    image:
-      "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true",
-    link: "#",
-  },
-];
-
 export default function ShopPage() {
+  const t = useTranslations("Shop");
   const pathname = usePathname();
   const router = useRouter();
   const handleLogout = useLogout();
@@ -287,12 +247,57 @@ export default function ShopPage() {
     accessories: [],
   });
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [failedBrandLogos, setFailedBrandLogos] = useState<Record<string, boolean>>({});
+  const [failedBrandLogos, setFailedBrandLogos] = useState<
+    Record<string, boolean>
+  >({});
   const [currentSlide, setCurrentSlide] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const { getCartCount } = useCart();
   const addToCartWithToast = useAddToCartWithToast();
   const [totalSlides, setTotalSlides] = useState(0);
+
+  const categories: Category[] = [
+    {
+      id: "all",
+      name: t("allProducts"),
+      icon: <Package className="h-4 w-4" />,
+    },
+    {
+      id: "phone",
+      name: t("phones"),
+      icon: <Smartphone className="h-4 w-4" />,
+    },
+    { id: "tablet", name: t("tablets"), icon: <Tablet className="h-4 w-4" /> },
+    {
+      id: "accessories",
+      name: t("accessories"),
+      icon: <Package className="h-4 w-4" />,
+    },
+    {
+      id: "offer",
+      name: t("specialOffer"),
+      icon: <BadgePercent className="h-4 w-4" />,
+    },
+  ];
+
+  const newsItems: NewsItem[] = [
+    {
+      id: 1,
+      title: t("news.iphone17Title"),
+      description: t("news.iphone17Description"),
+      image:
+        "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png",
+      link: "#",
+    },
+    {
+      id: 2,
+      title: t("news.galaxyS25Title"),
+      description: t("news.galaxyS25Description"),
+      image:
+        "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true",
+      link: "#",
+    },
+  ];
 
   // Sync current slide & total slides with carousel API
   useEffect(() => {
@@ -365,7 +370,8 @@ export default function ShopPage() {
             nextBrands.accessories = group.items.map((item) => ({
               id: item.id,
               name: item.name,
-              logo: item.iconUrl || findLibraryLogoUrl("accessories", item.name),
+              logo:
+                item.iconUrl || findLibraryLogoUrl("accessories", item.name),
             }));
           }
         }
@@ -404,13 +410,18 @@ export default function ShopPage() {
     const matchesCategory =
       selectedCategory === "all" ||
       categorySubcategoryIds.includes(product.subcategoryId);
-    const matchesBrand = selectedBrand === "all" || product.subcategoryId === selectedBrand;
+    const matchesBrand =
+      selectedBrand === "all" || product.subcategoryId === selectedBrand;
     const matchesSearch =
       searchQuery === "" ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.storage ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.storage ?? "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       (product.color ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+      (product.description ?? "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
     return matchesCategory && matchesBrand && matchesSearch;
   });
 
@@ -436,7 +447,7 @@ export default function ShopPage() {
                 <Smartphone className="h-6 w-6 text-white" />
               </div>
               <span className="ml-2 text-xl font-bold hidden sm:block">
-                LDHS Shop
+                {t("brand")}
               </span>
             </div>
 
@@ -446,7 +457,7 @@ export default function ShopPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                   <Input
-                    placeholder="Search for phones, tablets, accessories..."
+                    placeholder={t("searchPlaceholder")}
                     className="pl-10 w-full rounded-r-none border-r-0"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -489,7 +500,7 @@ export default function ShopPage() {
                 <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
+                    <span>{t("logout")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -535,7 +546,7 @@ export default function ShopPage() {
                     {categories.find((c) => c.id === selectedCategory)?.icon}
                     <span className="ml-2">
                       {categories.find((c) => c.id === selectedCategory)
-                        ?.name || "Categories"}
+                        ?.name || t("categories")}
                     </span>
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
@@ -560,13 +571,13 @@ export default function ShopPage() {
             {/* Quick Links */}
             <div className="hidden md:flex items-center gap-4 text-sm">
               <a href="#" className="text-gray-600 hover:text-black">
-                Deals
+                {t("deals")}
               </a>
               <a href="#" className="text-gray-600 hover:text-black">
-                New Arrivals
+                {t("newArrivals")}
               </a>
               <a href="#" className="text-gray-600 hover:text-black">
-                Best Sellers
+                {t("bestSellers")}
               </a>
             </div>
           </div>
@@ -587,7 +598,7 @@ export default function ShopPage() {
                   {newsItems.map((news) => (
                     <CarouselItem key={news.id} className="bg-white">
                       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-8 min-h-[300px] md:min-h-[400px] py-12 md:py-16">
+                        <div className="flex min-h-75 flex-col items-center justify-between gap-8 py-12 md:min-h-100 md:flex-row md:py-16">
                           {/* Text on the left */}
                           <div className="flex-1 text-black">
                             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
@@ -602,7 +613,7 @@ export default function ShopPage() {
                                 size="lg"
                                 className="bg-black text-white hover:bg-gray-800"
                               >
-                                <a href={news.link}>Buy Now</a>
+                                <a href={news.link}>{t("buyNow")}</a>
                               </Button>
                             )}
                           </div>
@@ -654,21 +665,20 @@ export default function ShopPage() {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
                 <div className="max-w-2xl">
                   <Badge className="bg-black text-white mb-4">
-                    New Arrivals
+                    {t("newArrivals")}
                   </Badge>
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-black">
-                    Discover the Latest Tech
+                    {t("discoverLatestTech")}
                   </h1>
                   <p className="text-lg text-gray-600 mb-6">
-                    Shop the newest smartphones, tablets, and accessories from
-                    top brands. Free shipping on orders over $100.
+                    {t("discoverSubtitle")}
                   </p>
                   <Button
                     size="lg"
                     className="bg-black text-white hover:bg-gray-800"
                     onClick={() => setSelectedCategory("phone")}
                   >
-                    Shop Phones
+                    {t("shopPhones")}
                   </Button>
                 </div>
               </div>
@@ -685,7 +695,7 @@ export default function ShopPage() {
             <section className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="h-5 w-5 text-orange-500" />
-                <h2 className="text-xl font-bold">Popular Products</h2>
+                <h2 className="text-xl font-bold">{t("popularProducts")}</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {popularProducts.length > 0 ? (
@@ -699,9 +709,7 @@ export default function ShopPage() {
                 ) : (
                   <Card className="col-span-full">
                     <CardContent className="flex items-center justify-center py-12">
-                      <p className="text-gray-500">
-                        No popular products available yet.
-                      </p>
+                      <p className="text-gray-500">{t("noPopularProducts")}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -712,7 +720,7 @@ export default function ShopPage() {
             <section className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Star className="h-5 w-5 text-yellow-500" />
-                <h2 className="text-xl font-bold">Best Sellers</h2>
+                <h2 className="text-xl font-bold">{t("bestSellerProducts")}</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {bestSellers.length > 0 ? (
@@ -726,9 +734,7 @@ export default function ShopPage() {
                 ) : (
                   <Card className="col-span-full">
                     <CardContent className="flex items-center justify-center py-12">
-                      <p className="text-gray-500">
-                        No best sellers available yet.
-                      </p>
+                      <p className="text-gray-500">{t("noBestSellers")}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -746,7 +752,9 @@ export default function ShopPage() {
                 <div className="lg:sticky lg:top-20">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm">Filter by Brand</CardTitle>
+                      <CardTitle className="text-sm">
+                        {t("filterByBrand")}
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-3">
@@ -759,7 +767,9 @@ export default function ShopPage() {
                           }`}
                         >
                           <Package className="h-8 w-8 text-gray-600 mb-1" />
-                          <span className="text-xs font-medium">All</span>
+                          <span className="text-xs font-medium">
+                            {t("all")}
+                          </span>
                         </button>
                         {availableBrands.map((brand) => (
                           <button
@@ -775,12 +785,15 @@ export default function ShopPage() {
                               src={
                                 failedBrandLogos[brand.id]
                                   ? buildFallbackBrandLogoUrl(brand.name)
-                                  : (brand.logo ?? buildFallbackBrandLogoUrl(brand.name))
+                                  : (brand.logo ??
+                                    buildFallbackBrandLogoUrl(brand.name))
                               }
                               onError={() => {
                                 if (!brand.logo) return;
                                 setFailedBrandLogos((prev) =>
-                                  prev[brand.id] ? prev : { ...prev, [brand.id]: true },
+                                  prev[brand.id]
+                                    ? prev
+                                    : { ...prev, [brand.id]: true },
                                 );
                               }}
                               alt={brand.name}
@@ -807,16 +820,16 @@ export default function ShopPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
-                      Sort by
+                      {t("sortBy")}
                       <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem>Price: Low to High</DropdownMenuItem>
-                    <DropdownMenuItem>Price: High to Low</DropdownMenuItem>
-                    <DropdownMenuItem>Most Popular</DropdownMenuItem>
-                    <DropdownMenuItem>Newest</DropdownMenuItem>
-                    <DropdownMenuItem>Best Rating</DropdownMenuItem>
+                    <DropdownMenuItem>{t("priceLowToHigh")}</DropdownMenuItem>
+                    <DropdownMenuItem>{t("priceHighToLow")}</DropdownMenuItem>
+                    <DropdownMenuItem>{t("mostPopular")}</DropdownMenuItem>
+                    <DropdownMenuItem>{t("newest")}</DropdownMenuItem>
+                    <DropdownMenuItem>{t("bestRating")}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -836,8 +849,8 @@ export default function ShopPage() {
                       <Package className="h-12 w-12 text-gray-400 mb-4" />
                       <p className="text-gray-500 text-center">
                         {searchQuery
-                          ? "No products found matching your search."
-                          : "No products available in this category yet."}
+                          ? t("noSearchResults")
+                          : t("noCategoryProducts")}
                       </p>
                     </CardContent>
                   </Card>
@@ -851,20 +864,20 @@ export default function ShopPage() {
         {selectedCategory === "all" && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">All Products</h2>
+              <h2 className="text-xl font-bold">{t("allProducts")}</h2>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
-                    Sort by
+                    {t("sortBy")}
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem>Price: Low to High</DropdownMenuItem>
-                  <DropdownMenuItem>Price: High to Low</DropdownMenuItem>
-                  <DropdownMenuItem>Most Popular</DropdownMenuItem>
-                  <DropdownMenuItem>Newest</DropdownMenuItem>
-                  <DropdownMenuItem>Best Rating</DropdownMenuItem>
+                  <DropdownMenuItem>{t("priceLowToHigh")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("priceHighToLow")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("mostPopular")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("newest")}</DropdownMenuItem>
+                  <DropdownMenuItem>{t("bestRating")}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -883,9 +896,7 @@ export default function ShopPage() {
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <Package className="h-12 w-12 text-gray-400 mb-4" />
                     <p className="text-gray-500 text-center">
-                      {searchQuery
-                        ? "No products found matching your search."
-                        : "No products available yet."}
+                      {searchQuery ? t("noSearchResults") : t("noProductsYet")}
                     </p>
                   </CardContent>
                 </Card>
@@ -906,8 +917,9 @@ function ProductCard({
   product: Product;
   onAddToCart: (productId: string) => void;
 }) {
+  const t = useTranslations("Shop");
   const router = useRouter();
-  
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -941,18 +953,27 @@ function ProductCard({
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {product.isPopular && (
-              <Badge className="bg-orange-500 text-white">Popular</Badge>
+              <Badge className="bg-orange-500 text-white">{t("popular")}</Badge>
             )}
             {product.isBestSeller && (
-              <Badge className="bg-yellow-500 text-black">Best Seller</Badge>
+              <Badge className="bg-yellow-500 text-black">
+                {t("bestSeller")}
+              </Badge>
             )}
             {!product.inStock && (
-              <Badge className="bg-red-600 text-white">Out of Stock</Badge>
+              <Badge className="bg-red-600 text-white">{t("outOfStock")}</Badge>
             )}
           </div>
           {/* Quick View Button */}
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon-sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleClick(); }}>
+            <Button
+              size="icon-sm"
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClick();
+              }}
+            >
               <Eye className="h-4 w-4" />
             </Button>
           </div>
@@ -970,7 +991,9 @@ function ProductCard({
               )}
             </p>
             <p className="min-h-10 text-xs text-gray-600 line-clamp-2">
-              {product.description || <span className="invisible">No description</span>}
+              {product.description || (
+                <span className="invisible">{t("noDescription")}</span>
+              )}
             </p>
           </div>
 
@@ -1012,10 +1035,13 @@ function ProductCard({
             <Button
               className="w-full bg-black text-white hover:bg-gray-800"
               disabled={!product.inStock}
-              onClick={(e) => { e.stopPropagation(); onAddToCart(product.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(product.id);
+              }}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              {product.inStock ? "Add to Cart" : "Out of Stock"}
+              {product.inStock ? t("addToCart") : t("outOfStock")}
             </Button>
           </div>
         </div>

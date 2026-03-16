@@ -7,11 +7,12 @@ import { DashboardStats } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface StatsCardsProps {
+  locale: string;
   stats?: DashboardStats;
 }
 
-export async function StatsCards({ stats }: StatsCardsProps) {
-  const t = await getTranslations("Dashboard");
+export async function StatsCards({ locale, stats }: StatsCardsProps) {
+  const t = await getTranslations({ locale, namespace: "Dashboard" });
 
   const statItems = [
     {

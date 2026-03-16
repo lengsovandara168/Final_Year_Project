@@ -1,8 +1,7 @@
 import { Kantumruy_Pro, Work_Sans } from "next/font/google";
 import "../globals.css";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
-import LocaleSwitcher from "@/components/lang/locale-switcher";
+import { getMessages, setRequestLocale } from "next-intl/server";
 
 const latin = Work_Sans({
   subsets: ["latin"],
@@ -19,6 +18,7 @@ export default async function Localelayout(props: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await props.params;
+  setRequestLocale(locale);
   const messages = await getMessages({ locale });
   const { children } = props;
 
@@ -26,8 +26,8 @@ export default async function Localelayout(props: {
     <div
       className={`${latin.variable} ${khmer.variable} ${
         locale === "km"
-          ? "font-[family-name:var(--font-kantumruy-pro)]"
-          : "font-[family-name:var(--font-work-sans)]"
+          ? "font-(family-name:--font-kantumruy-pro)"
+          : "font-(family-name:--font-work-sans)"
       } antialiased`}
     >
       <NextIntlClientProvider locale={locale} messages={messages}>

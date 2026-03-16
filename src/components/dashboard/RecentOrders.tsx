@@ -5,6 +5,7 @@ import { RecentOrder } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface RecentOrdersProps {
+  locale: string;
   orders?: RecentOrder[];
 }
 
@@ -21,8 +22,8 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export async function RecentOrders({ orders }: RecentOrdersProps) {
-  const t = await getTranslations("Dashboard");
+export async function RecentOrders({ locale, orders }: RecentOrdersProps) {
+  const t = await getTranslations({ locale, namespace: "Dashboard" });
 
   return (
     <Card>
