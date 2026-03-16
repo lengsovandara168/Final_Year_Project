@@ -36,13 +36,7 @@ function getSourceBadge(source: string) {
     : "bg-green-100 text-green-800";
 }
 
-function EmptyState({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) {
+function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center py-12 text-gray-500">
       <p className="text-lg font-medium">{title}</p>
@@ -51,7 +45,13 @@ function EmptyState({
   );
 }
 
-function ErrorAlert({ title, description }: { title: string; description: string }) {
+function ErrorAlert({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
       <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
@@ -63,8 +63,13 @@ function ErrorAlert({ title, description }: { title: string; description: string
   );
 }
 
-function OrdersTable({ data, t }: { data: Order[]; t: Awaited<ReturnType<typeof getTranslations>> }) {
-<<<<<<< HEAD
+function OrdersTable({
+  data,
+  t,
+}: {
+  data: Order[];
+  t: Awaited<ReturnType<typeof getTranslations>>;
+}) {
   const statusLabel = (status: string) => {
     const normalized = status.toLowerCase();
     if (normalized === "pending") return t("pending");
@@ -73,8 +78,6 @@ function OrdersTable({ data, t }: { data: Order[]; t: Awaited<ReturnType<typeof 
     return status;
   };
 
-=======
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -160,9 +163,7 @@ export default async function OrdersPage() {
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
-        <p className="text-sm text-gray-500 md:text-base">
-          {t("subtitle")}
-        </p>
+        <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
       </div>
 
       {hasError && (
@@ -175,7 +176,11 @@ export default async function OrdersPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>{t("allOrders", { count: orders.length > 0 ? `(${orders.length})` : "" })}</CardTitle>
+            <CardTitle>
+              {t("allOrders", {
+                count: orders.length > 0 ? `(${orders.length})` : "",
+              })}
+            </CardTitle>
             <div className="flex flex-col gap-4 sm:flex-row">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

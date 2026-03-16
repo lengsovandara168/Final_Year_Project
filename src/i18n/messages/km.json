@@ -10,10 +10,7 @@
     "dashboard": "ផ្ទាំងគ្រប់គ្រង",
     "products": "ផលិតផល",
     "orders": "ការបញ្ជាទិញ",
-<<<<<<< HEAD
     "sales": "ការលក់",
-=======
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
     "customers": "អតិថិជន",
     "admin": "អ្នកគ្រប់គ្រង",
     "logout": "ចាកចេញ"
@@ -228,6 +225,49 @@
     "requiredFields": "ឈ្មោះ template ទំហំផ្ទុក ពណ៌ និងម៉ាក/ប្រភេទរង ត្រូវតែបញ្ចូល។",
     "uploadImageFirst": "សូមផ្ទុករូបភាព template ជាមុនសិន។",
     "templateCreated": "បានបង្កើត template៖ {name}"
+  },
+  "AdminSales": {
+    "title": "ការលក់",
+    "subtitle": "ការទូទាត់ POS រហ័សសម្រាប់អតិថិជនមកទិញផ្ទាល់។",
+    "tabs": {
+      "sell": "លក់",
+      "history": "ប្រវត្តិ",
+      "levels": "កម្រិតស្តុក"
+    },
+    "failedLoadTitle": "ផ្ទុកផលិតផលបរាជ័យ",
+    "pleaseTryAgain": "សូមព្យាយាមម្តងទៀត។",
+    "addedToCart": "បានបន្ថែមទៅកន្ត្រក",
+    "productNotFoundTitle": "រកមិនឃើញផលិតផល",
+    "productNotFoundDesc": "រកមិនឃើញផលិតផលសម្រាប់បារកូដ៖ {barcode}",
+    "itemRemoved": "បានលុបទំនិញ",
+    "walkInCustomer": "អតិថិជនមកទិញផ្ទាល់",
+    "paymentCompleteTitle": "ការទូទាត់បានបញ្ចប់",
+    "paymentCompleteDesc": "ការបញ្ជាទិញ {orderNumber} ត្រូវបានបង្កើត។",
+    "inStore": "ក្នុងហាង",
+    "city": "ភ្នំពេញ",
+    "receiptTitle": "បង្កាន់ដៃទូទាត់",
+    "checkoutFailedTitle": "ទូទាត់បរាជ័យ",
+    "checkoutFailedDesc": "មិនអាចបញ្ចប់ការទូទាត់បានទេ។ សូមព្យាយាមម្តងទៀត។",
+    "searchPlaceholder": "ស្កេនបារកូដ ឬ ស្វែងរកតាម IMEI...",
+    "searchAriaLabel": "បារកូដ ឬ IMEI ផលិតផល",
+    "addManually": "បន្ថែមដោយដៃ",
+    "manualSearchPlaceholder": "ស្វែងរកផលិតផលតាមឈ្មោះ ឬ IMEI",
+    "loadingProducts": "កំពុងផ្ទុកផលិតផល...",
+    "noProductsFound": "រកមិនឃើញផលិតផល។",
+    "add": "បន្ថែម",
+    "cartEmpty": "កន្ត្រកទទេ។",
+    "remove": "លុប",
+    "decreaseQuantity": "បន្ថយបរិមាណ",
+    "quantity": "បរិមាណ",
+    "increaseQuantity": "បង្កើនបរិមាណ",
+    "removeItem": "លុបទំនិញ",
+    "total": "សរុប",
+    "processing": "កំពុងដំណើរការ...",
+    "payAndPrintReceipt": "បង់ប្រាក់ និងបោះពុម្ពបង្កាន់ដៃ",
+    "stockHistoryTitle": "ប្រវត្តិស្តុក",
+    "historyComingSoon": "ទំព័រប្រវត្តិនឹងមកដល់ឆាប់ៗ។",
+    "stockLevelsTitle": "កម្រិតស្តុក",
+    "stockLevelsComingSoon": "ទំព័រកម្រិតស្តុកនឹងមកដល់ឆាប់ៗ។"
   },
   "Shop": {
     "brand": "ហាង LDHS",

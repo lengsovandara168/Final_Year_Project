@@ -32,14 +32,14 @@ function getStockBadge(inStock: boolean) {
   return inStock ? "bg-black text-white" : "bg-red-600 text-white";
 }
 
-function toErrorMessage(error: unknown) {
+function toErrorMessage(error: unknown, defaultMessage: string = "Something went wrong.") {
   if (error && typeof error === "object" && "error" in error) {
     return String((error as { error?: unknown }).error ?? "Unknown error");
   }
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message?: unknown }).message ?? "Unknown error");
   }
-  return "Something went wrong. Please try again.";
+  return defaultMessage;
 }
 
 function asNumberOrNull(value: unknown) {
@@ -115,7 +115,7 @@ export default function ProductsPage() {
       }
       setSubcategoryNameById(names);
     } catch (loadError) {
-      setError(toErrorMessage(loadError));
+      setError(toErrorMessage(loadError, t("loadErrorTitle")));
     } finally {
       setIsLoading(false);
     }
@@ -183,13 +183,7 @@ export default function ProductsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-<<<<<<< HEAD
-            <CardTitle>
-              {t("inventory", { count: filteredProducts.length })}
-            </CardTitle>
-=======
             <CardTitle>{t("inventory", { count: filteredProducts.length })}</CardTitle>
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
               <Input
@@ -244,20 +238,9 @@ export default function ProductsPage() {
                             ? `$${product.price.toFixed(2)}`
                             : "-"}
                         </TableCell>
-<<<<<<< HEAD
-                        <TableCell>
-                          {subcategoryNameById.get(product.subcategoryId) ||
-                            t("unknown")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getStockBadge(Boolean(product.inStock))}
-                          >
-=======
                         <TableCell>{subcategoryNameById.get(product.subcategoryId) || t("unknown")}</TableCell>
                         <TableCell>
                           <Badge className={getStockBadge(Boolean(product.inStock))}>
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
                             {product.inStock ? t("inStock") : t("outOfStock")}
                           </Badge>
                         </TableCell>

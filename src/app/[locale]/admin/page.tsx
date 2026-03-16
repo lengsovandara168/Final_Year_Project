@@ -42,7 +42,7 @@ export default async function DashboardPage({
           <p className="text-sm text-gray-500 md:text-base">{t("welcome")}</p>
         </div>
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-          Real-time Data
+          {t("realTimeData")}
         </Badge>
       </div>
 
@@ -59,13 +59,14 @@ export default async function DashboardPage({
       <StatsCards locale={locale} stats={data?.stats} />
 
       <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
-        <TopSellingProducts products={data?.topSellingProducts} />
-        <RecentOrders orders={data?.recentOrders} />
+        <TopSellingProducts locale={locale} products={data?.topSellingProducts} />
+        <RecentOrders locale={locale} orders={data?.recentOrders} />
       </div>
 
       <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
         <p className="text-sm text-amber-800">
-          <span className="font-semibold">Note:</span> Orders and customers data will be available once backend implements the corresponding endpoints.
+          <span className="font-semibold">{t("noteLabel")}</span>{" "}
+          {t("noteMessage")}
         </p>
       </div>
     </div>

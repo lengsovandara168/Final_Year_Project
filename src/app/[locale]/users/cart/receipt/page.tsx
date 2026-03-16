@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "@/i18n/routing";
-import { type OrderSummaryV2 } from "@/lib/api";
+import {
+  getStoredCheckoutSummary,
+  type StoredCheckoutSummary,
+} from "@/lib/checkout-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ReceiptSummary } from "@/components/receipt/ReceiptSummary";
 import {
   Table,
   TableBody,
@@ -17,98 +19,36 @@ import {
 } from "@/components/ui/table";
 import { useTranslations } from "next-intl";
 
-type LegacyOrderSummary = {
-  orderNumber: string;
-  createdAt: string;
-  items: Array<{
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-  }>;
-  shippingAddress: {
-    fullName: string;
-    phone: string;
-    address: string;
-    city: string;
-    zipCode: string;
-  };
-  total: number;
-};
-
-function formatPrice(price: number) {
+function formatPrice(
+  amount: number,
+  currency: StoredCheckoutSummary["currency"],
+) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
-  }).format(price);
-}
-
-function toV2Summary(legacy: LegacyOrderSummary): OrderSummaryV2 {
-  return {
-    orderNumber: legacy.orderNumber,
-    createdAt: legacy.createdAt,
-    items: legacy.items,
-    shippingAddress: legacy.shippingAddress,
-    subtotal: legacy.total,
-    shipping: 0,
-    tradeIns: [],
-    tradeInTotal: 0,
-    grandTotal: legacy.total,
-    payments: [
-      {
-        id: "legacy-payment",
-        method: "khqr",
-        amount: legacy.total,
-      },
-    ],
-    amountPaid: legacy.total,
-    changeDue: 0,
-  };
+    currency,
+  }).format(amount);
 }
 
 export default function ReceiptPage() {
   const t = useTranslations("Receipt");
   const router = useRouter();
-  const [orderSummary, setOrderSummary] = useState<OrderSummaryV2 | null>(null);
+  const [summary, setSummary] = useState<StoredCheckoutSummary | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const rawV2 = window.localStorage.getItem("lastOrderSummaryV2");
-    if (rawV2) {
-      try {
-        setOrderSummary(JSON.parse(rawV2) as OrderSummaryV2);
-        return;
-      } catch {
-        // ignore parse errors
-      }
-    }
-
-    const rawLegacy = window.localStorage.getItem("lastOrderSummary");
-    if (!rawLegacy) return;
-
-    try {
-      setOrderSummary(toV2Summary(JSON.parse(rawLegacy) as LegacyOrderSummary));
-    } catch {
-      // ignore
-    }
+    setSummary(getStoredCheckoutSummary());
   }, []);
 
-  if (!orderSummary) {
+  if (!summary) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>{t("title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-<<<<<<< HEAD
-            <p className="text-sm text-gray-600">{t("missingData")}</p>
-=======
             <p className="text-sm text-gray-600">
-              {t("missingData")}
+              No receipt data found. Complete a payment first.
             </p>
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
             <Button className="w-full" onClick={() => router.push("/users")}>
               {t("backToShop")}
             </Button>
@@ -118,26 +58,18 @@ export default function ReceiptPage() {
     );
   }
 
-  const createdAtDate = new Date(orderSummary.createdAt);
+  const createdAtDate = new Date(summary.createdAt);
   const createdAtFormatted = createdAtDate.toLocaleDateString("en-GB");
   const createdAtTime = createdAtDate.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
   });
 
-  const handlePrintReceipt = () => {
-    const html = generateReceiptPrintHtml(orderSummary, {
-      brandName: "LDHS",
-      title: "Order Receipt",
-    });
-    printReceiptHtml(html);
-  };
-
   const handleDownloadPdf = async () => {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    let y = 10;
 
+    let y = 10;
     doc.setFontSize(16);
     doc.text("LDHS", 10, y);
     y += 8;
@@ -146,36 +78,39 @@ export default function ReceiptPage() {
 
     y += 12;
     doc.setFontSize(11);
-    doc.text(`${t("orderNumber")} ${orderSummary.orderNumber}`, 10, y);
+    doc.text(`Order ID: ${summary.orderId}`, 10, y);
     y += 6;
-    doc.text(`${t("orderDate")} ${createdAtFormatted}`, 10, y);
+    doc.text(`Payment ID: ${summary.paymentId}`, 10, y);
+    y += 6;
+    if (summary.receiptNumber) {
+      doc.text(`Receipt Number: ${summary.receiptNumber}`, 10, y);
+      y += 6;
+    }
+    doc.text(`Order Date: ${createdAtFormatted}`, 10, y);
     y += 6;
     doc.text(`${t("orderTime")} ${createdAtTime}`, 10, y);
     y += 6;
     doc.text(t("paymentStatusCompleted"), 10, y);
 
     y += 10;
-    doc.setFontSize(11);
-    doc.text(t("customerInformation"), 10, y);
+    doc.text("Customer Information", 10, y);
     y += 6;
-    doc.text(`${t("name")} ${orderSummary.shippingAddress.fullName}`, 10, y);
+    doc.text(`Name: ${summary.shipping.fullName}`, 10, y);
     y += 6;
-    doc.text(`${t("phone")} ${orderSummary.shippingAddress.phone}`, 10, y);
+    doc.text(`Phone: ${summary.shipping.phone}`, 10, y);
     y += 6;
-    doc.text(
-      `${t("shippingAddress")} ${orderSummary.shippingAddress.address}, ${orderSummary.shippingAddress.city} ${orderSummary.shippingAddress.zipCode}`,
-      10,
-      y,
-    );
+    doc.text(`Address: ${summary.shipping.addressLine1}`, 10, y);
+    if (summary.shipping.notes) {
+      y += 6;
+      doc.text(`Notes: ${summary.shipping.notes}`, 10, y);
+    }
 
     y += 10;
-    doc.setFontSize(11);
-    doc.text(t("items"), 10, y);
+    doc.text("Items", 10, y);
     y += 6;
-    orderSummary.items.forEach((item) => {
-      const imeiSuffix = item.imei ? ` [IMEI: ${item.imei}]` : "";
+    summary.items.forEach((item) => {
       doc.text(
-        `${item.name}${imeiSuffix} x${item.quantity} - ${formatPrice(item.price * item.quantity)}`,
+        `${item.name} × ${item.quantity} - ${formatPrice(item.price * item.quantity, summary.currency)}`,
         10,
         y,
       );
@@ -183,20 +118,20 @@ export default function ReceiptPage() {
     });
 
     y += 4;
-<<<<<<< HEAD
-    doc.text(`Order Total: ${formatPrice(orderSummary.grandTotal)}`, 10, y);
-=======
-    doc.text(`${t("orderTotal")} ${formatPrice(orderSummary.total)}`, 10, y);
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
+    doc.text(
+      `Order Total: ${formatPrice(summary.amount, summary.currency)}`,
+      10,
+      y,
+    );
 
-    doc.save(`${orderSummary.orderNumber}-receipt.pdf`);
+    doc.save(`${summary.orderId}-receipt.pdf`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl">
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-xl font-bold">LDHS</CardTitle>
               <p className="text-sm text-gray-500">{t("orderReceipt")}</p>
@@ -204,77 +139,104 @@ export default function ReceiptPage() {
             <Badge>{t("paymentComplete")}</Badge>
           </CardHeader>
           <CardContent className="space-y-6">
-<<<<<<< HEAD
-            <ReceiptSummary
-              orderSummary={orderSummary}
-              formatPrice={formatPrice}
-              itemsTitle={t("items")}
-            />
-=======
-            <section className="text-sm text-gray-700 space-y-1">
+            <section className="space-y-1 text-sm text-gray-700">
               <p>
-                <span className="font-medium">{t("orderNumber")}</span> {orderSummary.orderNumber}
+                <span className="font-medium">Order ID:</span> {summary.orderId}
               </p>
               <p>
-                <span className="font-medium">{t("orderDate")}</span> {createdAtFormatted}
+                <span className="font-medium">Payment ID:</span>{" "}
+                {summary.paymentId}
+              </p>
+              {summary.receiptNumber && (
+                <p>
+                  <span className="font-medium">Receipt Number:</span>{" "}
+                  {summary.receiptNumber}
+                </p>
+              )}
+              <p>
+                <span className="font-medium">Order Date:</span>{" "}
+                {createdAtFormatted}
               </p>
               <p>
-                <span className="font-medium">{t("orderTime")}</span> {createdAtTime}
+                <span className="font-medium">{t("orderTime")}</span>{" "}
+                {createdAtTime}
               </p>
             </section>
 
-            <section className="text-sm text-gray-700 space-y-1">
-              <h2 className="font-semibold text-base mb-1">{t("customerInformation")}</h2>
+            <section className="space-y-1 text-sm text-gray-700">
+              <h2 className="mb-1 text-base font-semibold">
+                Customer Information
+              </h2>
               <p>
-                <span className="font-medium">{t("name")}</span> {orderSummary.shippingAddress.fullName}
+                <span className="font-medium">Name:</span>{" "}
+                {summary.shipping.fullName}
               </p>
               <p>
-                <span className="font-medium">{t("phone")}</span> {orderSummary.shippingAddress.phone}
+                <span className="font-medium">Phone:</span>{" "}
+                {summary.shipping.phone}
               </p>
               <p>
-                <span className="font-medium">{t("shippingAddress")}</span> {orderSummary.shippingAddress.address}, {orderSummary.shippingAddress.city}{" "}
-                {orderSummary.shippingAddress.zipCode}
+                <span className="font-medium">Shipping Address:</span>{" "}
+                {summary.shipping.addressLine1}
               </p>
+              {summary.shipping.notes && (
+                <p>
+                  <span className="font-medium">Notes:</span>{" "}
+                  {summary.shipping.notes}
+                </p>
+              )}
             </section>
 
             <section className="text-sm text-gray-700">
-              <h2 className="font-semibold text-base mb-2">{t("items")}</h2>
-              <div className="border rounded-lg overflow-hidden bg-white">
+              <h2 className="mb-2 text-base font-semibold">Items</h2>
+              <div className="overflow-hidden rounded-lg border bg-white">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("item")}</TableHead>
-                      <TableHead className="text-right">{t("quantity")}</TableHead>
-                      <TableHead className="text-right">{t("pricePerUnit")}</TableHead>
-                      <TableHead className="text-right">{t("totalPrice")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("quantity")}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t("pricePerUnit")}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t("totalPrice")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orderSummary.items.map((item) => (
+                    {summary.items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="max-w-[220px]">
-                          <span className="font-medium line-clamp-2">{item.name}</span>
+                          <span className="line-clamp-2 font-medium">
+                            {item.name}
+                          </span>
                         </TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">
-                          {formatPrice(item.price)}
+                          {item.quantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatPrice(item.price, summary.currency)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatPrice(item.price * item.quantity)}
+                          {formatPrice(
+                            item.price * item.quantity,
+                            summary.currency,
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex justify-end mt-3 text-sm font-semibold">
-                <span className="mr-2">{t("orderTotal")}</span>
-                <span>{formatPrice(orderSummary.total)}</span>
+              <div className="mt-3 flex justify-end text-sm font-semibold">
+                <span className="mr-2">Order Total:</span>
+                <span>{formatPrice(summary.amount, summary.currency)}</span>
               </div>
             </section>
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
 
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-4 border-t">
+            <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-between">
               <Button
                 variant="outline"
                 className="w-full sm:w-auto"
@@ -282,15 +244,7 @@ export default function ReceiptPage() {
               >
                 {t("backToShop")}
               </Button>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-<<<<<<< HEAD
-                <Button
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={handlePrintReceipt}
-                >
-                  Print Receipt
-                </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
                   className="w-full sm:w-auto"
                   onClick={handleDownloadPdf}
@@ -299,15 +253,10 @@ export default function ReceiptPage() {
                 </Button>
                 <Button
                   className="w-full sm:w-auto"
-                  onClick={() => router.push("/users/cart")}
+                  variant="outline"
+                  onClick={() => router.push("/users/cart/success")}
                 >
-=======
-                <Button className="w-full sm:w-auto" onClick={handleDownloadPdf}>
-                  {t("downloadPdf")}
-                </Button>
-                <Button className="w-full sm:w-auto" onClick={() => router.push("/users/cart")}>
->>>>>>> 8b49610be250be80e6a05025dbb85980c084a053
-                  {t("backToCart")}
+                  Back to Success
                 </Button>
               </div>
             </div>
