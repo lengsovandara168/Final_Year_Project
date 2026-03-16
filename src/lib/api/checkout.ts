@@ -2,11 +2,7 @@ import { apiFetch } from "./client";
 
 export type CheckoutCurrency = "USD" | "KHR";
 
-export type BakongPaymentStatus =
-  | "pending"
-  | "paid"
-  | "failed"
-  | "expired";
+export type BakongPaymentStatus = "pending" | "paid" | "failed" | "expired";
 
 export type BakongCheckoutShipping = {
   fullName: string;

@@ -104,14 +104,7 @@ function normalizeBakongInitResponse(
     return null;
   }
 
-  const {
-    ok,
-    orderId,
-    paymentId,
-    amount,
-    currency,
-    expiresAt,
-  } = value;
+  const { ok, orderId, paymentId, amount, currency, expiresAt } = value;
   const resolvedQrString =
     typeof value.qrString === "string"
       ? value.qrString
@@ -151,9 +144,7 @@ function normalizeBakongInitResponse(
   };
 }
 
-function buildCheckoutItems(
-  items: ReturnType<typeof useCart>["items"],
-) {
+function buildCheckoutItems(items: ReturnType<typeof useCart>["items"]) {
   return items.flatMap((item) =>
     Array.from({ length: item.quantity }, () => ({
       productId: item.product.id,
@@ -176,7 +167,9 @@ function normalizeBillName(value: string) {
 
 function isValidBillName(value: string) {
   const normalized = normalizeBillName(value);
-  return normalized.length > 0 && normalized.length <= BAKONG_BILL_NAME_MAX_LENGTH;
+  return (
+    normalized.length > 0 && normalized.length <= BAKONG_BILL_NAME_MAX_LENGTH
+  );
 }
 
 function isShippingComplete(shipping: BakongCheckoutShipping) {
@@ -195,17 +188,19 @@ export default function CartPage() {
   const t = useTranslations("Cart");
   const router = useRouter();
   const isMobile = useIsMobile();
-  const { items, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, getCartTotal, clearCart } =
+    useCart();
 
   const [step, setStep] = useState<CheckoutStep>("cart");
-  const [shipping, setShipping] = useState<BakongCheckoutShipping>(
-    initialShippingState,
-  );
+  const [shipping, setShipping] =
+    useState<BakongCheckoutShipping>(initialShippingState);
   const [showErrors, setShowErrors] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentUiState>("idle");
-  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(
+    null,
+  );
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [cancelInFlight, setCancelInFlight] = useState(false);
 
@@ -313,13 +308,11 @@ export default function CartPage() {
     }, 3000);
   }
 
-  async function persistAndRedirectToSuccess(
-    status: {
-      orderId?: string;
-      paymentId?: string;
-      receiptNumber?: string;
-    },
-  ) {
+  async function persistAndRedirectToSuccess(status: {
+    orderId?: string;
+    paymentId?: string;
+    receiptNumber?: string;
+  }) {
     const currentSession = paymentSessionRef.current;
     if (!currentSession) {
       return;
@@ -392,7 +385,9 @@ export default function CartPage() {
 
       if (response.status === "failed") {
         setPaymentState("failed");
-        setCheckoutError("Payment failed. Please start a fresh Bakong payment.");
+        setCheckoutError(
+          "Payment failed. Please start a fresh Bakong payment.",
+        );
         return;
       }
 
@@ -464,7 +459,10 @@ export default function CartPage() {
 
       setPaymentSession(normalizedResponse);
       setPaymentState("ready");
-      startCountdown(normalizedResponse.expiresAt, normalizedResponse.paymentId);
+      startCountdown(
+        normalizedResponse.expiresAt,
+        normalizedResponse.paymentId,
+      );
       startPolling(normalizedResponse.paymentId);
     } catch (error) {
       if (isApiError(error)) {
@@ -477,7 +475,9 @@ export default function CartPage() {
           router.refresh();
           setStep("cart");
           setPaymentState("error");
-          setCheckoutError("One or more products were not found. Please review your cart.");
+          setCheckoutError(
+            "One or more products were not found. Please review your cart.",
+          );
           return;
         }
 
@@ -485,13 +485,17 @@ export default function CartPage() {
           router.refresh();
           setStep("cart");
           setPaymentState("error");
-          setCheckoutError("Some items are out of stock. Please update your cart and try again.");
+          setCheckoutError(
+            "Some items are out of stock. Please update your cart and try again.",
+          );
           return;
         }
 
         setCheckoutError(error.message);
       } else {
-        setCheckoutError("Unable to start Bakong payment right now. Please try again.");
+        setCheckoutError(
+          "Unable to start Bakong payment right now. Please try again.",
+        );
       }
 
       setPaymentState("error");
@@ -516,14 +520,17 @@ export default function CartPage() {
       const accessToken = getSessionSnapshot().accessToken;
 
       if (accessToken) {
-        void fetch(`/api/v1/checkout/bakong/${currentSession.paymentId}/cancel`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+        void fetch(
+          `/api/v1/checkout/bakong/${currentSession.paymentId}/cancel`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            keepalive: true,
           },
-          keepalive: true,
-        });
+        );
       }
 
       clearPaymentAttemptState();
@@ -810,7 +817,9 @@ export default function CartPage() {
               <p className="mb-6 text-gray-500">
                 Add some products to your cart to continue shopping.
               </p>
-              <Button onClick={() => router.push("/users")}>Continue Shopping</Button>
+              <Button onClick={() => router.push("/users")}>
+                Continue Shopping
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -880,7 +889,10 @@ export default function CartPage() {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() =>
-                                  handleQuantityChange(item.product.id, item.quantity - 1)
+                                  handleQuantityChange(
+                                    item.product.id,
+                                    item.quantity - 1,
+                                  )
                                 }
                                 disabled={item.quantity <= 1}
                               >
@@ -894,7 +906,10 @@ export default function CartPage() {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() =>
-                                  handleQuantityChange(item.product.id, item.quantity + 1)
+                                  handleQuantityChange(
+                                    item.product.id,
+                                    item.quantity + 1,
+                                  )
                                 }
                               >
                                 <Plus className="h-4 w-4" />
@@ -953,7 +968,8 @@ export default function CartPage() {
                         {!isValidBillName(shipping.fullName) &&
                           shipping.fullName.trim() && (
                             <p className="mt-1 text-xs text-red-600">
-                              Use {BAKONG_BILL_NAME_MAX_LENGTH} characters or fewer.
+                              Use {BAKONG_BILL_NAME_MAX_LENGTH} characters or
+                              fewer.
                             </p>
                           )}
                       </div>
@@ -1010,7 +1026,9 @@ export default function CartPage() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Notes</label>
+                      <label className="mb-1 block text-sm font-medium">
+                        Notes
+                      </label>
                       <textarea
                         value={shipping.notes ?? ""}
                         onChange={(event) =>
@@ -1044,7 +1062,8 @@ export default function CartPage() {
                             Generating your Bakong QR
                           </p>
                           <p className="text-sm text-gray-500">
-                            Creating a pending order and payment with the backend.
+                            Creating a pending order and payment with the
+                            backend.
                           </p>
                         </div>
                       </div>
@@ -1071,9 +1090,14 @@ export default function CartPage() {
 
                           <div className="space-y-4">
                             <div className="rounded-xl bg-gray-50 p-4">
-                              <p className="text-sm text-gray-500">Amount due</p>
+                              <p className="text-sm text-gray-500">
+                                Amount due
+                              </p>
                               <p className="mt-1 text-3xl font-semibold text-gray-900">
-                                {formatPrice(paymentSession.amount, paymentSession.currency)}
+                                {formatPrice(
+                                  paymentSession.amount,
+                                  paymentSession.currency,
+                                )}
                               </p>
                               <div className="mt-3 flex flex-wrap items-center gap-2">
                                 <Badge variant="secondary" className="gap-1">
@@ -1089,12 +1113,15 @@ export default function CartPage() {
                             </div>
 
                             <div className="rounded-xl border bg-white p-4 text-sm text-gray-600">
-                              <p className="font-medium text-gray-900">How it works</p>
+                              <p className="font-medium text-gray-900">
+                                How it works
+                              </p>
                               <ul className="mt-2 space-y-2">
                                 <li>1. Scan this KHQR in the Bakong app.</li>
                                 <li>2. Complete payment in the Bakong app.</li>
                                 <li>
-                                  3. Stay on this page while we confirm the payment with the backend.
+                                  3. Stay on this page while we confirm the
+                                  payment with the backend.
                                 </li>
                               </ul>
                             </div>
@@ -1116,10 +1143,14 @@ export default function CartPage() {
                                   variant="outline"
                                   size="lg"
                                   className="flex-1"
-                                  onClick={() => void handleStepBack("shipping")}
+                                  onClick={() =>
+                                    void handleStepBack("shipping")
+                                  }
                                   disabled={cancelInFlight}
                                 >
-                                  {cancelInFlight ? "Cancelling..." : "Cancel payment"}
+                                  {cancelInFlight
+                                    ? "Cancelling..."
+                                    : "Cancel payment"}
                                 </Button>
                               </div>
                             )}
@@ -1133,7 +1164,8 @@ export default function CartPage() {
                                       QR expired
                                     </p>
                                     <p className="text-sm text-amber-800">
-                                      Start a fresh Bakong payment to get a new QR.
+                                      Start a fresh Bakong payment to get a new
+                                      QR.
                                     </p>
                                   </div>
                                 </div>
@@ -1156,7 +1188,8 @@ export default function CartPage() {
                                       Payment failed
                                     </p>
                                     <p className="text-sm text-red-800">
-                                      Start a fresh Bakong payment attempt to continue.
+                                      Start a fresh Bakong payment attempt to
+                                      continue.
                                     </p>
                                   </div>
                                 </div>
@@ -1186,7 +1219,6 @@ export default function CartPage() {
                             )}
                           </div>
                         </div>
-
                       </>
                     )}
                   </CardContent>
@@ -1202,7 +1234,10 @@ export default function CartPage() {
                 <CardContent className="space-y-4">
                   <div className="max-h-48 space-y-2 overflow-y-auto">
                     {items.map((item) => (
-                      <div key={item.product.id} className="flex justify-between text-sm">
+                      <div
+                        key={item.product.id}
+                        className="flex justify-between text-sm"
+                      >
                         <span className="max-w-[200px] truncate text-gray-600">
                           {item.product.name} × {item.quantity}
                         </span>
@@ -1249,7 +1284,9 @@ export default function CartPage() {
 
                   {step === "payment" && (
                     <div className="border-t pt-4 text-sm text-gray-600">
-                      <p className="mb-2 font-medium text-gray-900">Shipping to</p>
+                      <p className="mb-2 font-medium text-gray-900">
+                        Shipping to
+                      </p>
                       <p>{shipping.fullName}</p>
                       <p>{shipping.phone}</p>
                       <p>{shipping.addressLine1}</p>

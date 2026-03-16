@@ -17,14 +17,14 @@ import {
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
 
-function toErrorMessage(error: unknown) {
+function toErrorMessage(error: unknown, defaultMessage: string = "Something went wrong.") {
   if (error && typeof error === "object" && "error" in error) {
     return String((error as { error?: unknown }).error ?? "Unknown error");
   }
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message?: unknown }).message ?? "Unknown error");
   }
-  return "Something went wrong. Please try again.";
+  return defaultMessage;
 }
 
 function templateLabel(template: ProductTemplate) {
@@ -96,7 +96,7 @@ export default function AddStockPage() {
         setSelectedTemplateId((prev) => prev || loadedTemplates[0].id);
       }
     } catch (loadError) {
-      setError(toErrorMessage(loadError));
+      setError(toErrorMessage(loadError, t("actionFailed")));
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +151,10 @@ export default function AddStockPage() {
       return;
     }
 
-    if (parsedOriginalPrice !== undefined && Number.isNaN(parsedOriginalPrice)) {
+    if (
+      parsedOriginalPrice !== undefined &&
+      Number.isNaN(parsedOriginalPrice)
+    ) {
       setError(t("invalidOriginalPrice"));
       return;
     }
@@ -173,9 +176,11 @@ export default function AddStockPage() {
       );
 
       setStockForm((prev) => ({ ...prev, imei: "" }));
-      setSuccess(t("stockAdded", { name: created.data.name, imei: created.data.imei }));
+      setSuccess(
+        t("stockAdded", { name: created.data.name, imei: created.data.imei }),
+      );
     } catch (stockError) {
-      setError(toErrorMessage(stockError));
+      setError(toErrorMessage(stockError, t("actionFailed")));
     } finally {
       setIsAddingStock(false);
     }
@@ -186,9 +191,7 @@ export default function AddStockPage() {
       <div className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
-          <p className="text-sm text-gray-500 md:text-base">
-            {t("subtitle")}
-          </p>
+          <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button asChild variant="outline">
@@ -233,7 +236,9 @@ export default function AddStockPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1 md:col-span-2">
-                <label className="text-sm font-medium">{t("searchTemplate")}</label>
+                <label className="text-sm font-medium">
+                  {t("searchTemplate")}
+                </label>
                 <Input
                   placeholder={t("searchPlaceholder")}
                   value={templateSearch}
@@ -265,7 +270,9 @@ export default function AddStockPage() {
                     {templateLabel(templateById.get(selectedTemplateId)!)}
                   </p>
                   <p className="text-gray-600">
-                    {t("brand")}: {templateById.get(selectedTemplateId)!.subcategoryName || "-"}
+                    {t("brand")}:{" "}
+                    {templateById.get(selectedTemplateId)!.subcategoryName ||
+                      "-"}
                   </p>
                 </div>
               )}
@@ -277,7 +284,9 @@ export default function AddStockPage() {
                 <Input
                   placeholder={t("imeiPlaceholder")}
                   value={stockForm.imei}
-                  onChange={(e) => setStockForm((prev) => ({ ...prev, imei: e.target.value }))}
+                  onChange={(e) =>
+                    setStockForm((prev) => ({ ...prev, imei: e.target.value }))
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -285,9 +294,7 @@ export default function AddStockPage() {
                     }
                   }}
                 />
-                <p className="text-xs text-gray-500">
-                  {t("imeiTip")}
-                </p>
+                <p className="text-xs text-gray-500">{t("imeiTip")}</p>
               </div>
 
               <div className="space-y-1">
@@ -298,18 +305,25 @@ export default function AddStockPage() {
                   placeholder={t("pricePlaceholder")}
                   type="number"
                   value={stockForm.price}
-                  onChange={(e) => setStockForm((prev) => ({ ...prev, price: e.target.value }))}
+                  onChange={(e) =>
+                    setStockForm((prev) => ({ ...prev, price: e.target.value }))
+                  }
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium">{t("originalPrice")}</label>
+                <label className="text-sm font-medium">
+                  {t("originalPrice")}
+                </label>
                 <Input
                   placeholder={t("originalPricePlaceholder")}
                   type="number"
                   value={stockForm.originalPrice}
                   onChange={(e) =>
-                    setStockForm((prev) => ({ ...prev, originalPrice: e.target.value }))
+                    setStockForm((prev) => ({
+                      ...prev,
+                      originalPrice: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -320,7 +334,10 @@ export default function AddStockPage() {
                     type="checkbox"
                     checked={stockForm.inStock}
                     onChange={(e) =>
-                      setStockForm((prev) => ({ ...prev, inStock: e.target.checked }))
+                      setStockForm((prev) => ({
+                        ...prev,
+                        inStock: e.target.checked,
+                      }))
                     }
                   />
                   {t("inStock")}
@@ -330,7 +347,10 @@ export default function AddStockPage() {
                     type="checkbox"
                     checked={stockForm.isPopular}
                     onChange={(e) =>
-                      setStockForm((prev) => ({ ...prev, isPopular: e.target.checked }))
+                      setStockForm((prev) => ({
+                        ...prev,
+                        isPopular: e.target.checked,
+                      }))
                     }
                   />
                   {t("popular")}
@@ -340,7 +360,10 @@ export default function AddStockPage() {
                     type="checkbox"
                     checked={stockForm.isBestSeller}
                     onChange={(e) =>
-                      setStockForm((prev) => ({ ...prev, isBestSeller: e.target.checked }))
+                      setStockForm((prev) => ({
+                        ...prev,
+                        isBestSeller: e.target.checked,
+                      }))
                     }
                   />
                   {t("bestSeller")}
@@ -355,7 +378,8 @@ export default function AddStockPage() {
                 >
                   {isAddingStock ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("addingStock")}
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                      {t("addingStock")}
                     </>
                   ) : (
                     t("addProduct")

@@ -144,7 +144,8 @@ export default function ReceiptPage() {
                 <span className="font-medium">Order ID:</span> {summary.orderId}
               </p>
               <p>
-                <span className="font-medium">Payment ID:</span> {summary.paymentId}
+                <span className="font-medium">Payment ID:</span>{" "}
+                {summary.paymentId}
               </p>
               {summary.receiptNumber && (
                 <p>
@@ -153,20 +154,26 @@ export default function ReceiptPage() {
                 </p>
               )}
               <p>
-                <span className="font-medium">Order Date:</span> {createdAtFormatted}
+                <span className="font-medium">Order Date:</span>{" "}
+                {createdAtFormatted}
               </p>
               <p>
-                <span className="font-medium">{t("orderTime")}</span> {createdAtTime}
+                <span className="font-medium">{t("orderTime")}</span>{" "}
+                {createdAtTime}
               </p>
             </section>
 
             <section className="space-y-1 text-sm text-gray-700">
-              <h2 className="mb-1 text-base font-semibold">Customer Information</h2>
+              <h2 className="mb-1 text-base font-semibold">
+                Customer Information
+              </h2>
               <p>
-                <span className="font-medium">Name:</span> {summary.shipping.fullName}
+                <span className="font-medium">Name:</span>{" "}
+                {summary.shipping.fullName}
               </p>
               <p>
-                <span className="font-medium">Phone:</span> {summary.shipping.phone}
+                <span className="font-medium">Phone:</span>{" "}
+                {summary.shipping.phone}
               </p>
               <p>
                 <span className="font-medium">Shipping Address:</span>{" "}
@@ -174,7 +181,8 @@ export default function ReceiptPage() {
               </p>
               {summary.shipping.notes && (
                 <p>
-                  <span className="font-medium">Notes:</span> {summary.shipping.notes}
+                  <span className="font-medium">Notes:</span>{" "}
+                  {summary.shipping.notes}
                 </p>
               )}
             </section>
@@ -186,9 +194,15 @@ export default function ReceiptPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("item")}</TableHead>
-                      <TableHead className="text-right">{t("quantity")}</TableHead>
-                      <TableHead className="text-right">{t("pricePerUnit")}</TableHead>
-                      <TableHead className="text-right">{t("totalPrice")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("quantity")}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t("pricePerUnit")}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t("totalPrice")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -199,12 +213,17 @@ export default function ReceiptPage() {
                             {item.name}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">
+                          {item.quantity}
+                        </TableCell>
                         <TableCell className="text-right">
                           {formatPrice(item.price, summary.currency)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatPrice(item.price * item.quantity, summary.currency)}
+                          {formatPrice(
+                            item.price * item.quantity,
+                            summary.currency,
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -226,7 +245,10 @@ export default function ReceiptPage() {
                 {t("backToShop")}
               </Button>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button className="w-full sm:w-auto" onClick={handleDownloadPdf}>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={handleDownloadPdf}
+                >
                   {t("downloadPdf")}
                 </Button>
                 <Button

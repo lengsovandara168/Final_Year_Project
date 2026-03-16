@@ -65,7 +65,8 @@ export default async function DashboardPage({
 
       <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
         <p className="text-sm text-amber-800">
-          <span className="font-semibold">{t("noteLabel")}</span> {t("noteMessage")}
+          <span className="font-semibold">{t("noteLabel")}</span>{" "}
+          {t("noteMessage")}
         </p>
       </div>
     </div>

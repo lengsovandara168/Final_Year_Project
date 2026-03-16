@@ -32,14 +32,14 @@ function getStockBadge(inStock: boolean) {
   return inStock ? "bg-black text-white" : "bg-red-600 text-white";
 }
 
-function toErrorMessage(error: unknown) {
+function toErrorMessage(error: unknown, defaultMessage: string = "Something went wrong.") {
   if (error && typeof error === "object" && "error" in error) {
     return String((error as { error?: unknown }).error ?? "Unknown error");
   }
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message?: unknown }).message ?? "Unknown error");
   }
-  return "Something went wrong. Please try again.";
+  return defaultMessage;
 }
 
 function asNumberOrNull(value: unknown) {
@@ -57,7 +57,9 @@ export default function ProductsPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [templates, setTemplates] = useState<ProductTemplate[]>([]);
-  const [subcategoryNameById, setSubcategoryNameById] = useState<Map<string, string>>(new Map());
+  const [subcategoryNameById, setSubcategoryNameById] = useState<
+    Map<string, string>
+  >(new Map());
 
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -86,14 +88,19 @@ export default function ProductsPage() {
       setIsLoading(true);
       setError(null);
 
-      const [productsResponse, templatesResponse, subcategoriesResponse] = await Promise.all([
-        getProducts(accessToken),
-        getProductTemplates(accessToken),
-        getAddProductSubcategories(accessToken),
-      ]);
+      const [productsResponse, templatesResponse, subcategoriesResponse] =
+        await Promise.all([
+          getProducts(accessToken),
+          getProductTemplates(accessToken),
+          getAddProductSubcategories(accessToken),
+        ]);
 
-      setProducts(Array.isArray(productsResponse.data) ? productsResponse.data : []);
-      setTemplates(Array.isArray(templatesResponse.data) ? templatesResponse.data : []);
+      setProducts(
+        Array.isArray(productsResponse.data) ? productsResponse.data : [],
+      );
+      setTemplates(
+        Array.isArray(templatesResponse.data) ? templatesResponse.data : [],
+      );
 
       const names = new Map<string, string>();
       for (const category of ["phones", "tablets", "accessories"] as const) {
@@ -108,7 +115,7 @@ export default function ProductsPage() {
       }
       setSubcategoryNameById(names);
     } catch (loadError) {
-      setError(toErrorMessage(loadError));
+      setError(toErrorMessage(loadError, t("loadErrorTitle")));
     } finally {
       setIsLoading(false);
     }
@@ -127,8 +134,11 @@ export default function ProductsPage() {
     if (!normalized) return products;
 
     return products.filter((product) => {
-      const template = product.templateId ? templateById.get(product.templateId) : null;
-      const subcategoryName = subcategoryNameById.get(product.subcategoryId) ?? "";
+      const template = product.templateId
+        ? templateById.get(product.templateId)
+        : null;
+      const subcategoryName =
+        subcategoryNameById.get(product.subcategoryId) ?? "";
 
       return (
         product.name.toLowerCase().includes(normalized) ||
@@ -211,11 +221,17 @@ export default function ProductsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => {
-                    const template = product.templateId ? templateById.get(product.templateId) : null;
+                    const template = product.templateId
+                      ? templateById.get(product.templateId)
+                      : null;
                     return (
                       <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>{template ? templateLabel(template) : "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          {product.name}
+                        </TableCell>
+                        <TableCell>
+                          {template ? templateLabel(template) : "-"}
+                        </TableCell>
                         <TableCell>{product.imei}</TableCell>
                         <TableCell className="font-medium">
                           {asNumberOrNull(product.price) !== null

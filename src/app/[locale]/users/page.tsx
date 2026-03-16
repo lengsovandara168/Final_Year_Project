@@ -1031,7 +1031,6 @@ function ProductCard({
               )}
             </div>
 
-            {/* Add to Cart Button */}
             <Button
               className="w-full bg-black text-white hover:bg-gray-800"
               disabled={!product.inStock}

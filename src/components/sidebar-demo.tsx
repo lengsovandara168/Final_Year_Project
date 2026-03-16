@@ -2,13 +2,17 @@
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { IconPackage, IconShoppingCart, IconUsers } from "@tabler/icons-react";
+import { IconMoneybagPlus, IconPackage, IconShoppingCart, IconUsers } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { DollarSign, LayoutDashboard, LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLogout } from "@/hooks/use-logout";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import Image from "next/image";
 
@@ -53,6 +57,7 @@ export default function SidebarDemo({
         <IconUsers className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
+    { label: t("sales"), href: `${adminBasePath}/sales`, icon: <DollarSign className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" /> },
   ];
   const [open, setOpen] = useState(true);
 
@@ -128,7 +133,9 @@ export default function SidebarDemo({
                   disabled={isLoggingOut}
                 >
                   <LogOut className="size-4" />
-                  <span>{isLoggingOut ? `${t("logout")}...` : t("logout")}</span>
+                  <span>
+                    {isLoggingOut ? `${t("logout")}...` : t("logout")}
+                  </span>
                 </button>
               </PopoverContent>
             </Popover>

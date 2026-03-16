@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { locales } from "@/i18n/routing";
 import { login } from "@/lib/api";
 import { useTranslations } from "next-intl";
+import path from "path";
 
 export default function LoginPage() {
   const t = useTranslations("AuthLogin");
@@ -62,10 +63,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6 rounded-lg border bg-card p-6 shadow-sm">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("subtitle")}
-          </p>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
