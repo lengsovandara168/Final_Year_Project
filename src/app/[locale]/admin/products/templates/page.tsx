@@ -17,6 +17,7 @@ import {
   type ProductTemplate,
   uploadProductImage,
 } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml,image/avif";
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -178,6 +179,7 @@ function buildFallbackBrandLogoUrl(name: string) {
 }
 
 export default function ProductTemplatesPage() {
+  const t = useTranslations("AdminTemplates");
   const pathname = usePathname();
   const router = useRouter();
 
@@ -341,12 +343,12 @@ export default function ProductTemplatesPage() {
     setSuccess(null);
 
     if (!IMAGE_ACCEPT.split(",").includes(file.type)) {
-      setError("Invalid file type. Please upload PNG, JPEG, WEBP, SVG, or AVIF.");
+      setError(t("invalidFileType"));
       return;
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setError("File is too large. Maximum file size is 5MB.");
+      setError(t("fileTooLarge"));
       return;
     }
 
@@ -358,7 +360,7 @@ export default function ProductTemplatesPage() {
       const uploadResponse = await uploadProductImage(file, accessToken);
       setImageUrl(uploadResponse.data.url ?? "");
       setUploadedImageName(file.name);
-      setSuccess("Image uploaded.");
+      setSuccess(t("imageUploaded"));
     } catch (uploadError) {
       setError(toErrorMessage(uploadError));
     } finally {
@@ -379,12 +381,12 @@ export default function ProductTemplatesPage() {
       !templateForm.color.trim() ||
       !templateForm.subcategoryName.trim()
     ) {
-      setError("Template name, storage, color, and brand/subcategory are required.");
+      setError(t("requiredFields"));
       return;
     }
 
     if (!imageUrl) {
-      setError("Please upload a template image first.");
+      setError(t("uploadImageFirst"));
       return;
     }
 
@@ -420,7 +422,7 @@ export default function ProductTemplatesPage() {
       }));
       setImageUrl("");
       setUploadedImageName(null);
-      setSuccess(`Template created: ${created.data.name}`);
+      setSuccess(t("templateCreated", { name: created.data.name }));
       void loadData();
     } catch (createError) {
       setError(toErrorMessage(createError));
@@ -433,17 +435,17 @@ export default function ProductTemplatesPage() {
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold md:text-3xl">Build Product Template</h1>
+          <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
           <p className="text-sm text-gray-500 md:text-base">
-            Create reusable product templates with category, brand, specs, and image.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button asChild variant="outline">
-            <Link href={adminBase}>Inventory</Link>
+            <Link href={adminBase}>{t("inventory")}</Link>
           </Button>
           <Button asChild className="bg-black text-white hover:bg-gray-800">
-            <Link href={`${adminBase}/add-stock`}>Go to Add Product</Link>
+            <Link href={`${adminBase}/add-stock`}>{t("goToAddProduct")}</Link>
           </Button>
         </div>
       </div>
@@ -452,7 +454,7 @@ export default function ProductTemplatesPage() {
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
           <div className="flex-1">
-            <p className="font-semibold text-red-900">Action failed</p>
+            <p className="font-semibold text-red-900">{t("actionFailed")}</p>
             <p className="text-sm text-red-700">{error}</p>
           </div>
         </div>
@@ -462,7 +464,7 @@ export default function ProductTemplatesPage() {
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           <div className="flex-1">
-            <p className="font-semibold text-emerald-900">Success</p>
+            <p className="font-semibold text-emerald-900">{t("success")}</p>
             <p className="text-sm text-emerald-700">{success}</p>
           </div>
         </div>
@@ -470,13 +472,13 @@ export default function ProductTemplatesPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Template Form</CardTitle>
+          <CardTitle>{t("templateForm")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">
-                Category <span className="text-red-600">*</span>
+                {t("category")} <span className="text-red-600">*</span>
               </label>
               <select
                 value={templateForm.parentCategory}
@@ -489,15 +491,15 @@ export default function ProductTemplatesPage() {
                 }
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               >
-                <option value="phones">Phones</option>
-                <option value="tablets">Tablets</option>
-                <option value="accessories">Accessories</option>
+                <option value="phones">{t("phones")}</option>
+                <option value="tablets">{t("tablets")}</option>
+                <option value="accessories">{t("accessories")}</option>
               </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium">
-                Brand (subcategory) <span className="text-red-600">*</span>
+                {t("brandSubcategory")} <span className="text-red-600">*</span>
               </label>
               <div ref={brandPickerRef} className="relative">
                 <button
@@ -525,7 +527,7 @@ export default function ProductTemplatesPage() {
                       alt={`${templateForm.subcategoryName || "Brand"} logo`}
                       className="h-5 w-5 rounded-full border bg-white object-contain"
                     />
-                    {templateForm.subcategoryName.trim() || "Select brand"}
+                    {templateForm.subcategoryName.trim() || t("selectBrand")}
                   </span>
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 </button>
@@ -533,7 +535,7 @@ export default function ProductTemplatesPage() {
                 {isBrandPickerOpen && (
                   <div className="absolute z-20 mt-2 w-full rounded-md border bg-white p-2 shadow-md">
                     <Input
-                      placeholder="Search brand..."
+                      placeholder={t("searchBrand")}
                       value={brandQuery}
                       onChange={(e) => setBrandQuery(e.target.value)}
                     />
@@ -580,7 +582,7 @@ export default function ProductTemplatesPage() {
                         );
                       })}
                       {filteredBrandOptions.length === 0 && (
-                        <p className="px-2 py-2 text-sm text-gray-500">No brands found.</p>
+                        <p className="px-2 py-2 text-sm text-gray-500">{t("noBrandsFound")}</p>
                       )}
                     </div>
                   </div>
@@ -590,10 +592,10 @@ export default function ProductTemplatesPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium">
-                Product Template Name <span className="text-red-600">*</span>
+                {t("templateName")} <span className="text-red-600">*</span>
               </label>
               <Input
-                placeholder="e.g. iPhone 16 Pro Max"
+                placeholder={t("templateNamePlaceholder")}
                 value={templateForm.name}
                 onChange={(e) =>
                   setTemplateForm((prev) => ({ ...prev, name: e.target.value }))
@@ -603,10 +605,10 @@ export default function ProductTemplatesPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium">
-                Storage <span className="text-red-600">*</span>
+                {t("storage")} <span className="text-red-600">*</span>
               </label>
               <Input
-                placeholder="e.g. 256GB"
+                placeholder={t("storagePlaceholder")}
                 value={templateForm.storage}
                 onChange={(e) =>
                   setTemplateForm((prev) => ({ ...prev, storage: e.target.value }))
@@ -616,10 +618,10 @@ export default function ProductTemplatesPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium">
-                Color <span className="text-red-600">*</span>
+                {t("color")} <span className="text-red-600">*</span>
               </label>
               <Input
-                placeholder="e.g. Purple"
+                placeholder={t("colorPlaceholder")}
                 value={templateForm.color}
                 onChange={(e) =>
                   setTemplateForm((prev) => ({ ...prev, color: e.target.value }))
@@ -628,9 +630,9 @@ export default function ProductTemplatesPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium">Description (Optional)</label>
+              <label className="text-sm font-medium">{t("description")}</label>
               <Input
-                placeholder="Template description"
+                placeholder={t("descriptionPlaceholder")}
                 value={templateForm.description}
                 onChange={(e) =>
                   setTemplateForm((prev) => ({ ...prev, description: e.target.value }))
@@ -640,23 +642,21 @@ export default function ProductTemplatesPage() {
           </div>
 
           <div className="mt-4">
-            <label className="text-sm font-medium">
-              Specifications (Optional: each line must be `Key: Value`)
-            </label>
+            <label className="text-sm font-medium">{t("specifications")}</label>
             <textarea
               value={templateForm.specificationsText}
               onChange={(e) =>
                 setTemplateForm((prev) => ({ ...prev, specificationsText: e.target.value }))
               }
-              placeholder={"Chip: A18\nDisplay: 6.7 inch"}
+              placeholder={t("specificationsPlaceholder")}
               className="mt-2 min-h-24 w-full rounded-md border border-input px-3 py-2 text-sm"
             />
           </div>
 
           <div className="mt-4 space-y-3">
-            <p className="text-sm font-medium">Template Image</p>
+            <p className="text-sm font-medium">{t("templateImage")}</p>
             <p className="text-xs text-gray-500">
-              Upload one main image (PNG, JPEG, WEBP, SVG, or AVIF, max 5MB).
+              {t("templateImageHint")}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <label className="inline-flex">
@@ -672,18 +672,18 @@ export default function ProductTemplatesPage() {
                 <span className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm">
                   {isUploading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("uploading")}
                     </>
                   ) : (
                     <>
-                      <Upload className="mr-2 h-4 w-4" /> Upload Image
+                      <Upload className="mr-2 h-4 w-4" /> {t("uploadImage")}
                     </>
                   )}
                 </span>
               </label>
               {uploadedImageName && <span className="text-sm text-gray-600">{uploadedImageName}</span>}
             </div>
-            {imageUrl && <p className="break-all text-xs text-gray-600">Image URL: {imageUrl}</p>}
+            {imageUrl && <p className="break-all text-xs text-gray-600">{t("imageUrl", { url: imageUrl })}</p>}
           </div>
 
           <div className="mt-4 flex items-center gap-2 text-sm">
@@ -694,7 +694,7 @@ export default function ProductTemplatesPage() {
                 setTemplateForm((prev) => ({ ...prev, isActive: e.target.checked }))
               }
             />
-            <span>Template Active</span>
+            <span>{t("templateActive")}</span>
           </div>
 
           <div className="mt-5 flex justify-end">
@@ -705,10 +705,10 @@ export default function ProductTemplatesPage() {
             >
               {isCreatingTemplate ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Template...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("creatingTemplate")}
                 </>
               ) : (
-                "Create Template"
+                t("createTemplate")
               )}
             </Button>
           </div>
@@ -717,9 +717,9 @@ export default function ProductTemplatesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Templates ({filteredTemplates.length})</CardTitle>
+          <CardTitle>{t("templates", { count: filteredTemplates.length })}</CardTitle>
           <Input
-            placeholder="Search template by model, storage, color, or brand"
+            placeholder={t("searchTemplatePlaceholder")}
             value={templateSearch}
             onChange={(e) => setTemplateSearch(e.target.value)}
           />
@@ -728,16 +728,16 @@ export default function ProductTemplatesPage() {
           {isLoading ? (
             <div className="py-10 text-center text-gray-500">
               <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-              Loading templates...
+              {t("loadingTemplates")}
             </div>
           ) : filteredTemplates.length === 0 ? (
-            <p className="text-sm text-gray-500">No templates found.</p>
+            <p className="text-sm text-gray-500">{t("noTemplatesFound")}</p>
           ) : (
             <div className="space-y-2">
               {filteredTemplates.map((template) => (
                 <div key={template.id} className="rounded-md border p-3">
                   <p className="font-medium">{templateLabel(template)}</p>
-                  <p className="text-sm text-gray-600">Brand: {template.subcategoryName || "-"}</p>
+                  <p className="text-sm text-gray-600">{t("brand", { brand: template.subcategoryName || "-" })}</p>
                 </div>
               ))}
             </div>

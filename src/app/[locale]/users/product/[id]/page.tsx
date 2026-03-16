@@ -28,6 +28,7 @@ import {
   Smartphone,
   Loader2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 // Product type is imported from @/lib/api
 
@@ -82,6 +83,7 @@ function deduplicateProductTemplates(products: Product[]) {
 }
 
 export default function ProductDetailPage() {
+  const t = useTranslations("ProductDetail");
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -161,7 +163,7 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
-          <h2 className="text-xl font-semibold text-gray-600">Loading product...</h2>
+          <h2 className="text-xl font-semibold text-gray-600">{t("loading")}</h2>
         </div>
       </div>
     );
@@ -172,11 +174,11 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-600 mb-2">Product Not Found</h2>
-          <p className="text-gray-500 mb-4">The product you're looking for doesn't exist.</p>
+          <h2 className="text-xl font-semibold text-gray-600 mb-2">{t("notFound")}</h2>
+          <p className="text-gray-500 mb-4">{t("notFoundMessage")}</p>
           <Button onClick={() => router.back()} variant="outline">
             <ChevronLeft className="h-4 w-4 mr-2" />
-            Go Back
+            {t("goBack")}
           </Button>
         </div>
       </div>
@@ -198,7 +200,7 @@ export default function ProductDetailPage() {
                 <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-black">
                   <Smartphone className="h-6 w-6 text-white" />
                 </div>
-                <span className="ml-2 text-xl font-bold hidden sm:block">LDHS Shop</span>
+                <span className="ml-2 text-xl font-bold hidden sm:block">{t("brand")}</span>
               </div>
             </div>
 
@@ -254,10 +256,10 @@ export default function ProductDetailPage() {
               {/* Badges */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
                 {product.isPopular && (
-                  <Badge className="bg-orange-500 text-white">Popular</Badge>
+                  <Badge className="bg-orange-500 text-white">{t("popular")}</Badge>
                 )}
                 {product.isBestSeller && (
-                  <Badge className="bg-yellow-500 text-black">Best Seller</Badge>
+                  <Badge className="bg-yellow-500 text-black">{t("bestSeller")}</Badge>
                 )}
                 {product.originalPrice && (
                   <Badge className="bg-red-500 text-white">
@@ -273,7 +275,7 @@ export default function ProductDetailPage() {
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden bg-white ${
+                  className={`shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden bg-white ${
                     selectedImage === idx ? "border-black" : "border-gray-200"
                   }`}
                 >
@@ -322,7 +324,7 @@ export default function ProductDetailPage() {
                 ))}
               </div>
               <span className="text-gray-600">
-                {product.rating} ({product.reviewCount} reviews)
+                {product.rating} ({product.reviewCount} {t("reviews")})
               </span>
             </div>
 
@@ -337,7 +339,7 @@ export default function ProductDetailPage() {
                     {formatPrice(product.originalPrice)}
                   </span>
                   <Badge className="bg-red-100 text-red-600">
-                    Save {formatPrice(product.originalPrice - product.price)}
+                    {t("save", { amount: formatPrice(product.originalPrice - product.price) })}
                   </Badge>
                 </>
               )}
@@ -349,14 +351,14 @@ export default function ProductDetailPage() {
                 <>
                   <div className="flex items-center gap-1 text-green-600">
                     <Check className="h-5 w-5" />
-                    <span className="font-medium">In Stock</span>
+                    <span className="font-medium">{t("inStock")}</span>
                   </div>
-                  <span className="text-gray-500">- Ready to ship</span>
+                  <span className="text-gray-500">- {t("readyToShip")}</span>
                 </>
               ) : (
                 <div className="flex items-center gap-1 text-red-600">
                   <X className="h-5 w-5" />
-                  <span className="font-medium">Out of Stock</span>
+                  <span className="font-medium">{t("outOfStock")}</span>
                 </div>
               )}
             </div>
@@ -364,7 +366,7 @@ export default function ProductDetailPage() {
             {/* Description */}
             {product.description && (
               <div>
-                <h2 className="font-semibold text-gray-900 mb-2">Description</h2>
+                <h2 className="font-semibold text-gray-900 mb-2">{t("description")}</h2>
                 <p className="text-gray-600 leading-relaxed">{product.description}</p>
               </div>
             )}
@@ -372,7 +374,7 @@ export default function ProductDetailPage() {
             {/* Quantity Selector */}
             {product.inStock && (
               <div>
-                <h2 className="font-semibold text-gray-900 mb-3">Quantity</h2>
+                <h2 className="font-semibold text-gray-900 mb-3">{t("quantity")}</h2>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center border rounded-lg">
                     <Button
@@ -395,7 +397,7 @@ export default function ProductDetailPage() {
                     </Button>
                   </div>
                   <span className="text-gray-500">
-                    Total: <span className="font-bold text-black">{formatPrice(product.price * quantity)}</span>
+                    {t("total")} <span className="font-bold text-black">{formatPrice(product.price * quantity)}</span>
                   </span>
                 </div>
               </div>
@@ -409,7 +411,7 @@ export default function ProductDetailPage() {
                 onClick={handleAddToCart}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
-                {product.inStock ? "Add to Cart" : "Out of Stock"}
+                {product.inStock ? t("addToCart") : t("outOfStock")}
               </Button>
               <Button
                 variant="outline"
@@ -428,22 +430,22 @@ export default function ProductDetailPage() {
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Truck className="h-6 w-6 text-gray-600" />
                 </div>
-                <p className="text-sm font-medium">Free Shipping</p>
-                <p className="text-xs text-gray-500">On orders $100+</p>
+                <p className="text-sm font-medium">{t("freeShipping")}</p>
+                <p className="text-xs text-gray-500">{t("freeShippingHint")}</p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Shield className="h-6 w-6 text-gray-600" />
                 </div>
-                <p className="text-sm font-medium">1 Year Warranty</p>
-                <p className="text-xs text-gray-500">Full coverage</p>
+                <p className="text-sm font-medium">{t("warranty")}</p>
+                <p className="text-xs text-gray-500">{t("warrantyHint")}</p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
                   <RotateCcw className="h-6 w-6 text-gray-600" />
                 </div>
-                <p className="text-sm font-medium">30 Days Return</p>
-                <p className="text-xs text-gray-500">Easy returns</p>
+                <p className="text-sm font-medium">{t("returnPolicy")}</p>
+                <p className="text-xs text-gray-500">{t("returnPolicyHint")}</p>
               </div>
             </div>
           </div>
@@ -453,7 +455,7 @@ export default function ProductDetailPage() {
         {product.specifications && product.specifications.length > 0 && (
           <Card className="mt-8">
             <CardContent className="p-6">
-              <h2 className="text-xl font-bold mb-4">Specifications</h2>
+              <h2 className="text-xl font-bold mb-4">{t("specifications")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {product.specifications.map((spec, idx) => (
                   <div
@@ -472,7 +474,7 @@ export default function ProductDetailPage() {
         {/* Related Products Section */}
         {relatedProducts.length > 0 && (
           <section className="mt-12">
-            <h2 className="text-xl font-bold mb-4">You May Also Like</h2>
+            <h2 className="text-xl font-bold mb-4">{t("youMayAlsoLike")}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {relatedProducts.map((relatedProduct) => (
                 <Card
@@ -519,7 +521,7 @@ export default function ProductDetailPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-50">
         <div className="flex items-center gap-4">
           <div className="flex-1">
-            <p className="text-sm text-gray-500">Total Price</p>
+            <p className="text-sm text-gray-500">{t("totalPrice")}</p>
             <p className="text-xl font-bold">{formatPrice(product.price * quantity)}</p>
           </div>
           <Button
@@ -528,7 +530,7 @@ export default function ProductDetailPage() {
             onClick={handleAddToCart}
           >
             <ShoppingCart className="h-5 w-5 mr-2" />
-            Add to Cart
+            {t("addToCart")}
           </Button>
         </div>
       </div>

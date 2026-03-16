@@ -153,11 +153,42 @@ export async function createOrder(
   payload: CreateOrderRequest,
   accessToken: string,
 ) {
-  return apiFetch<CreateOrderResponse>("/v1/checkout/orders", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  const candidateEndpoints = [
+    "/v1/checkout/orders",
+    "/v1/pos/orders",
+    "/v1/admin/orders",
+  ] as const;
+
+  let lastError: unknown = null;
+
+  for (const endpoint of candidateEndpoints) {
+    try {
+      return await apiFetch<CreateOrderResponse>(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      lastError = error;
+      const status =
+        typeof error === "object" && error !== null && "status" in error
+          ? Number((error as { status?: unknown }).status)
+          : undefined;
+
+      if (status !== 404) {
+        throw error;
+      }
+    }
+  }
+
+  const detail =
+    typeof lastError === "object" && lastError !== null && "message" in lastError
+      ? String((lastError as { message?: unknown }).message ?? "")
+      : "";
+
+  throw new Error(
+    `Create order endpoint not found. Tried: ${candidateEndpoints.join(", ")}${detail ? ` (${detail})` : ""}`,
+  );
 }

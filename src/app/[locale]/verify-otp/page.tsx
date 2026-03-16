@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { login, verifyLoginOtp, verifyRegisterOtp, type ApiError } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { locales } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 
 type VerifyFlow = "register" | "login";
 
@@ -21,6 +22,7 @@ function getLocalePrefix(pathname: string | null) {
 }
 
 export default function VerifyOtpPage() {
+  const t = useTranslations("AuthVerifyOtp");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -56,7 +58,7 @@ export default function VerifyOtpPage() {
     setIsLoading(true);
 
     if (!code || code.length !== 6) {
-      setError("Please enter a valid 6-digit OTP code.");
+      setError(t("invalidCode"));
       setIsLoading(false);
       return;
     }
@@ -75,7 +77,7 @@ export default function VerifyOtpPage() {
         name: response.email.split("@")[0] || "User",
       });
 
-      setSuccess("OTP verified successfully. Redirecting...");
+      setSuccess(t("verifiedRedirecting"));
       localStorage.removeItem("verifyEmail");
       localStorage.removeItem("verifyFlow");
 
@@ -98,7 +100,7 @@ export default function VerifyOtpPage() {
       }, 800);
     } catch (err) {
       const apiError = err as ApiError;
-      setError(apiError.message || "OTP verification failed. Please try again.");
+      setError(apiError.message || t("verifyFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -109,29 +111,31 @@ export default function VerifyOtpPage() {
     setSuccess("");
 
     if (!email) {
-      setError("Email not found. Please start from login or register again.");
+      setError(t("emailNotFound"));
       return;
     }
 
     try {
       if (flow === "login") {
         await login({ email });
-        setSuccess("A new OTP has been sent to your email.");
+        setSuccess(t("newOtpSent"));
       } else {
-        setSuccess("Please use the OTP sent during registration.");
+        setSuccess(t("useRegistrationOtp"));
       }
     } catch (err) {
       const apiError = err as ApiError;
-      setError(apiError.message || "Failed to resend OTP.");
+      setError(apiError.message || t("resendFailed"));
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold mb-2 text-center">Verify OTP</h1>
+        <h1 className="text-2xl font-bold mb-2 text-center">{t("title")}</h1>
         <p className="text-sm text-gray-600 mb-6 text-center">
-          Enter the 6-digit code sent to <strong>{email}</strong>
+          {t.rich("subtitle", {
+            email: () => <strong>{email}</strong>,
+          })}
         </p>
 
         {error ? (
@@ -149,7 +153,7 @@ export default function VerifyOtpPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="code" className="block text-sm font-medium mb-1">
-              Verification Code
+              {t("verificationCode")}
             </label>
             <Input
               id="code"
@@ -159,7 +163,7 @@ export default function VerifyOtpPage() {
               onChange={(event) =>
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
               }
-              placeholder="Enter 6-digit code"
+              placeholder={t("codePlaceholder")}
               maxLength={6}
               required
               className="text-center text-2xl tracking-widest"
@@ -167,18 +171,18 @@ export default function VerifyOtpPage() {
           </div>
 
           <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-            {isLoading ? "Verifying..." : "Verify OTP"}
+            {isLoading ? t("verifying") : t("verifyOtp")}
           </Button>
         </form>
 
         <p className="text-center mt-4 text-sm text-gray-600">
-          Didn&apos;t receive the code?{" "}
+          {t("resendPrompt")} {" "}
           <button
             type="button"
             className="text-blue-600 hover:underline"
             onClick={handleResend}
           >
-            Resend
+            {t("resend")}
           </button>
         </p>
       </Card>

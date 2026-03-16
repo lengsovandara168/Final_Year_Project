@@ -26,6 +26,7 @@ import {
   type Product,
   type ProductTemplate,
 } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 function getStockBadge(inStock: boolean) {
   return inStock ? "bg-black text-white" : "bg-red-600 text-white";
@@ -50,12 +51,15 @@ function templateLabel(template: ProductTemplate) {
 }
 
 export default function ProductsPage() {
+  const t = useTranslations("AdminProducts");
   const pathname = usePathname();
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [templates, setTemplates] = useState<ProductTemplate[]>([]);
-  const [subcategoryNameById, setSubcategoryNameById] = useState<Map<string, string>>(new Map());
+  const [subcategoryNameById, setSubcategoryNameById] = useState<
+    Map<string, string>
+  >(new Map());
 
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -84,14 +88,19 @@ export default function ProductsPage() {
       setIsLoading(true);
       setError(null);
 
-      const [productsResponse, templatesResponse, subcategoriesResponse] = await Promise.all([
-        getProducts(accessToken),
-        getProductTemplates(accessToken),
-        getAddProductSubcategories(accessToken),
-      ]);
+      const [productsResponse, templatesResponse, subcategoriesResponse] =
+        await Promise.all([
+          getProducts(accessToken),
+          getProductTemplates(accessToken),
+          getAddProductSubcategories(accessToken),
+        ]);
 
-      setProducts(Array.isArray(productsResponse.data) ? productsResponse.data : []);
-      setTemplates(Array.isArray(templatesResponse.data) ? templatesResponse.data : []);
+      setProducts(
+        Array.isArray(productsResponse.data) ? productsResponse.data : [],
+      );
+      setTemplates(
+        Array.isArray(templatesResponse.data) ? templatesResponse.data : [],
+      );
 
       const names = new Map<string, string>();
       for (const category of ["phones", "tablets", "accessories"] as const) {
@@ -125,8 +134,11 @@ export default function ProductsPage() {
     if (!normalized) return products;
 
     return products.filter((product) => {
-      const template = product.templateId ? templateById.get(product.templateId) : null;
-      const subcategoryName = subcategoryNameById.get(product.subcategoryId) ?? "";
+      const template = product.templateId
+        ? templateById.get(product.templateId)
+        : null;
+      const subcategoryName =
+        subcategoryNameById.get(product.subcategoryId) ?? "";
 
       return (
         product.name.toLowerCase().includes(normalized) ||
@@ -141,19 +153,17 @@ export default function ProductsPage() {
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6 md:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold md:text-3xl">Products & Inventory</h1>
-          <p className="text-sm text-gray-500 md:text-base">
-            Template-first flow: build template first, then add stock from template.
-          </p>
+          <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
+          <p className="text-sm text-gray-500 md:text-base">{t("subtitle")}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button asChild className="bg-black text-white hover:bg-gray-800">
             <Link href={`${adminBase}/templates`}>
-              <Plus className="mr-2 h-4 w-4" /> Build Template
+              <Plus className="mr-2 h-4 w-4" /> {t("buildTemplate")}
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`${adminBase}/add-stock`}>Add Product</Link>
+            <Link href={`${adminBase}/add-stock`}>{t("addProduct")}</Link>
           </Button>
         </div>
       </div>
@@ -162,7 +172,7 @@ export default function ProductsPage() {
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
           <div className="flex-1">
-            <p className="font-semibold text-red-900">Failed to load inventory</p>
+            <p className="font-semibold text-red-900">{t("loadErrorTitle")}</p>
             <p className="text-sm text-red-700">{error}</p>
           </div>
         </div>
@@ -171,11 +181,13 @@ export default function ProductsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Inventory ({filteredProducts.length})</CardTitle>
+            <CardTitle>
+              {t("inventory", { count: filteredProducts.length })}
+            </CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
               <Input
-                placeholder="Search products..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-8"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -187,43 +199,54 @@ export default function ProductsPage() {
           {isLoading ? (
             <div className="py-10 text-center text-gray-500">
               <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-              Loading products...
+              {t("loading")}
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
-              <p className="text-lg font-medium">No products found</p>
-              <p className="text-sm">Create templates and add stock to get started</p>
+              <p className="text-lg font-medium">{t("emptyTitle")}</p>
+              <p className="text-sm">{t("emptySubtitle")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Template</TableHead>
-                    <TableHead>IMEI</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t("name")}</TableHead>
+                    <TableHead>{t("template")}</TableHead>
+                    <TableHead>{t("imei")}</TableHead>
+                    <TableHead>{t("price")}</TableHead>
+                    <TableHead>{t("brand")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => {
-                    const template = product.templateId ? templateById.get(product.templateId) : null;
+                    const template = product.templateId
+                      ? templateById.get(product.templateId)
+                      : null;
                     return (
                       <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>{template ? templateLabel(template) : "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          {product.name}
+                        </TableCell>
+                        <TableCell>
+                          {template ? templateLabel(template) : "-"}
+                        </TableCell>
                         <TableCell>{product.imei}</TableCell>
                         <TableCell className="font-medium">
                           {asNumberOrNull(product.price) !== null
                             ? `$${product.price.toFixed(2)}`
                             : "-"}
                         </TableCell>
-                        <TableCell>{subcategoryNameById.get(product.subcategoryId) || "Unknown"}</TableCell>
                         <TableCell>
-                          <Badge className={getStockBadge(Boolean(product.inStock))}>
-                            {product.inStock ? "In Stock" : "Out of Stock"}
+                          {subcategoryNameById.get(product.subcategoryId) ||
+                            t("unknown")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={getStockBadge(Boolean(product.inStock))}
+                          >
+                            {product.inStock ? t("inStock") : t("outOfStock")}
                           </Badge>
                         </TableCell>
                       </TableRow>

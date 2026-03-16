@@ -113,9 +113,6 @@ export async function adjustStock(
   });
 }
 
-/**
- * Get stock adjustment history (filtered by product or date range)
- */
 export async function getStockHistory(
   accessToken: string,
   filters?: {
@@ -143,9 +140,6 @@ export async function getStockHistory(
   });
 }
 
-/**
- * Get current stock levels for all products
- */
 export async function getStockLevels(
   accessToken: string,
 ): Promise<GetStockLevelsResponse> {

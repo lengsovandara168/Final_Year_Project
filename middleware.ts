@@ -18,7 +18,7 @@ export default async function middleware(request: NextRequest) {
     pathname.startsWith("/favicon") ||
     PUBLIC_FILE.test(pathname)
   ) {
-    return i18nResponse;
+    return NextResponse.next();
   }
 
   const segments = pathname.split("/").filter(Boolean);
@@ -132,5 +132,5 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|_static|_vercel|[\\w-]+\\.\\w+).*)"],
+  matcher: ["/((?!api|_next|_static|_vercel|.*\\..*).*)"],
 };

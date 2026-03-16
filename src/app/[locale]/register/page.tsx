@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { register, type ApiError } from "@/lib/api";
 import { locales } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 
 function getLocalePrefix(pathname: string | null) {
   const segments = pathname?.split("/").filter(Boolean) ?? [];
@@ -19,6 +20,7 @@ function getLocalePrefix(pathname: string | null) {
 }
 
 export default function RegisterPage() {
+  const t = useTranslations("AuthRegister");
   const router = useRouter();
   const pathname = usePathname();
   const [name, setName] = useState("");
@@ -32,7 +34,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     if (!name.trim() || !email.trim()) {
-      setError("Name and email are required.");
+      setError(t("nameEmailRequired"));
       setIsLoading(false);
       return;
     }
@@ -50,7 +52,7 @@ export default function RegisterPage() {
       router.push(`${localePrefix}/verify-otp?flow=register`);
     } catch (err) {
       const apiError = err as ApiError;
-      setError(apiError?.message || "Registration failed. Please try again.");
+      setError(apiError?.message || t("registerFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +61,7 @@ export default function RegisterPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold mb-6 text-center">Register</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center">{t("title")}</h1>
 
         {error ? (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -70,7 +72,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-1">
-              Name
+              {t("name")}
             </label>
             <Input
               id="name"
@@ -78,14 +80,14 @@ export default function RegisterPage() {
               name="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Enter your name"
+              placeholder={t("namePlaceholder")}
               required
             />
           </div>
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
+              {t("email")}
             </label>
             <Input
               id="email"
@@ -93,20 +95,23 @@ export default function RegisterPage() {
               name="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="Enter your email"
+              placeholder={t("emailPlaceholder")}
               required
             />
           </div>
 
           <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-            {isLoading ? "Registering..." : "Register"}
+            {isLoading ? t("registering") : t("register")}
           </Button>
         </form>
 
         <p className="text-center mt-4 text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link href="/en/login" className="text-blue-600 hover:underline">
-            Login here
+          {t("alreadyHaveAccount")}{" "}
+          <Link
+            href={`${getLocalePrefix(pathname)}/login`}
+            className="text-blue-600 hover:underline"
+          >
+            {t("loginHere")}
           </Link>
         </p>
       </Card>
