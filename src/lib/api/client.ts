@@ -10,6 +10,48 @@ export type ApiError = {
   details?: unknown;
 };
 
+function getClientAccessToken() {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const encodedName = "access_token=";
+  const cookies = document.cookie.split(";");
+  for (const rawCookie of cookies) {
+    const cookie = rawCookie.trim();
+    if (cookie.startsWith(encodedName)) {
+      return decodeURIComponent(cookie.slice(encodedName.length));
+    }
+  }
+
+  return null;
+}
+
+function handleAuthErrorStatus(status: number) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (status === 401) {
+    document.cookie = "access_token=; Path=/; Max-Age=0; SameSite=Lax";
+    document.cookie = "auth_user=; Path=/; Max-Age=0; SameSite=Lax";
+
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("auth_user");
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("auth_user");
+
+    const locale =
+      window.location.pathname.split("/").filter(Boolean)[0] || "en";
+    window.location.assign(`/${locale}/login`);
+    return;
+  }
+
+  if (status === 403) {
+    document.cookie = `flash_toast=${encodeURIComponent("No permission to perform this action.")}; Path=/; Max-Age=10; SameSite=Lax`;
+  }
+}
+
 function buildApiUrl(path: string) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
@@ -51,11 +93,23 @@ async function parseError(response: Response) {
     }
   }
 
-  return {
+  const errorObj = {
     message,
     status: response.status,
     details,
   } satisfies ApiError;
+
+  // Log for debugging
+  if (typeof window !== "undefined") {
+    console.debug("API Error:", {
+      url: response.url,
+      status: response.status,
+      message,
+      details,
+    });
+  }
+
+  return errorObj;
 }
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}) {
@@ -66,21 +120,41 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, {
-    ...init,
-    headers,
-  });
+  try {
+    console.debug(`📤 API Request: ${init.method || "GET"} ${url}`);
 
-  if (!response.ok) {
-    throw await parseError(response);
+    const response = await fetch(url, {
+      ...init,
+      headers,
+    });
+
+    console.debug(`📥 API Response: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      handleAuthErrorStatus(response.status);
+      const error = await parseError(response);
+      throw error;
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return (await response.json()) as T;
+    }
+
+    return (await response.text()) as T;
+  } catch (error) {
+    // Check if it's a network error
+    if (error instanceof TypeError) {
+      console.error(`🌐 Network Error:`, error.message);
+      throw new Error(`Network error: ${error.message}`);
+    }
+
+    // Log unexpected errors (not ApiError)
+    if (!(error && typeof error === "object" && "status" in error)) {
+      console.error("Unexpected API error:", error);
+    }
+    throw error;
   }
-
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
-    return (await response.json()) as T;
-  }
-
-  return (await response.text()) as T;
 }
 
 // Fetch function without credentials for public endpoints (to reduce CORS issues)

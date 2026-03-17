@@ -25,6 +25,7 @@ import {
   uploadProductImage,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml,image/avif";
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -195,15 +196,7 @@ export default function ProductTemplatesPage() {
   const t = useTranslations("AdminTemplates");
   const pathname = usePathname();
   const router = useRouter();
-
-  const [templates, setTemplates] = useState<ProductTemplate[]>([]);
-  const [subcategoriesByParent, setSubcategoriesByParent] = useState<
-    Record<ParentCategory, { id: string; name: string; slug: string }[]>
-  >({
-    phones: [],
-    tablets: [],
-    accessories: [],
-  });
+  const queryClient = useQueryClient();
 
   const [templateForm, setTemplateForm] =
     useState<TemplateFormState>(initialTemplateForm);
@@ -218,10 +211,6 @@ export default function ProductTemplatesPage() {
   const [uploadedImageName, setUploadedImageName] = useState<string | null>(
     null,
   );
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -242,39 +231,36 @@ export default function ProductTemplatesPage() {
     return null;
   }, [locale, router]);
 
-  const loadData = useCallback(async () => {
-    const accessToken = await ensureAccessToken();
-    if (!accessToken) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
+  const { data: fetchedData, isLoading } = useQuery({
+    queryKey: ["productTemplates"],
+    queryFn: async () => {
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) throw new Error("Unauthorized");
 
       const [templatesResponse, subcategoriesResponse] = await Promise.all([
         getProductTemplates(accessToken),
         getAddProductSubcategories(accessToken),
       ]);
 
-      const loadedTemplates = Array.isArray(templatesResponse.data)
-        ? templatesResponse.data
-        : [];
+      return {
+        templates: Array.isArray(templatesResponse.data)
+          ? templatesResponse.data
+          : [],
+        subcategories: {
+          phones: subcategoriesResponse.data.phones ?? [],
+          tablets: subcategoriesResponse.data.tablets ?? [],
+          accessories: subcategoriesResponse.data.accessories ?? [],
+        },
+      };
+    },
+  });
 
-      setTemplates(loadedTemplates);
-      setSubcategoriesByParent({
-        phones: subcategoriesResponse.data.phones ?? [],
-        tablets: subcategoriesResponse.data.tablets ?? [],
-        accessories: subcategoriesResponse.data.accessories ?? [],
-      });
-    } catch (loadError) {
-      setError(toErrorMessage(loadError));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [ensureAccessToken]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  const templates = fetchedData?.templates ?? [];
+  const subcategoriesByParent = fetchedData?.subcategories ?? {
+    phones: [],
+    tablets: [],
+    accessories: [],
+  };
 
   const availableBrands =
     subcategoriesByParent[templateForm.parentCategory] ?? [];
@@ -363,7 +349,61 @@ export default function ProductTemplatesPage() {
     });
   }, [templateSearch, templates]);
 
-  const onUploadImage = async (file: File) => {
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) throw new Error("Unauthorized");
+      return uploadProductImage(file, accessToken);
+    },
+    onSuccess: (uploadResponse, file) => {
+      setImageUrl(uploadResponse.data.url ?? "");
+      setUploadedImageName(file.name);
+      setSuccess(t("imageUploaded"));
+    },
+    onError: (uploadError) => {
+      setError(toErrorMessage(uploadError));
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (specParseValue: { key: string; value: string }[]) => {
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) throw new Error("Unauthorized");
+
+      return createProductTemplate(
+        {
+          parentCategory: templateForm.parentCategory,
+          subcategoryName: templateForm.subcategoryName.trim(),
+          name: templateForm.name.trim(),
+          storage: templateForm.storage.trim(),
+          color: templateForm.color.trim(),
+          image: imageUrl,
+          description: templateForm.description.trim() || undefined,
+          specifications: specParseValue,
+          isActive: templateForm.isActive,
+        },
+        accessToken,
+      );
+    },
+    onSuccess: (created) => {
+      // Automatically re-fetches template list so new entry appears right away
+      queryClient.invalidateQueries({ queryKey: ["productTemplates"] });
+
+      setTemplateForm((prev) => ({
+        ...initialTemplateForm,
+        parentCategory: prev.parentCategory,
+        subcategoryName: prev.subcategoryName,
+      }));
+      setImageUrl("");
+      setUploadedImageName(null);
+      setSuccess(t("templateCreated", { name: created.data.name }));
+    },
+    onError: (createError) => {
+      setError(toErrorMessage(createError));
+    },
+  });
+
+  const onUploadImage = (file: File) => {
     setError(null);
     setSuccess(null);
 
@@ -377,28 +417,12 @@ export default function ProductTemplatesPage() {
       return;
     }
 
-    const accessToken = await ensureAccessToken();
-    if (!accessToken) return;
-
-    try {
-      setIsUploading(true);
-      const uploadResponse = await uploadProductImage(file, accessToken);
-      setImageUrl(uploadResponse.data.url ?? "");
-      setUploadedImageName(file.name);
-      setSuccess(t("imageUploaded"));
-    } catch (uploadError) {
-      setError(toErrorMessage(uploadError));
-    } finally {
-      setIsUploading(false);
-    }
+    uploadMutation.mutate(file);
   };
 
-  const onCreateTemplate = async () => {
+  const onCreateTemplate = () => {
     setError(null);
     setSuccess(null);
-
-    const accessToken = await ensureAccessToken();
-    if (!accessToken) return;
 
     if (
       !templateForm.name.trim() ||
@@ -423,39 +447,7 @@ export default function ProductTemplatesPage() {
       return;
     }
 
-    try {
-      setIsCreatingTemplate(true);
-
-      const created = await createProductTemplate(
-        {
-          parentCategory: templateForm.parentCategory,
-          subcategoryName: templateForm.subcategoryName.trim(),
-          name: templateForm.name.trim(),
-          storage: templateForm.storage.trim(),
-          color: templateForm.color.trim(),
-          image: imageUrl,
-          description: templateForm.description.trim() || undefined,
-          specifications: specParse.value,
-          isActive: templateForm.isActive,
-        },
-        accessToken,
-      );
-
-      setTemplates((prev) => [created.data, ...prev]);
-      setTemplateForm((prev) => ({
-        ...initialTemplateForm,
-        parentCategory: prev.parentCategory,
-        subcategoryName: prev.subcategoryName,
-      }));
-      setImageUrl("");
-      setUploadedImageName(null);
-      setSuccess(t("templateCreated", { name: created.data.name }));
-      void loadData();
-    } catch (createError) {
-      setError(toErrorMessage(createError));
-    } finally {
-      setIsCreatingTemplate(false);
-    }
+    createMutation.mutate(specParse.value);
   };
 
   return (
@@ -739,7 +731,7 @@ export default function ProductTemplatesPage() {
               <p className="text-xs text-gray-500">
                 {t("uploadImageDemoHint")}
               </p>
-              {isUploading && (
+              {uploadMutation.isPending && (
                 <span className="inline-flex items-center text-sm text-gray-600">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {t("uploading")}
@@ -775,10 +767,10 @@ export default function ProductTemplatesPage() {
           <div className="mt-5 flex justify-end">
             <Button
               onClick={onCreateTemplate}
-              disabled={isCreatingTemplate || isUploading}
+              disabled={createMutation.isPending || uploadMutation.isPending}
               className="bg-black text-white hover:bg-gray-800"
             >
-              {isCreatingTemplate ? (
+              {createMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                   {t("creatingTemplate")}

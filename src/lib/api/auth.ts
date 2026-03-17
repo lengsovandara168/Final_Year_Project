@@ -1,4 +1,5 @@
 import { apiFetch, apiFetchPublic, apiFetchWithAutoAuth } from "./client";
+import type { PermissionSet, UserRole } from "@/lib/rbac";
 
 export type AdminUserRole = "user" | "staff" | "admin";
 
@@ -49,7 +50,9 @@ function normalizeAdminUsers(payload: unknown): AdminUser[] {
       }
 
       const role: AdminUserRole =
-        source.role === "admin" || source.role === "staff" || source.role === "user"
+        source.role === "admin" ||
+        source.role === "staff" ||
+        source.role === "user"
           ? source.role
           : "user";
 
@@ -69,91 +72,6 @@ function normalizeAdminUsers(payload: unknown): AdminUser[] {
       return user;
     })
     .filter((user): user is AdminUser => user !== null);
-}
-
-export type GetAdminUsersResponse = {
-  ok?: boolean;
-  data: AdminUser[];
-};
-
-export async function getAdminUsers() {
-  const payload = await apiFetchWithAutoAuth<unknown>("/v1/admin/users", {
-    method: "GET",
-  });
-
-  return {
-    data: normalizeAdminUsers(payload),
-  } satisfies GetAdminUsersResponse;
-}
-
-export type GetAdminUserPermissionsResponse = {
-  ok?: boolean;
-  permissions: unknown;
-};
-
-export async function getAdminUserPermissions(userId: string) {
-  const payload = await apiFetchWithAutoAuth<unknown>(
-    `/v1/admin/users/${encodeURIComponent(userId)}/permissions`,
-    {
-      method: "GET",
-    },
-  );
-
-  if (payload && typeof payload === "object") {
-    const data = payload as {
-      permissions?: unknown;
-      data?: { permissions?: unknown };
-    };
-
-    return {
-      permissions: data.permissions ?? data.data?.permissions ?? null,
-    } satisfies GetAdminUserPermissionsResponse;
-  }
-
-  return {
-    permissions: null,
-  } satisfies GetAdminUserPermissionsResponse;
-}
-
-export async function updateAdminUserRole(userId: string, role: AdminUserRole) {
-  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
-    `/v1/admin/users/${encodeURIComponent(userId)}/role`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({ role }),
-    },
-  );
-}
-
-export async function updateAdminUserPermissions(
-  userId: string,
-  permissions: Partial<{
-    canCheckIn: boolean;
-    canSell: boolean;
-    canViewOrders: boolean;
-    canViewCustomers: boolean;
-    canViewDashboard: boolean;
-  }>,
-) {
-  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
-    `/v1/admin/users/${encodeURIComponent(userId)}/permissions`,
-    {
-      method: "PATCH",
-      body: JSON.stringify(permissions),
-    },
-  );
-}
-
-// Assign role to user by email (admin only)
-export async function assignRoleByEmail(email: string, role: "user" | "staff" | "admin") {
-  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
-    "/v1/admin/users/assign-role-by-email",
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, role }),
-    }
-  );
 }
 
 export type RegisterRequest = {
@@ -213,7 +131,8 @@ export type OtpVerifyResponse = {
   ok: boolean;
   userId: string;
   email: string;
-  role: string;
+  role: UserRole;
+  permissions: PermissionSet | null;
   accessToken: string;
 };
 
@@ -241,9 +160,11 @@ export async function logout(accessToken: string) {
 }
 
 export type UserProfile = {
+  ok?: boolean;
   user_id: string;
   email: string;
-  role: string;
+  role: UserRole;
+  permissions: PermissionSet | null;
 };
 
 export async function getMe(accessToken: string) {
@@ -253,6 +174,59 @@ export async function getMe(accessToken: string) {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+}
+
+export type AdminUsersResponse = {
+  ok: boolean;
+  data: AdminUser[];
+};
+
+export async function getAdminUsers() {
+  return apiFetchWithAutoAuth<AdminUsersResponse>("/v1/admin/users", {
+    method: "GET",
+  });
+}
+
+export async function updateAdminUserRole(userId: string, role: UserRole) {
+  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
+    `/v1/admin/users/${userId}/role`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    },
+  );
+}
+
+export async function getAdminUserPermissions(userId: string) {
+  return apiFetchWithAutoAuth<{
+    ok?: boolean;
+    permissions?: PermissionSet | null;
+  }>(`/v1/admin/users/${userId}/permissions`, {
+    method: "GET",
+  });
+}
+
+export async function updateAdminUserPermissions(
+  userId: string,
+  permissions: Partial<PermissionSet>,
+) {
+  return apiFetchWithAutoAuth<{
+    ok?: boolean;
+    permissions?: PermissionSet | null;
+  }>(`/v1/admin/users/${userId}/permissions`, {
+    method: "PATCH",
+    body: JSON.stringify(permissions),
+  });
+}
+
+export async function assignRoleByEmail(email: string, role: UserRole) {
+  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
+    `/v1/admin/users/assign-role-by-email`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ email, role }),
+    },
+  );
 }
 
 export type DeleteAccountRequest = {

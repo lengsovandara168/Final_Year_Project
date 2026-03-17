@@ -11,6 +11,9 @@ import { IncomeAnalyticsChart } from "@/components/dashboard/IncomeAnalyticsChar
 import { ProductTypeAnalysisChart } from "@/components/dashboard/ProductTypeAnalysisChart";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle } from "lucide-react";
+import { getValidatedServerSession } from "@/lib/auth-server";
+import { redirect } from "next/navigation";
+import { getFirstStaffAdminPath, hasPermission } from "@/lib/rbac";
 
 export default async function DashboardPage({
   params,
@@ -18,8 +21,18 @@ export default async function DashboardPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "Dashboard" });
+
+  const session = await getValidatedServerSession();
   const cookieStore = await cookies();
+
+  if (
+    session?.user?.role === "staff" &&
+    !hasPermission("staff", session.user.permissions, "canViewDashboard")
+  ) {
+    redirect(getFirstStaffAdminPath(locale, session.user.permissions));
+  }
+
+  const t = await getTranslations({ locale, namespace: "Dashboard" });
   const accessToken = cookieStore.get("access_token")?.value || "";
 
   let data;
@@ -46,7 +59,10 @@ export default async function DashboardPage({
           <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
           <p className="text-sm text-gray-500 md:text-base">{t("welcome")}</p>
         </div>
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+        <Badge
+          variant="outline"
+          className="bg-blue-50 text-blue-700 border-blue-200"
+        >
           {t("realTimeData")}
         </Badge>
       </div>
@@ -68,16 +84,12 @@ export default async function DashboardPage({
       <div className="mb-6 md:mb-8">
         <IncomeAnalyticsChart
           locale={locale}
-          incomeAnalytics={
-            data?.incomeAnalytics ?? { monthly: [], yearly: [] }
-          }
+          incomeAnalytics={data?.incomeAnalytics ?? { monthly: [], yearly: [] }}
         />
       </div>
 
       <div className="mb-6 md:mb-8">
-        <ProductTypeAnalysisChart
-          items={data?.productTypeAnalytics ?? []}
-        />
+        <ProductTypeAnalysisChart items={data?.productTypeAnalytics ?? []} />
       </div>
 
       {/* Analytics row — order status + inventory health */}
@@ -97,7 +109,10 @@ export default async function DashboardPage({
 
       {/* Top products + recent orders */}
       <div className="mb-6 grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
-        <TopSellingProducts locale={locale} products={data?.topSellingProducts} />
+        <TopSellingProducts
+          locale={locale}
+          products={data?.topSellingProducts}
+        />
         <RecentOrders locale={locale} orders={data?.recentOrders} />
       </div>
 
