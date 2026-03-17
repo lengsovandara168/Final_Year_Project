@@ -8,12 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function SidebarUserNav({
   adminLabel,
@@ -24,15 +19,15 @@ export function SidebarUserNav({
 }) {
   const handleLogout = useLogout();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { isMobile } = useSidebar();
+  const isMobile = useIsMobile();
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
+    <div className="mt-auto p-2">
+      <div>
         <Popover>
           <PopoverTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
+            <button
+              type="button"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <img
@@ -41,7 +36,7 @@ export function SidebarUserNav({
                 alt="Avatar"
               />
               <span className="truncate font-semibold">{adminLabel}</span>
-            </SidebarMenuButton>
+            </button>
           </PopoverTrigger>
           <PopoverContent
             side={isMobile ? "bottom" : "right"}
@@ -70,7 +65,7 @@ export function SidebarUserNav({
             </button>
           </PopoverContent>
         </Popover>
-      </SidebarMenuItem>
-    </SidebarMenu>
+      </div>
+    </div>
   );
 }

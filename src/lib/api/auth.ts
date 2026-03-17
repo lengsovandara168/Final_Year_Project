@@ -1,4 +1,149 @@
 import { apiFetch, apiFetchPublic, apiFetchWithAutoAuth } from "./client";
+
+export type AdminUserRole = "user" | "staff" | "admin";
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name?: string;
+  role: AdminUserRole;
+};
+
+type AdminUserSource = {
+  id?: unknown;
+  userId?: unknown;
+  user_id?: unknown;
+  staffId?: unknown;
+  email?: unknown;
+  name?: unknown;
+  fullName?: unknown;
+  username?: unknown;
+  role?: unknown;
+};
+
+function normalizeAdminUsers(payload: unknown): AdminUser[] {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const root = payload as Record<string, unknown>;
+  const users = Array.isArray(root.data)
+    ? root.data
+    : Array.isArray(root.users)
+      ? root.users
+      : [];
+
+  return users
+    .map((item): AdminUser | null => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const source = item as AdminUserSource;
+      const id = source.id ?? source.userId ?? source.user_id ?? source.staffId;
+      const email = source.email;
+      const name = source.name ?? source.fullName ?? source.username;
+
+      if (typeof id !== "string" || typeof email !== "string") {
+        return null;
+      }
+
+      const role: AdminUserRole =
+        source.role === "admin" || source.role === "staff" || source.role === "user"
+          ? source.role
+          : "user";
+
+      const normalizedName =
+        typeof name === "string" && name.trim() ? name : undefined;
+
+      const user: AdminUser = {
+        id,
+        email,
+        role,
+      };
+
+      if (normalizedName) {
+        user.name = normalizedName;
+      }
+
+      return user;
+    })
+    .filter((user): user is AdminUser => user !== null);
+}
+
+export type GetAdminUsersResponse = {
+  ok?: boolean;
+  data: AdminUser[];
+};
+
+export async function getAdminUsers() {
+  const payload = await apiFetchWithAutoAuth<unknown>("/v1/admin/users", {
+    method: "GET",
+  });
+
+  return {
+    data: normalizeAdminUsers(payload),
+  } satisfies GetAdminUsersResponse;
+}
+
+export type GetAdminUserPermissionsResponse = {
+  ok?: boolean;
+  permissions: unknown;
+};
+
+export async function getAdminUserPermissions(userId: string) {
+  const payload = await apiFetchWithAutoAuth<unknown>(
+    `/v1/admin/users/${encodeURIComponent(userId)}/permissions`,
+    {
+      method: "GET",
+    },
+  );
+
+  if (payload && typeof payload === "object") {
+    const data = payload as {
+      permissions?: unknown;
+      data?: { permissions?: unknown };
+    };
+
+    return {
+      permissions: data.permissions ?? data.data?.permissions ?? null,
+    } satisfies GetAdminUserPermissionsResponse;
+  }
+
+  return {
+    permissions: null,
+  } satisfies GetAdminUserPermissionsResponse;
+}
+
+export async function updateAdminUserRole(userId: string, role: AdminUserRole) {
+  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
+    `/v1/admin/users/${encodeURIComponent(userId)}/role`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    },
+  );
+}
+
+export async function updateAdminUserPermissions(
+  userId: string,
+  permissions: Partial<{
+    canCheckIn: boolean;
+    canSell: boolean;
+    canViewOrders: boolean;
+    canViewCustomers: boolean;
+    canViewDashboard: boolean;
+  }>,
+) {
+  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
+    `/v1/admin/users/${encodeURIComponent(userId)}/permissions`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(permissions),
+    },
+  );
+}
+
 // Assign role to user by email (admin only)
 export async function assignRoleByEmail(email: string, role: "user" | "staff" | "admin") {
   return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
