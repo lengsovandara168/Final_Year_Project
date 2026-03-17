@@ -1,4 +1,15 @@
-import { apiFetch, apiFetchPublic } from "./client";
+import { apiFetch, apiFetchPublic, apiFetchWithAutoAuth } from "./client";
+// Assign role to user by email (admin only)
+export async function assignRoleByEmail(email: string, role: "user" | "staff" | "admin") {
+  return apiFetchWithAutoAuth<{ ok?: boolean; message?: string }>(
+    "/v1/admin/users/assign-role-by-email",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role }),
+    }
+  );
+}
 
 export type RegisterRequest = {
   email: string;
