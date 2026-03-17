@@ -109,3 +109,61 @@ export async function apiFetchPublic<T>(path: string, init: RequestInit = {}) {
 
   return (await response.text()) as T;
 }
+
+function readCookieValue(name: string) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const encodedName = `${name}=`;
+  const cookies = document.cookie.split(";");
+
+  for (const rawCookie of cookies) {
+    const cookie = rawCookie.trim();
+    if (cookie.startsWith(encodedName)) {
+      return decodeURIComponent(cookie.slice(encodedName.length));
+    }
+  }
+
+  return null;
+}
+
+function readAccessTokenFromBrowser() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const fromCookie = readCookieValue("access_token");
+  if (fromCookie) {
+    return fromCookie;
+  }
+
+  const fromLocalStorage = window.localStorage.getItem("access_token");
+  if (fromLocalStorage) {
+    return fromLocalStorage;
+  }
+
+  const fromSessionStorage = window.sessionStorage.getItem("access_token");
+  if (fromSessionStorage) {
+    return fromSessionStorage;
+  }
+
+  return null;
+}
+
+export async function apiFetchWithAutoAuth<T>(
+  path: string,
+  init: RequestInit = {},
+) {
+  const headers = new Headers(init.headers);
+  const accessToken = readAccessTokenFromBrowser();
+
+  if (accessToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  return apiFetch<T>(path, {
+    ...init,
+    headers,
+  });
+}
