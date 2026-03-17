@@ -2,14 +2,18 @@
 
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { hasPermission, type PermissionSet } from "@/lib/rbac";
+import { hasPermission, normalizePermissions, type PermissionSet } from "@/lib/rbac";
 
 export function usePermissions() {
   const { user } = useAuth();
 
   return useMemo(() => {
     const role = user?.role;
-    const permissions = (user?.permissions ?? null) as PermissionSet | null;
+    const rawPermissions =
+      user && "permissions" in user
+        ? (user as { permissions?: unknown }).permissions
+        : null;
+    const permissions = normalizePermissions(rawPermissions);
 
     return {
       role,
