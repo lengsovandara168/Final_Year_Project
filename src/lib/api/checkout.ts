@@ -45,8 +45,11 @@ export async function initBakongCheckout(
 ) {
   return apiFetch<InitBakongCheckoutResponse>("/v1/checkout/bakong/init", {
     method: "POST",
+    cache: "no-store",
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      "Cache-Control": "no-cache, no-store, max-age=0",
+      Pragma: "no-cache",
     },
     body: JSON.stringify(payload),
   });
@@ -68,8 +71,11 @@ export async function getBakongPaymentStatus(
     `/v1/checkout/bakong/${paymentId}/status`,
     {
       method: "GET",
+      cache: "no-store",
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        "Cache-Control": "no-cache, no-store, max-age=0",
+        Pragma: "no-cache",
       },
     },
   );
@@ -87,8 +93,11 @@ export async function cancelBakongPayment(
     `/v1/checkout/bakong/${paymentId}/cancel`,
     {
       method: "POST",
+      cache: "no-store",
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        "Cache-Control": "no-cache, no-store, max-age=0",
+        Pragma: "no-cache",
       },
     },
   );

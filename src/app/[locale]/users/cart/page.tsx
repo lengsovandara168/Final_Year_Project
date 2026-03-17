@@ -51,7 +51,6 @@ type PaymentUiState =
   | "idle"
   | "initializing"
   | "ready"
-  | "checking"
   | "paid"
   | "failed"
   | "expired"
@@ -181,7 +180,7 @@ function isShippingComplete(shipping: BakongCheckoutShipping) {
 }
 
 function isPendingPaymentState(state: PaymentUiState) {
-  return ["initializing", "ready", "checking"].includes(state);
+  return ["initializing", "ready"].includes(state);
 }
 
 export default function CartPage() {
@@ -196,7 +195,6 @@ export default function CartPage() {
     useState<BakongCheckoutShipping>(initialShippingState);
   const [showErrors, setShowErrors] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentUiState>("idle");
   const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(
     null,
@@ -269,7 +267,6 @@ export default function CartPage() {
     lastCountdownTriggerRef.current = null;
     setPaymentSession(null);
     setRemainingMs(null);
-    setStatusNotice(null);
     setCheckoutError(null);
     setPaymentState("idle");
   }
@@ -293,7 +290,6 @@ export default function CartPage() {
       }
 
       lastCountdownTriggerRef.current = paymentId;
-      setStatusNotice("QR reached its expiry time. Checking with Bakong...");
       void checkPaymentStatus(paymentId);
     };
 
@@ -360,16 +356,12 @@ export default function CartPage() {
     }
 
     statusRequestInFlightRef.current = true;
-    setPaymentState((current) =>
-      current === "initializing" ? current : "checking",
-    );
 
     try {
       const response = await getBakongPaymentStatus(paymentId, accessToken);
 
       if (response.status === "pending") {
         setPaymentState("ready");
-        setStatusNotice(null);
         return;
       }
 
@@ -378,7 +370,6 @@ export default function CartPage() {
 
       if (response.status === "paid") {
         setPaymentState("paid");
-        setStatusNotice("Payment confirmed. Redirecting...");
         await persistAndRedirectToSuccess(response);
         return;
       }
@@ -400,7 +391,6 @@ export default function CartPage() {
       }
 
       setPaymentState("ready");
-      setStatusNotice("Connection issue while checking payment. Retrying...");
     } finally {
       statusRequestInFlightRef.current = false;
     }
@@ -428,7 +418,6 @@ export default function CartPage() {
     }
 
     setCheckoutError(null);
-    setStatusNotice(null);
     setPaymentState("initializing");
     setPaymentSession(null);
     setRemainingMs(null);
@@ -567,7 +556,6 @@ export default function CartPage() {
 
     setShowErrors(false);
     setCheckoutError(null);
-    setStatusNotice(null);
     setStep(target);
   }
 
@@ -832,13 +820,6 @@ export default function CartPage() {
                 </div>
               )}
 
-              {statusNotice && (
-                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  <LoaderCircle className="mt-0.5 h-4 w-4 flex-shrink-0 animate-spin" />
-                  <span>{statusNotice}</span>
-                </div>
-              )}
-
               {step === "cart" && (
                 <>
                   {items.map((item) => (
@@ -961,10 +942,6 @@ export default function CartPage() {
                           }
                           maxLength={BAKONG_BILL_NAME_MAX_LENGTH}
                         />
-                        <p className="mt-1 text-xs text-gray-500">
-                          Bakong bill name limit: {normalizedBillName.length}/
-                          {BAKONG_BILL_NAME_MAX_LENGTH}
-                        </p>
                         {!isValidBillName(shipping.fullName) &&
                           shipping.fullName.trim() && (
                             <p className="mt-1 text-xs text-red-600">
@@ -1072,20 +1049,23 @@ export default function CartPage() {
                     {paymentSession && paymentState !== "initializing" && (
                       <>
                         <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
-                          <div className="rounded-2xl border bg-white p-4">
-                            <div
-                              className={`overflow-hidden rounded-xl border bg-white p-4 ${
-                                paymentState === "expired"
-                                  ? "pointer-events-none opacity-40 grayscale"
-                                  : ""
-                              }`}
-                            >
-                              <KhqrCode
-                                value={paymentSession.qrString}
-                                size={280}
-                                className="mx-auto block h-auto w-full max-w-[280px]"
-                              />
-                            </div>
+                          <div
+                            className={`${
+                              paymentState === "expired"
+                                ? "pointer-events-none opacity-40 grayscale"
+                                : ""
+                            }`}
+                          >
+                            <KhqrCode
+                              value={paymentSession.qrString}
+                              size={320}
+                              className="mx-auto"
+                              receiverName={normalizedBillName || shipping.fullName.trim()}
+                              amountLabel={formatPrice(
+                                paymentSession.amount,
+                                paymentSession.currency,
+                              )}
+                            />
                           </div>
 
                           <div className="space-y-4">
@@ -1100,14 +1080,18 @@ export default function CartPage() {
                                 )}
                               </p>
                               <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <Badge variant="secondary" className="gap-1">
+                                <Badge
+                                  variant="secondary"
+                                  className="gap-1 rounded-full bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm"
+                                >
                                   <Clock3 className="h-3.5 w-3.5" />
                                   Expires in {formatCountdown(remainingMs)}
                                 </Badge>
-                                <Badge variant="secondary">
-                                  {paymentState === "checking"
-                                    ? "Checking payment"
-                                    : paymentState.toUpperCase()}
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
+                                >
+                                  Ready
                                 </Badge>
                               </div>
                             </div>
@@ -1126,8 +1110,7 @@ export default function CartPage() {
                               </ul>
                             </div>
 
-                            {(paymentState === "ready" ||
-                              paymentState === "checking") && (
+                            {paymentState === "ready" && (
                               <div className="flex flex-col gap-3 sm:flex-row">
                                 <Button
                                   className="flex-1 bg-black text-white hover:bg-gray-800"
