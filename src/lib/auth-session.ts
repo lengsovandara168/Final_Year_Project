@@ -1,10 +1,13 @@
 "use client";
 
+import type { PermissionSet } from "@/lib/rbac";
+
 export type SessionUser = {
   id: string;
   email: string;
   role: string;
   name: string;
+  permissions: PermissionSet | null;
 };
 
 export type AuthSessionPayload = {
@@ -12,6 +15,7 @@ export type AuthSessionPayload = {
   userId: string;
   email: string;
   role: string;
+  permissions: PermissionSet | null;
   accessToken: string;
 };
 
@@ -56,6 +60,7 @@ export function persistAuthSession(payload: AuthSessionPayload) {
     email: payload.email,
     role: payload.role,
     name: payload.name,
+    permissions: payload.permissions,
   };
 
   setCookie("access_token", payload.accessToken);
@@ -104,6 +109,16 @@ export function getSessionSnapshot(): SessionSnapshot {
           id: parsed.id,
           email: parsed.email,
           role: parsed.role,
+          permissions:
+            parsed.permissions && typeof parsed.permissions === "object"
+              ? {
+                  canCheckIn: Boolean(parsed.permissions.canCheckIn),
+                  canSell: Boolean(parsed.permissions.canSell),
+                  canViewOrders: Boolean(parsed.permissions.canViewOrders),
+                  canViewCustomers: Boolean(parsed.permissions.canViewCustomers),
+                  canViewDashboard: Boolean(parsed.permissions.canViewDashboard),
+                }
+              : null,
         };
       }
     } catch {

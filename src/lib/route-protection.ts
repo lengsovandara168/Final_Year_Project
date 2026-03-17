@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { normalizePermissions, type PermissionSet } from "@/lib/rbac";
 
 type AuthUser = {
   id: string;
   email: string;
   role: string;
   name?: string;
+  permissions: PermissionSet | null;
 };
 
 type ResolveAuthResult = {
@@ -35,6 +37,7 @@ function parseAuthUser(rawUser: string | undefined) {
           email: parsed.email,
           role: parsed.role,
           name: typeof parsed.name === "string" ? parsed.name : undefined,
+          permissions: normalizePermissions(parsed.permissions),
         } satisfies AuthUser;
       }
     } catch {
@@ -79,6 +82,7 @@ async function fetchMe(request: NextRequest, accessToken: string) {
     userId?: string;
     email?: string;
     role?: string;
+    permissions?: unknown;
   };
 
   if (!data.ok || !data.userId || !data.email || !data.role) {
@@ -91,6 +95,7 @@ async function fetchMe(request: NextRequest, accessToken: string) {
       id: data.userId,
       email: data.email,
       role: data.role,
+      permissions: normalizePermissions(data.permissions),
     } satisfies AuthUser,
   };
 }

@@ -103,6 +103,7 @@ export default function VerifyOtpPage() {
         userId: response.userId,
         email: response.email,
         role: response.role,
+        permissions: response.permissions ?? null,
         accessToken: response.accessToken,
         name: response.email.split("@")[0] || "User",
       });
@@ -123,6 +124,10 @@ export default function VerifyOtpPage() {
           return;
         }
         if (response.role === "admin") {
+          router.push(`${localePrefix}/admin`);
+          return;
+        }
+        if (response.role === "staff") {
           router.push(`${localePrefix}/admin`);
           return;
         }

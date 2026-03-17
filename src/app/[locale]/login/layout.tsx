@@ -16,6 +16,9 @@ export default async function LoginLayout({
     if (session.user.role === "admin") {
       redirect(`/${locale}/admin`);
     }
+    if (session.user.role === "staff") {
+      redirect(`/${locale}/admin`);
+    }
     if (session.user.role === "user") {
       redirect(`/${locale}/users`);
     }

@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
+import { normalizePermissions, type PermissionSet } from "@/lib/rbac";
 
 type SessionUser = {
   id: string;
   email: string;
   role: string;
+  permissions: PermissionSet | null;
 };
 
 type ServerSession = {
@@ -16,6 +18,7 @@ type MePayload = {
   userId?: string;
   email?: string;
   role?: string;
+  permissions?: unknown;
 };
 
 type ValidatedServerSession = {
@@ -49,6 +52,7 @@ function parseAuthUserCookie(value: string | undefined) {
         id: parsed.id,
         email: parsed.email,
         role: parsed.role,
+        permissions: normalizePermissions(parsed.permissions),
       } satisfies SessionUser;
     }
   } catch {
@@ -99,6 +103,7 @@ async function verifyWithMe(accessToken: string) {
       id: data.userId,
       email: data.email,
       role: data.role,
+      permissions: normalizePermissions(data.permissions),
     } satisfies SessionUser,
   };
 }

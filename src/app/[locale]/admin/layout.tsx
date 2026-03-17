@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/dashboard-layout";
+import { Toaster } from "@/components/ui/sonner";
 
 import { redirect } from "next/navigation";
 import { getValidatedServerSession } from "@/lib/auth-server";
@@ -18,9 +19,14 @@ export default async function AdminLayout({
     redirect(`/${locale}/login?next=/${locale}/admin`);
   }
 
-  if (session.user.role !== "admin") {
-    redirect(`/${locale}/users`);
+  if (session.user.role !== "admin" && session.user.role !== "staff") {
+    redirect(`/${locale}/login`);
   }
 
-  return <DashboardLayout locale={locale}>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout locale={locale}>
+      {children}
+      <Toaster position="top-right" />
+    </DashboardLayout>
+  );
 }

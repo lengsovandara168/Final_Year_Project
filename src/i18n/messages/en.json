@@ -12,6 +12,7 @@
     "orders": "Orders",
     "sales": "Sales",
     "customers": "Customers",
+    "staffAccess": "Staff Access",
     "admin": "Admin",
     "logout": "Logout"
   },
