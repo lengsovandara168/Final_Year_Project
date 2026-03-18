@@ -38,8 +38,8 @@ import { locales } from "@/i18n/routing";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import {
   getAddProductSubcategories,
+  getAdminProducts,
   getProductTemplates,
-  getProducts,
   type Product,
   type ProductTemplate,
 } from "@/lib/api";
@@ -217,7 +217,7 @@ export default function ProductsPage() {
 
       const [productsResponse, templatesResponse, subcategoriesResponse] =
         await Promise.all([
-          getProducts(accessToken),
+          getAdminProducts(accessToken),
           getProductTemplates(accessToken),
           getAddProductSubcategories(accessToken),
         ]);
