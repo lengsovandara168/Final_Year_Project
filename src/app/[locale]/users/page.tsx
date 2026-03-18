@@ -182,6 +182,19 @@ function buildProductTemplateKey(product: Product) {
 function deduplicateProductTemplates(products: Product[]) {
   const grouped = new Map<string, Product>();
 
+  const collectImages = (candidate: Product) => {
+    const next = new Set<string>();
+    if (candidate.image) next.add(candidate.image);
+    if (Array.isArray(candidate.images)) {
+      for (const url of candidate.images) {
+        if (typeof url === "string" && url.trim()) {
+          next.add(url);
+        }
+      }
+    }
+    return Array.from(next);
+  };
+
   for (const product of products) {
     const key = buildProductTemplateKey(product);
     const existing = grouped.get(key);
@@ -199,9 +212,22 @@ function deduplicateProductTemplates(products: Product[]) {
     const mergedOriginalPrice =
       preferred.originalPrice ?? (maxOriginalPrice || undefined);
 
+    const mergedImages = Array.from(
+      new Set([
+        ...collectImages(existing),
+        ...collectImages(product),
+        ...collectImages(preferred),
+      ]),
+    );
+
     grouped.set(key, {
       ...preferred,
-      image: preferred.image || existing.image || product.image,
+      image:
+        preferred.image ||
+        existing.image ||
+        product.image ||
+        mergedImages[0],
+      images: mergedImages,
       description:
         preferred.description || existing.description || product.description,
       storage: preferred.storage || existing.storage || product.storage,

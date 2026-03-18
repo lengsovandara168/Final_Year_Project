@@ -15,6 +15,7 @@ export type Product = {
   price: number;
   originalPrice?: number;
   image?: string;
+  images?: string[];
   subcategoryId: string;
   storage?: string;
   color?: string;
@@ -123,6 +124,7 @@ export type ProductTemplate = {
   storage: string;
   color: string;
   image?: string;
+  images?: string[];
   description?: string;
   subcategoryId: string;
   subcategoryName?: string;
@@ -153,6 +155,7 @@ export type CreateProductTemplateRequest = {
   storage: string;
   color: string;
   image?: string;
+  images?: string[];
   description?: string;
   specifications?: ProductSpecification[];
   isActive?: boolean;
