@@ -7,12 +7,14 @@ import {
   persistAuthSession,
   type AuthSessionPayload,
 } from "@/lib/auth-session";
+import type { PermissionSet } from "@/lib/rbac";
 
 interface User {
   name: string;
   id: string;
   email: string;
   role: string;
+  permissions: PermissionSet | null;
 }
 
 interface AuthContextType {
@@ -55,6 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       name: payload.name,
       email: payload.email,
       role: payload.role,
+      permissions: payload.permissions,
     });
     setIsAuthenticated(true);
   };

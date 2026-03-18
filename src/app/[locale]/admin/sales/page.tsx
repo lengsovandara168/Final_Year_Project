@@ -238,7 +238,7 @@ export default function SalesPage() {
             name: product.name,
             price: product.price,
             quantity: 1,
-            barcode: product.imei,
+            barcode: product.imei ?? undefined,
           },
         ];
       });
@@ -275,7 +275,9 @@ export default function SalesPage() {
   const handleBarcodeScan = useCallback(
     (barcode: string) => {
       const normalized = barcode.trim().toLowerCase();
-      const found = products.find((p) => p.imei.toLowerCase() === normalized);
+      const found = products.find(
+        (p) => (p.imei ?? "").toLowerCase() === normalized,
+      );
 
       if (!found) {
         setPageAlert({

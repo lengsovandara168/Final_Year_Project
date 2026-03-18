@@ -166,7 +166,13 @@ function parseTemplateSpecifications(text: string) {
 }
 
 function templateLabel(template: ProductTemplate) {
-  return `${template.name} (${template.storage}, ${template.color})`;
+  const details = [template.storage, template.color]
+    .map((value) => value?.trim())
+    .filter(Boolean);
+
+  return details.length > 0
+    ? `${template.name} (${details.join(", ")})`
+    : template.name;
 }
 
 function buildLogoUrl(domain: string) {
@@ -278,6 +284,9 @@ export default function ProductTemplatesPage() {
 
   const availableBrands =
     subcategoriesByParent[templateForm.parentCategory] ?? [];
+  const isAccessoryCategory = templateForm.parentCategory === "accessories";
+  const isStorageRequired = !isAccessoryCategory;
+
   const brandOptions = useMemo(() => {
     const byName = new Map<string, BrandOption>();
     const libraryByName = new Map(
@@ -356,7 +365,7 @@ export default function ProductTemplatesPage() {
     return templates.filter((template) => {
       return (
         template.name.toLowerCase().includes(normalized) ||
-        template.storage.toLowerCase().includes(normalized) ||
+        (template.storage ?? "").toLowerCase().includes(normalized) ||
         template.color.toLowerCase().includes(normalized) ||
         (template.subcategoryName ?? "").toLowerCase().includes(normalized)
       );
@@ -402,11 +411,17 @@ export default function ProductTemplatesPage() {
 
     if (
       !templateForm.name.trim() ||
-      !templateForm.storage.trim() ||
       !templateForm.color.trim() ||
+      (isStorageRequired && !templateForm.storage.trim()) ||
       !templateForm.subcategoryName.trim()
     ) {
-      setError(t("requiredFields"));
+      setError(
+        t(
+          isStorageRequired
+            ? "requiredFieldsWithStorage"
+            : "requiredFieldsWithoutStorage",
+        ),
+      );
       return;
     }
 
@@ -431,7 +446,9 @@ export default function ProductTemplatesPage() {
           parentCategory: templateForm.parentCategory,
           subcategoryName: templateForm.subcategoryName.trim(),
           name: templateForm.name.trim(),
-          storage: templateForm.storage.trim(),
+          ...(templateForm.storage.trim()
+            ? { storage: templateForm.storage.trim() }
+            : {}),
           color: templateForm.color.trim(),
           image: imageUrl,
           description: templateForm.description.trim() || undefined,
@@ -653,29 +670,31 @@ export default function ProductTemplatesPage() {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">
-                {t("storage")} <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={templateForm.storage}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setTemplateForm((prev) => ({
-                    ...prev,
-                    storage: value,
-                  }));
-                }}
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              >
-                <option value="">{t("selectStorage")}</option>
-                {STORAGE_PRESETS[templateForm.parentCategory].map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isAccessoryCategory && (
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  {t("storage")} <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={templateForm.storage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      storage: value,
+                    }));
+                  }}
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                >
+                  <option value="">{t("selectStorage")}</option>
+                  {STORAGE_PRESETS[templateForm.parentCategory].map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="space-y-1">
               <label className="text-sm font-medium">

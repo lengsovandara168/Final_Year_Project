@@ -2,6 +2,7 @@ import LocaleSwitcher from "@/components/lang/locale-switcher";
 import SidebarDemo from "./sidebar-demo";
 import SidebarToggleButton from "./sidebar-toggle-button";
 import { getTranslations } from "next-intl/server";
+import { getValidatedServerSession } from "@/lib/auth-server";
 
 export default async function DashboardLayout({
   locale,
@@ -11,9 +12,14 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const t = await getTranslations({ locale, namespace: "Common" });
+  const tSidebar = await getTranslations({ locale, namespace: "Sidebar" });
+
+  const session = await getValidatedServerSession();
+  const user = session?.user;
+  const role = user?.role;
 
   return (
-    <SidebarDemo>
+    <SidebarDemo role={role}>
       <div className="flex h-full flex-1 flex-col">
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="ml-4 flex items-center gap-2">

@@ -202,7 +202,7 @@
   },
   "AdminAddStock": {
     "title": "បន្ថែមផលិតផល (ពី Template)",
-    "subtitle": "ជ្រើសរើស template ដែលមានស្រាប់ កំណត់តម្លៃ ហើយស្កេន IMEI ដើម្បីបញ្ចូលផលិតផល។",
+    "subtitle": "ជ្រើសរើស template ដែលមានស្រាប់ កំណត់តម្លៃ ហើយបញ្ចូល IMEI ឬ serial number នៅពេលចាំបាច់។",
     "inventory": "ស្តុក",
     "buildTemplate": "បង្កើត Template",
     "actionFailed": "ប្រតិបត្តិការបរាជ័យ",
@@ -216,7 +216,9 @@
     "brand": "ម៉ាក",
     "imei": "IMEI",
     "imeiPlaceholder": "ស្កេន ឬ បញ្ចូល IMEI 15 ខ្ទង់",
+    "imeiOptionalPlaceholder": "សម្រាប់គ្រឿងបន្លាស់ អាចទុកទទេ ឬ បញ្ចូល IMEI/serial number",
     "imeiTip": "គន្លឹះ៖ ប៊ូតុង Enter ពីម៉ាស៊ីនស្កេននឹងបន្ថែមផលិតផលនីមួយៗភ្លាមៗ។",
+    "imeiOptionalTip": "សម្រាប់គ្រឿងបន្លាស់ វាអាចទុកទទេ ឬ ប្រើសម្រាប់ serial number បាន។",
     "price": "តម្លៃ (USD)",
     "pricePlaceholder": "ឧ. 1299",
     "originalPrice": "តម្លៃដើម (ជាជម្រើស)",
@@ -227,10 +229,13 @@
     "addingStock": "កំពុងបន្ថែមស្តុក...",
     "addProduct": "បន្ថែមផលិតផល",
     "selectTemplateError": "សូមជ្រើសរើស template ជាមុនសិន។",
+    "priceRequired": "តម្លៃ ត្រូវតែបញ្ចូល។",
+    "imeiRequiredForSelectedTemplate": "IMEI ត្រូវតែបញ្ចូលសម្រាប់ template ទូរស័ព្ទ និង ថេប្លេត។",
     "imeiPriceRequired": "IMEI និង តម្លៃ ត្រូវតែបញ្ចូល។",
     "invalidPrice": "តម្លៃត្រូវតែជាលេខត្រឹមត្រូវ។",
     "invalidOriginalPrice": "តម្លៃដើមត្រូវតែជាលេខត្រឹមត្រូវ។",
-    "stockAdded": "បានបន្ថែមស្តុក៖ {name} ({imei})"
+    "stockAdded": "បានបន្ថែមស្តុក៖ {name} ({imei})",
+    "stockAddedWithoutImei": "បានបន្ថែមស្តុក៖ {name}"
   },
   "AdminTemplates": {
     "title": "បង្កើត Template ផលិតផល",
@@ -253,6 +258,8 @@
     "storage": "ទំហំផ្ទុក",
     "selectStorage": "ជ្រើសរើសទំហំផ្ទុក",
     "storagePlaceholder": "ឧ. 256GB",
+    "storageOptionalPlaceholder": "ជាជម្រើសសម្រាប់គ្រឿងបន្លាស់",
+    "accessoryStorageHint": "សម្រាប់គ្រឿងបន្លាស់ ទំហំផ្ទុកមិនចាំបាច់ទេ។ អាចទុកទទេបាន បើមិនពាក់ព័ន្ធ។",
     "color": "ពណ៌",
     "colorPlaceholder": "ឧ. ស្វាយ",
     "description": "សេចក្ដីពិពណ៌នា (ជាជម្រើស)",
@@ -276,6 +283,8 @@
     "invalidFileType": "ប្រភេទឯកសារមិនត្រឹមត្រូវ។ សូមផ្ទុក PNG, JPEG, WEBP, SVG, ឬ AVIF។",
     "fileTooLarge": "ឯកសារធំពេក។ ទំហំអតិបរមា 5MB។",
     "imageUploaded": "រូបភាពត្រូវបានផ្ទុកឡើង។",
+    "requiredFieldsWithStorage": "ឈ្មោះ template ទំហំផ្ទុក ពណ៌ និងម៉ាក/ប្រភេទរង ត្រូវតែបញ្ចូល។",
+    "requiredFieldsWithoutStorage": "ឈ្មោះ template ពណ៌ និងម៉ាក/ប្រភេទរង ត្រូវតែបញ្ចូល។",
     "requiredFields": "ឈ្មោះ template ទំហំផ្ទុក ពណ៌ និងម៉ាក/ប្រភេទរង ត្រូវតែបញ្ចូល។",
     "uploadImageFirst": "សូមផ្ទុករូបភាព template ជាមុនសិន។",
     "templateCreated": "បានបង្កើត template៖ {name}"

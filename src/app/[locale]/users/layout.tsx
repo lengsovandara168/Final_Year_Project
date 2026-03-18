@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getValidatedServerSession } from "@/lib/auth-server";
 import { CartProvider } from "@/contexts/cart-context";
 import { Toaster } from "@/components/ui/sonner";
+import { getFirstStaffAdminPath } from "@/lib/rbac";
 
 type UsersLayoutProps = {
   children: React.ReactNode;
@@ -19,6 +20,9 @@ export default async function UsersLayout({
   }
 
   if (session.user.role !== "user") {
+    if (session.user.role === "staff") {
+      redirect(getFirstStaffAdminPath(locale, session.user.permissions));
+    }
     redirect(`/${locale}/admin`);
   }
 

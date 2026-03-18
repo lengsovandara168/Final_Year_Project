@@ -18,8 +18,10 @@ import Image from "next/image";
 
 export default function SidebarDemo({
   children,
+  role,
 }: {
   children: React.ReactNode;
+  role?: string;
 }) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
@@ -28,36 +30,56 @@ export default function SidebarDemo({
   const handleLogout = useLogout();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const isAdmin = role === "admin";
+  const isStaff = role === "staff";
   const links = [
-    {
-      label: t("dashboard"),
-      href: adminBasePath,
-      icon: (
-        <LayoutDashboard className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
-    },
-    {
-      label: t("products"),
-      href: `${adminBasePath}/products`,
-      icon: (
-        <IconPackage className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
-    },
-    {
-      label: t("orders"),
-      href: `${adminBasePath}/orders`,
-      icon: (
-        <IconShoppingCart className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
-    },
-    {
-      label: t("customers"),
-      href: `${adminBasePath}/customers`,
-      icon: (
-        <IconUsers className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
-    },
-    { label: t("sales"), href: `${adminBasePath}/sales`, icon: <DollarSign className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" /> },
+    ...(isAdmin
+      ? [
+          {
+            label: t("dashboard"),
+            href: adminBasePath,
+            icon: (
+              <LayoutDashboard className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
+        ]
+      : []),
+    ...(isAdmin || isStaff
+      ? [
+          {
+            label: t("products"),
+            href: `${adminBasePath}/products`,
+            icon: (
+              <IconPackage className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
+        ]
+      : []),
+    ...(isAdmin
+      ? [
+          {
+            label: t("orders"),
+            href: `${adminBasePath}/orders`,
+            icon: (
+              <IconShoppingCart className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
+          {
+            label: t("customers"),
+            href: `${adminBasePath}/customers`,
+            icon: (
+              <IconUsers className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
+          {
+            label: t("sales"),
+            href: `${adminBasePath}/sales`,
+            icon: (
+              <DollarSign className="size-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+            ),
+          },
+        ]
+      : []),
   ];
   const [open, setOpen] = useState(true);
 

@@ -28,7 +28,13 @@ function toErrorMessage(error: unknown, defaultMessage: string = "Something went
 }
 
 function templateLabel(template: ProductTemplate) {
-  return `${template.name} (${template.storage}, ${template.color})`;
+  const details = [template.storage, template.color]
+    .map((value) => value?.trim())
+    .filter(Boolean);
+
+  return details.length > 0
+    ? `${template.name} (${details.join(", ")})`
+    : template.name;
 }
 
 type StockFormState = {
@@ -110,6 +116,11 @@ export default function AddStockPage() {
     return new Map(templates.map((template) => [template.id, template]));
   }, [templates]);
 
+  const selectedTemplate = selectedTemplateId
+    ? templateById.get(selectedTemplateId)
+    : null;
+  const isAccessoryTemplate = selectedTemplate?.parentCategory === "accessories";
+
   const filteredTemplates = useMemo(() => {
     const normalized = templateSearch.trim().toLowerCase();
     if (!normalized) return templates;
@@ -117,7 +128,7 @@ export default function AddStockPage() {
     return templates.filter((template) => {
       return (
         template.name.toLowerCase().includes(normalized) ||
-        template.storage.toLowerCase().includes(normalized) ||
+        (template.storage ?? "").toLowerCase().includes(normalized) ||
         template.color.toLowerCase().includes(normalized) ||
         (template.subcategoryName ?? "").toLowerCase().includes(normalized)
       );
@@ -136,8 +147,13 @@ export default function AddStockPage() {
       return;
     }
 
-    if (!stockForm.imei.trim() || !stockForm.price.trim()) {
-      setError(t("imeiPriceRequired"));
+    if (!stockForm.price.trim()) {
+      setError(t("priceRequired"));
+      return;
+    }
+
+    if (!isAccessoryTemplate && !stockForm.imei.trim()) {
+      setError(t("imeiRequiredForSelectedTemplate"));
       return;
     }
 
@@ -165,7 +181,7 @@ export default function AddStockPage() {
       const created = await createProduct(
         {
           templateId: selectedTemplateId,
-          imei: stockForm.imei.trim(),
+          ...(stockForm.imei.trim() ? { imei: stockForm.imei.trim() } : {}),
           price: parsedPrice,
           originalPrice: parsedOriginalPrice,
           inStock: stockForm.inStock,
@@ -177,7 +193,9 @@ export default function AddStockPage() {
 
       setStockForm((prev) => ({ ...prev, imei: "" }));
       setSuccess(
-        t("stockAdded", { name: created.data.name, imei: created.data.imei }),
+        created.data.imei
+          ? t("stockAdded", { name: created.data.name, imei: created.data.imei })
+          : t("stockAddedWithoutImei", { name: created.data.name }),
       );
     } catch (stockError) {
       setError(toErrorMessage(stockError, t("actionFailed")));
@@ -264,25 +282,30 @@ export default function AddStockPage() {
                 </select>
               </div>
 
-              {selectedTemplateId && templateById.get(selectedTemplateId) && (
+              {selectedTemplate && (
                 <div className="rounded-md border bg-gray-50 p-3 text-sm md:col-span-2">
                   <p className="font-medium text-gray-900">
-                    {templateLabel(templateById.get(selectedTemplateId)!)}
+                    {templateLabel(selectedTemplate)}
                   </p>
                   <p className="text-gray-600">
-                    {t("brand")}:{" "}
-                    {templateById.get(selectedTemplateId)!.subcategoryName ||
-                      "-"}
+                    {t("brand")}: {selectedTemplate.subcategoryName || "-"}
                   </p>
                 </div>
               )}
 
               <div className="space-y-1">
                 <label className="text-sm font-medium">
-                  {t("imei")} <span className="text-red-600">*</span>
+                  {t("imei")}
+                  {!isAccessoryTemplate && (
+                    <span className="text-red-600"> *</span>
+                  )}
                 </label>
                 <Input
-                  placeholder={t("imeiPlaceholder")}
+                  placeholder={
+                    isAccessoryTemplate
+                      ? t("imeiOptionalPlaceholder")
+                      : t("imeiPlaceholder")
+                  }
                   value={stockForm.imei}
                   onChange={(e) =>
                     setStockForm((prev) => ({ ...prev, imei: e.target.value }))
@@ -294,7 +317,11 @@ export default function AddStockPage() {
                     }
                   }}
                 />
-                <p className="text-xs text-gray-500">{t("imeiTip")}</p>
+                <p className="text-xs text-gray-500">
+                  {isAccessoryTemplate
+                    ? t("imeiOptionalTip")
+                    : t("imeiTip")}
+                </p>
               </div>
 
               <div className="space-y-1">

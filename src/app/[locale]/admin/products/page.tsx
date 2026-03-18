@@ -67,7 +67,13 @@ function asNumberOrNull(value: unknown) {
 }
 
 function templateLabel(template: ProductTemplate) {
-  return `${template.name} (${template.storage}, ${template.color})`;
+  const details = [template.storage, template.color]
+    .map((value) => value?.trim())
+    .filter(Boolean);
+
+  return details.length > 0
+    ? `${template.name} (${details.join(", ")})`
+    : template.name;
 }
 
 type InventoryViewMode = "grouped" | "unit";
@@ -149,7 +155,7 @@ function buildGroupedInventory(
         amount: 1,
         inStockAmount: product.inStock ? 1 : 0,
         outOfStockAmount: product.inStock ? 0 : 1,
-        sampleImei: product.imei,
+        sampleImei: product.imei ?? undefined,
       });
       continue;
     }
@@ -270,7 +276,7 @@ export default function ProductsPage() {
 
       return (
         product.name.toLowerCase().includes(normalized) ||
-        product.imei.toLowerCase().includes(normalized) ||
+        (product.imei ?? "").toLowerCase().includes(normalized) ||
         brand.toLowerCase().includes(normalized) ||
         template?.name.toLowerCase().includes(normalized)
       );
@@ -404,7 +410,7 @@ export default function ProductsPage() {
           product.name,
           brand,
           template ? templateLabel(template) : "-",
-          product.imei,
+          product.imei ?? "-",
           price,
           product.inStock ? "In Stock" : "Out of Stock",
         ]
@@ -752,7 +758,7 @@ export default function ProductsPage() {
                         <TableCell>
                           {template ? templateLabel(template) : "-"}
                         </TableCell>
-                        <TableCell>{product.imei}</TableCell>
+                        <TableCell>{product.imei || "-"}</TableCell>
                         <TableCell className="font-medium">
                           {asNumberOrNull(product.price) !== null
                             ? `$${product.price.toFixed(2)}`

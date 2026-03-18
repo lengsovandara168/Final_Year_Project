@@ -202,7 +202,7 @@
   },
   "AdminAddStock": {
     "title": "Add Product (From Template)",
-    "subtitle": "Select an existing template, set the price, and scan IMEI to add products.",
+    "subtitle": "Select an existing template, set the price, and add IMEI or a serial number when needed.",
     "inventory": "Stock",
     "buildTemplate": "Create Template",
     "actionFailed": "Operation failed",
@@ -216,7 +216,9 @@
     "brand": "Brand",
     "imei": "IMEI",
     "imeiPlaceholder": "Scan or enter 15-digit IMEI",
+    "imeiOptionalPlaceholder": "Optional for accessories. Enter IMEI or serial number",
     "imeiTip": "Tip: The Enter button from the scanner will add each product immediately.",
+    "imeiOptionalTip": "For accessories, this can be left blank or used for a serial number.",
     "price": "Price (USD)",
     "pricePlaceholder": "e.g., 1299",
     "originalPrice": "Original Price (Optional)",
@@ -227,10 +229,13 @@
     "addingStock": "Adding stock...",
     "addProduct": "Add Product",
     "selectTemplateError": "Please select a template first.",
+    "priceRequired": "Price is required.",
+    "imeiRequiredForSelectedTemplate": "IMEI is required for phone and tablet templates.",
     "imeiPriceRequired": "IMEI and Price are required.",
     "invalidPrice": "Price must be a valid number.",
     "invalidOriginalPrice": "Original price must be a valid number.",
-    "stockAdded": "Stock added: {name} ({imei})"
+    "stockAdded": "Stock added: {name} ({imei})",
+    "stockAddedWithoutImei": "Stock added: {name}"
   },
   "AdminTemplates": {
     "title": "Create Product Template",
@@ -253,6 +258,8 @@
     "storage": "Storage",
     "selectStorage": "Select storage",
     "storagePlaceholder": "e.g., 256GB",
+    "storageOptionalPlaceholder": "Optional for accessories",
+    "accessoryStorageHint": "For accessories, storage is optional. Leave it blank if it does not apply.",
     "color": "Color",
     "colorPlaceholder": "e.g., Purple",
     "description": "Description (Optional)",
@@ -276,6 +283,8 @@
     "invalidFileType": "Invalid file type. Please upload PNG, JPEG, WEBP, SVG, or AVIF.",
     "fileTooLarge": "File is too large. Maximum size 5MB.",
     "imageUploaded": "Image uploaded.",
+    "requiredFieldsWithStorage": "Template name, storage, color, and brand/subcategory are required.",
+    "requiredFieldsWithoutStorage": "Template name, color, and brand/subcategory are required.",
     "requiredFields": "Template name, storage, color, and brand/subcategory are required.",
     "uploadImageFirst": "Please upload a template image first.",
     "templateCreated": "Template created: {name}"

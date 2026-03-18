@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { locales } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { RefreshCwIcon } from "lucide-react";
+import { getFirstStaffAdminPath } from "@/lib/rbac";
 
 type VerifyFlow = "register" | "login";
 
@@ -103,6 +104,7 @@ export default function VerifyOtpPage() {
         userId: response.userId,
         email: response.email,
         role: response.role,
+        permissions: null,
         accessToken: response.accessToken,
         name: response.email.split("@")[0] || "User",
       });
@@ -124,6 +126,10 @@ export default function VerifyOtpPage() {
         }
         if (response.role === "admin") {
           router.push(`${localePrefix}/admin`);
+          return;
+        }
+        if (response.role === "staff") {
+          router.push(getFirstStaffAdminPath(localePrefix.slice(1), null));
           return;
         }
         router.push(`${localePrefix}/users`);

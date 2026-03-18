@@ -11,12 +11,12 @@ export type Product = {
   id: string;
   templateId?: string;
   name: string;
-  imei: string;
+  imei?: string | null;
   price: number;
   originalPrice?: number;
   image?: string;
   subcategoryId: string;
-  storage?: string;
+  storage?: string | null;
   color?: string;
   rating: number;
   reviewCount: number;
@@ -89,7 +89,7 @@ export async function uploadProductImage(file: File, accessToken: string) {
 
 export type CreateProductRequest = {
   templateId: string;
-  imei: string;
+  imei?: string;
   price: number;
   originalPrice?: number;
   rating?: number;
@@ -120,7 +120,7 @@ export async function createProduct(
 export type ProductTemplate = {
   id: string;
   name: string;
-  storage: string;
+  storage?: string | null;
   color: string;
   image?: string;
   description?: string;
@@ -150,7 +150,7 @@ export type CreateProductTemplateRequest = {
   subcategoryName: string;
   subcategorySlug?: string;
   name: string;
-  storage: string;
+  storage?: string;
   color: string;
   image?: string;
   description?: string;

@@ -2,6 +2,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { getValidatedServerSession } from "@/lib/auth-server";
+import { getFirstStaffAdminPath } from "@/lib/rbac";
 
 export default async function RegisterLayout({
   children,
@@ -15,6 +16,9 @@ export default async function RegisterLayout({
   if (session.isAuthenticated && session.user) {
     if (session.user.role === "admin") {
       redirect(`/${locale}/admin`);
+    }
+    if (session.user.role === "staff") {
+      redirect(getFirstStaffAdminPath(locale, session.user.permissions));
     }
     if (session.user.role === "user") {
       redirect(`/${locale}/users`);

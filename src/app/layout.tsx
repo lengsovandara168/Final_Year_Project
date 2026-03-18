@@ -5,6 +5,11 @@ import "./globals.css";
 export const metadata = {
   title: "PhoneShop POS",
   description: "Admin dashboard for PhoneShop POS",
+  icons: {
+    icon: "/logo/logo.png",
+    shortcut: "/logo/logo.png",
+    apple: "/logo/logo.png",
+  },
 };
 
 export default function RootLayout({

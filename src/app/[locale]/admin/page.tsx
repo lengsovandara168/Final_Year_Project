@@ -11,6 +11,9 @@ import { IncomeAnalyticsChart } from "@/components/dashboard/IncomeAnalyticsChar
 import { ProductTypeAnalysisChart } from "@/components/dashboard/ProductTypeAnalysisChart";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle } from "lucide-react";
+import { getValidatedServerSession } from "@/lib/auth-server";
+import { redirect } from "next/navigation";
+import { getFirstStaffAdminPath } from "@/lib/rbac";
 
 export default async function DashboardPage({
   params,
@@ -18,8 +21,15 @@ export default async function DashboardPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "Dashboard" });
+
+  const session = await getValidatedServerSession();
   const cookieStore = await cookies();
+
+  if (session?.user?.role === "staff") {
+    redirect(getFirstStaffAdminPath(locale, session.user.permissions));
+  }
+
+  const t = await getTranslations({ locale, namespace: "Dashboard" });
   const accessToken = cookieStore.get("access_token")?.value || "";
 
   let data;

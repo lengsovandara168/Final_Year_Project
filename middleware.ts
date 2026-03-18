@@ -2,6 +2,10 @@ import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { locales, routing } from "@/i18n/routing";
 import { resolveAuth, applyAuthCookies } from "@/lib/route-protection";
+import {
+  canAccessAdminSegment,
+  getFirstStaffAdminPath,
+} from "@/lib/rbac";
 
 const PUBLIC_FILE = /\.(.*)$/;
 const DEFAULT_LOCALE = "en";
@@ -31,6 +35,7 @@ export default async function middleware(request: NextRequest) {
 
   const auth = await resolveAuth(request);
   const role = auth.user?.role;
+  const permissions = auth.user?.permissions;
 
   const withAuthCookies = (response: NextResponse) => {
     applyAuthCookies(response, auth);
@@ -41,6 +46,14 @@ export default async function middleware(request: NextRequest) {
     if (role === "admin") {
       return withAuthCookies(
         NextResponse.redirect(new URL(`/${activeLocale}/admin`, request.url)),
+      );
+    }
+
+    if (role === "staff") {
+      return withAuthCookies(
+        NextResponse.redirect(
+          new URL(getFirstStaffAdminPath(activeLocale, permissions), request.url),
+        ),
       );
     }
 
@@ -79,10 +92,11 @@ export default async function middleware(request: NextRequest) {
   }
 
   const legacyAdminRoutes = new Set(["products", "orders", "customers"]);
-  const isAdminRoute = routeSegment === "admin" || legacyAdminRoutes.has(routeSegment ?? "");
+  const isAdminRoute =
+    routeSegment === "admin" || legacyAdminRoutes.has(routeSegment ?? "");
   const isUserRoute = routeSegment === "users" || routeSegment === "user";
 
-  if (isAdminRoute && role !== "admin") {
+  if (isAdminRoute && role !== "admin" && role !== "staff") {
     const destination =
       role === "user" ? `/${activeLocale}/users` : `/${activeLocale}/login`;
     const response = NextResponse.redirect(new URL(destination, request.url));
@@ -98,9 +112,33 @@ export default async function middleware(request: NextRequest) {
     return withAuthCookies(response);
   }
 
+  if (routeSegment === "admin" && role === "staff") {
+    const adminChildSegment = segments[2];
+    const hasAccess = canAccessAdminSegment(role, permissions, adminChildSegment);
+
+    if (!hasAccess) {
+      const destination = getFirstStaffAdminPath(activeLocale, permissions);
+      const response = NextResponse.redirect(new URL(destination, request.url));
+      response.cookies.set(
+        "flash_toast",
+        "Unauthorized: You do not have permission for this staff page.",
+        {
+          path: "/",
+          maxAge: 10,
+          sameSite: "lax",
+        },
+      );
+      return withAuthCookies(response);
+    }
+  }
+
   if (isUserRoute && role !== "user") {
     const destination =
-      role === "admin" ? `/${activeLocale}/admin` : `/${activeLocale}/login`;
+      role === "admin"
+        ? `/${activeLocale}/admin`
+        : role === "staff"
+          ? getFirstStaffAdminPath(activeLocale, permissions)
+          : `/${activeLocale}/login`;
     const response = NextResponse.redirect(new URL(destination, request.url));
     response.cookies.set(
       "flash_toast",
@@ -120,7 +158,10 @@ export default async function middleware(request: NextRequest) {
     );
   }
 
-  if (legacyAdminRoutes.has(routeSegment ?? "") && role === "admin") {
+  if (
+    legacyAdminRoutes.has(routeSegment ?? "") &&
+    (role === "admin" || role === "staff")
+  ) {
     return withAuthCookies(
       NextResponse.redirect(
         new URL(`/${activeLocale}/admin/${routeSegment}`, request.url),
