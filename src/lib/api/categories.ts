@@ -203,7 +203,18 @@ export type CategoryBoardResponse = {
 };
 
 export async function getCategoryBoard(accessToken: string) {
-  return apiFetch<CategoryBoardResponse>("/v1/categories/board", {
+  return getCatalogCategoryBoard("/v1/categories/board", accessToken);
+}
+
+export async function getAdminCategoryBoard(accessToken: string) {
+  return getCatalogCategoryBoard("/v1/admin/categories/board", accessToken);
+}
+
+async function getCatalogCategoryBoard(
+  endpoint: string,
+  accessToken: string,
+) {
+  return apiFetch<CategoryBoardResponse>(endpoint, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,

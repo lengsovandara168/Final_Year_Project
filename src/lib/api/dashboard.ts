@@ -1,7 +1,7 @@
 // f:/AUPP/2026/FYP/FYP_Project/src/lib/api/dashboard.ts
 
-import { getProducts } from "./products";
-import { getCategories, getCategoryBoard } from "./categories";
+import { getAdminProducts } from "./products";
+import { getAdminCategoryBoard, getCategories } from "./categories";
 import { getOrders } from "./orders";
 import { getCustomers } from "./customers";
 
@@ -144,9 +144,9 @@ export async function getDashboardData(
       ordersResponse,
       customersResponse,
     ] = await Promise.allSettled([
-      getProducts(accessToken),
+      getAdminProducts(accessToken),
       getCategories(accessToken),
-      getCategoryBoard(accessToken),
+      getAdminCategoryBoard(accessToken),
       getOrders(accessToken),
       getCustomers(accessToken),
     ]);

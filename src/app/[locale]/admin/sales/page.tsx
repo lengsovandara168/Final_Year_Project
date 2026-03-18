@@ -25,7 +25,7 @@ import { getSessionSnapshot } from "@/lib/auth-session";
 import {
   cancelBakongPayment,
   getBakongPaymentStatus,
-  getProducts,
+  getAdminProducts,
   initBakongCheckout,
   Product,
   type CheckoutCurrency,
@@ -162,7 +162,7 @@ const fetchProducts = async (): Promise<Product[]> => {
   const { accessToken } = getSessionSnapshot();
   if (!accessToken) throw new Error("Not authenticated");
 
-  const res = await getProducts(accessToken);
+  const res = await getAdminProducts(accessToken);
   return Array.isArray(res.data) ? res.data : [];
 };
 

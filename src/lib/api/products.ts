@@ -42,10 +42,25 @@ export async function getProducts(
   accessToken: string,
   subcategorySlug?: string,
 ) {
+  return getCatalogProducts("/v1/products", accessToken, subcategorySlug);
+}
+
+export async function getAdminProducts(
+  accessToken: string,
+  subcategorySlug?: string,
+) {
+  return getCatalogProducts("/v1/admin/products", accessToken, subcategorySlug);
+}
+
+async function getCatalogProducts(
+  endpoint: string,
+  accessToken: string,
+  subcategorySlug?: string,
+) {
   const params = subcategorySlug
     ? `?subcategory=${encodeURIComponent(subcategorySlug)}`
     : "";
-  return apiFetch<GetProductsResponse>(`/v1/products${params}`, {
+  return apiFetch<GetProductsResponse>(`${endpoint}${params}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -54,7 +69,22 @@ export async function getProducts(
 }
 
 export async function getProductById(accessToken: string, productId: string) {
-  return apiFetch<GetProductResponse>(`/v1/products/${productId}`, {
+  return getCatalogProductById("/v1/products", accessToken, productId);
+}
+
+export async function getAdminProductById(
+  accessToken: string,
+  productId: string,
+) {
+  return getCatalogProductById("/v1/admin/products", accessToken, productId);
+}
+
+async function getCatalogProductById(
+  endpoint: string,
+  accessToken: string,
+  productId: string,
+) {
+  return apiFetch<GetProductResponse>(`${endpoint}/${productId}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
