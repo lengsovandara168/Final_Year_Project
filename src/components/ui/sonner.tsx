@@ -19,15 +19,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       toastOptions={{
         classNames: {
-          success: "!bg-green-600 !text-white !border-green-700",
-          error: "!bg-red-600 !text-white !border-red-700",
+          success: "!bg-white !text-black !border-white",
+          error: "!bg-red-600 !text-black !border-red-700",
           description: "!text-white/90",
           actionButton: "!bg-white/20 !text-white",
           cancelButton: "!bg-black/20 !text-white",
         },
       }}
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
+        success: <CircleCheckIcon className="size-4 text-green-500" />,
         info: <InfoIcon className="size-4" />,
         warning: <TriangleAlertIcon className="size-4" />,
         error: <OctagonXIcon className="size-4" />,

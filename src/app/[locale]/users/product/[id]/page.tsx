@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useCart } from "@/contexts/cart-context";
@@ -50,6 +50,19 @@ function buildProductTemplateKey(product: Product) {
 function deduplicateProductTemplates(products: Product[]) {
   const grouped = new Map<string, Product>();
 
+  const collectImages = (candidate: Product) => {
+    const next = new Set<string>();
+    if (candidate.image) next.add(candidate.image);
+    if (Array.isArray(candidate.images)) {
+      for (const url of candidate.images) {
+        if (typeof url === "string" && url.trim()) {
+          next.add(url);
+        }
+      }
+    }
+    return Array.from(next);
+  };
+
   for (const product of products) {
     const key = buildProductTemplateKey(product);
     const existing = grouped.get(key);
@@ -62,10 +75,22 @@ function deduplicateProductTemplates(products: Product[]) {
     const preferred = !existing.inStock && product.inStock ? product : existing;
     const maxOriginalPrice = Math.max(existing.originalPrice ?? 0, product.originalPrice ?? 0);
     const mergedOriginalPrice = preferred.originalPrice ?? (maxOriginalPrice || undefined);
+    const mergedImages = Array.from(
+      new Set([
+        ...collectImages(existing),
+        ...collectImages(product),
+        ...collectImages(preferred),
+      ]),
+    );
 
     grouped.set(key, {
       ...preferred,
-      image: preferred.image || existing.image || product.image,
+      image:
+        preferred.image ||
+        existing.image ||
+        product.image ||
+        mergedImages[0],
+      images: mergedImages,
       description: preferred.description || existing.description || product.description,
       storage: preferred.storage || existing.storage || product.storage,
       color: preferred.color || existing.color || product.color,
@@ -144,6 +169,30 @@ export default function ProductDetailPage() {
 
     void fetchProduct();
   }, [params.id, pathname, router]);
+
+  const productImages = useMemo(() => {
+    if (!product) {
+      return [] as string[];
+    }
+
+    const unique = new Set<string>();
+    if (product.image) {
+      unique.add(product.image);
+    }
+    if (Array.isArray(product.images)) {
+      for (const url of product.images) {
+        if (typeof url === "string" && url.trim()) {
+          unique.add(url);
+        }
+      }
+    }
+
+    return Array.from(unique);
+  }, [product]);
+
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [product?.id]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -242,9 +291,9 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             {/* Main Image */}
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden border">
-              {product.image ? (
+              {productImages.length > 0 ? (
                 <img
-                  src={product.image}
+                  src={productImages[selectedImage] ?? productImages[0]}
                   alt={product.name}
                   className="w-full h-full object-contain p-8"
                 />
@@ -271,17 +320,17 @@ export default function ProductDetailPage() {
 
             {/* Thumbnail Images (placeholder for multiple images) */}
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {[0, 1, 2, 3].map((idx) => (
+              {(productImages.length > 0 ? productImages : [""]).map((imageUrl, idx) => (
                 <button
-                  key={idx}
+                  key={imageUrl || `${product.id}-${idx}`}
                   onClick={() => setSelectedImage(idx)}
                   className={`shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden bg-white ${
                     selectedImage === idx ? "border-black" : "border-gray-200"
                   }`}
                 >
-                  {product.image && idx === 0 ? (
+                  {imageUrl ? (
                     <img
-                      src={product.image}
+                      src={imageUrl}
                       alt={`${product.name} view ${idx + 1}`}
                       className="w-full h-full object-contain p-2"
                     />
@@ -486,7 +535,7 @@ export default function ProductDetailPage() {
                     <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
                       {relatedProduct.image ? (
                         <img
-                          src={relatedProduct.image}
+                          src={relatedProduct.images?.[0] || relatedProduct.image}
                           alt={relatedProduct.name}
                           className="w-full h-full object-contain p-4"
                         />

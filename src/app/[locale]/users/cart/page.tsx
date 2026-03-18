@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useCart } from "@/contexts/cart-context";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import {
   cancelBakongPayment,
+  getProducts,
   getBakongPaymentStatus,
   initBakongCheckout,
   type ApiError,
   type BakongCheckoutShipping,
   type CheckoutCurrency,
   type InitBakongCheckoutResponse,
+  type Product,
 } from "@/lib/api";
 import { persistCheckoutSummary } from "@/lib/checkout-storage";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -143,12 +145,41 @@ function normalizeBakongInitResponse(
   };
 }
 
-function buildCheckoutItems(items: ReturnType<typeof useCart>["items"]) {
-  return items.flatMap((item) =>
-    Array.from({ length: item.quantity }, () => ({
-      productId: item.product.id,
-    })),
-  );
+function buildCheckoutItems(
+  items: ReturnType<typeof useCart>["items"],
+  availableProductIdsByTemplate: Record<string, string[]>,
+) {
+  const working = new Map<string, string[]>();
+
+  for (const [templateKey, productIds] of Object.entries(
+    availableProductIdsByTemplate,
+  )) {
+    working.set(templateKey, [...productIds]);
+  }
+
+  const checkoutItems: { productId: string }[] = [];
+
+  for (const item of items) {
+    const templateKey = buildProductTemplateKey(item.product);
+    const candidates = working.get(templateKey) ?? [];
+
+    if (candidates.length < item.quantity) {
+      return null;
+    }
+
+    for (let index = 0; index < item.quantity; index += 1) {
+      const productId = candidates.shift();
+      if (!productId) {
+        return null;
+      }
+
+      checkoutItems.push({ productId });
+    }
+
+    working.set(templateKey, candidates);
+  }
+
+  return checkoutItems;
 }
 
 function initialShippingState(): BakongCheckoutShipping {
@@ -183,6 +214,85 @@ function isPendingPaymentState(state: PaymentUiState) {
   return ["initializing", "ready"].includes(state);
 }
 
+const STOCK_FIELDS = [
+  "stock",
+  "stockQuantity",
+  "quantity",
+  "availableStock",
+  "inventory",
+] as const;
+
+function getProductStockLimit(product: Product): number | null {
+  const source = product as unknown as Record<string, unknown>;
+
+  for (const field of STOCK_FIELDS) {
+    const value = source[field];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      return Math.floor(value);
+    }
+  }
+
+  return null;
+}
+
+function buildProductTemplateKey(product: Product) {
+  const priceKey = Number(product.price ?? 0).toFixed(2);
+  const originalPriceKey =
+    product.originalPrice == null
+      ? "none"
+      : Number(product.originalPrice).toFixed(2);
+
+  if (product.templateId?.trim()) {
+    return `template:${product.templateId.trim()}:price:${priceKey}:original:${originalPriceKey}`;
+  }
+
+  const normalizedName = product.name.trim().toLowerCase();
+  const normalizedStorage = product.storage?.trim().toLowerCase() ?? "";
+  const normalizedColor = product.color?.trim().toLowerCase() ?? "";
+  return `legacy:${product.subcategoryId}:${normalizedName}:${normalizedStorage}:${normalizedColor}:price:${priceKey}:original:${originalPriceKey}`;
+}
+
+function buildAvailableStockByTemplate(products: Product[]) {
+  const availableStockByTemplate: Record<string, number> = {};
+
+  for (const product of products) {
+    const key = buildProductTemplateKey(product);
+    if (availableStockByTemplate[key] == null) {
+      availableStockByTemplate[key] = 0;
+    }
+    const explicitLimit = getProductStockLimit(product);
+
+    if (explicitLimit !== null) {
+      const current = availableStockByTemplate[key] ?? 0;
+      availableStockByTemplate[key] = Math.max(current, explicitLimit);
+      continue;
+    }
+
+    if (product.inStock) {
+      availableStockByTemplate[key] = (availableStockByTemplate[key] ?? 0) + 1;
+    }
+  }
+
+  return availableStockByTemplate;
+}
+
+function buildAvailableProductIdsByTemplate(products: Product[]) {
+  const availableProductIdsByTemplate: Record<string, string[]> = {};
+
+  for (const product of products) {
+    if (!product.inStock) {
+      continue;
+    }
+
+    const templateKey = buildProductTemplateKey(product);
+    const current = availableProductIdsByTemplate[templateKey] ?? [];
+    current.push(product.id);
+    availableProductIdsByTemplate[templateKey] = current;
+  }
+
+  return availableProductIdsByTemplate;
+}
+
 export default function CartPage() {
   const t = useTranslations("Cart");
   const router = useRouter();
@@ -201,12 +311,45 @@ export default function CartPage() {
   );
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [cancelInFlight, setCancelInFlight] = useState(false);
+  const [availableStockByTemplate, setAvailableStockByTemplate] = useState<
+    Record<string, number>
+  >({});
+  const [availableProductIdsByTemplate, setAvailableProductIdsByTemplate] =
+    useState<Record<string, string[]>>({});
 
   const stepOrder: CheckoutStep[] = ["cart", "shipping", "payment"];
   const subtotal = getCartTotal();
   const estimatedShipping = 0;
   const estimatedTotal = subtotal + estimatedShipping;
-  const readyForShipping = items.length > 0;
+  const getAvailableStockForItem = useCallback(
+    (item: (typeof items)[number]) => {
+      const templateKey = buildProductTemplateKey(item.product);
+      const knownAvailable = availableStockByTemplate[templateKey];
+
+      if (typeof knownAvailable === "number") {
+        return Math.max(0, Math.floor(knownAvailable));
+      }
+
+      const embeddedLimit = getProductStockLimit(item.product);
+      if (embeddedLimit !== null) {
+        return embeddedLimit;
+      }
+
+      return item.product.inStock ? null : 0;
+    },
+    [availableStockByTemplate],
+  );
+
+  const hasCartStockIssues = useMemo(
+    () =>
+      items.some((item) => {
+        const available = getAvailableStockForItem(item);
+        return available !== null && item.quantity > available;
+      }),
+    [items, getAvailableStockForItem],
+  );
+
+  const readyForShipping = items.length > 0 && !hasCartStockIssues;
   const readyForPayment =
     Boolean(isShippingComplete(shipping)) && isValidBillName(shipping.fullName);
   const maxAvailableStepIndex = readyForPayment ? 2 : readyForShipping ? 1 : 0;
@@ -221,6 +364,57 @@ export default function CartPage() {
   const lastCountdownTriggerRef = useRef<string | null>(null);
   const paymentSessionRef = useRef<PaymentSession | null>(null);
   const paymentStateRef = useRef<PaymentUiState>("idle");
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const refreshStock = async () => {
+      const accessToken = getSessionSnapshot().accessToken;
+      if (!accessToken) {
+        return;
+      }
+
+      try {
+        const response = await getProducts(accessToken);
+        if (isCancelled) {
+          return;
+        }
+
+        setAvailableStockByTemplate(buildAvailableStockByTemplate(response.data));
+        setAvailableProductIdsByTemplate(
+          buildAvailableProductIdsByTemplate(response.data),
+        );
+      } catch {
+        // Keep previous stock snapshot if refresh fails.
+      }
+    };
+
+    void refreshStock();
+
+    const handleFocus = () => {
+      void refreshStock();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshStock();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    const intervalId = window.setInterval(() => {
+      void refreshStock();
+    }, 5000);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     paymentSessionRef.current = paymentSession;
@@ -405,8 +599,13 @@ export default function CartPage() {
       return;
     }
 
-    if (items.length === 0) {
+    if (items.length === 0 || hasCartStockIssues) {
       setStep("cart");
+      if (hasCartStockIssues) {
+        setCheckoutError(
+          "Some items in your cart exceed available stock. Please update quantities.",
+        );
+      }
       return;
     }
 
@@ -424,9 +623,23 @@ export default function CartPage() {
     lastCountdownTriggerRef.current = null;
 
     try {
+      const checkoutItems = buildCheckoutItems(
+        items,
+        availableProductIdsByTemplate,
+      );
+
+      if (!checkoutItems) {
+        setStep("cart");
+        setPaymentState("error");
+        setCheckoutError(
+          "Some items are no longer available. Please review your cart and try again.",
+        );
+        return;
+      }
+
       const response = await initBakongCheckout(
         {
-          items: buildCheckoutItems(items),
+          items: checkoutItems,
           shipping: {
             fullName: normalizedBillName,
             phone: shipping.phone.trim(),
@@ -576,17 +789,28 @@ export default function CartPage() {
     }
   }
 
-  function handleQuantityChange(productId: string, newQuantity: number) {
-    if (newQuantity >= 1) {
-      updateQuantity(productId, newQuantity);
+  function handleQuantityChange(item: (typeof items)[number], newQuantity: number) {
+    const available = getAvailableStockForItem(item);
+    const cappedQuantity =
+      available === null ? newQuantity : Math.min(newQuantity, available);
+
+    if (cappedQuantity >= 1) {
+      updateQuantity(item.product.id, cappedQuantity);
     }
   }
 
   function handleCheckout() {
-    if (step === "cart" && items.length > 0) {
+    if (step === "cart" && items.length > 0 && !hasCartStockIssues) {
       setShowErrors(false);
       setCheckoutError(null);
       setStep("shipping");
+      return;
+    }
+
+    if (step === "cart" && hasCartStockIssues) {
+      setCheckoutError(
+        "Some items are out of stock or exceed available stock. Please update your cart.",
+      );
       return;
     }
 
@@ -822,8 +1046,24 @@ export default function CartPage() {
 
               {step === "cart" && (
                 <>
+                  {hasCartStockIssues && (
+                    <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      Some items are out of stock or exceed available stock. Update your quantities to continue.
+                    </div>
+                  )}
+
                   {items.map((item) => (
-                    <Card key={item.product.id}>
+                    <Card
+                      key={item.product.id}
+                      className={
+                        (() => {
+                          const available = getAvailableStockForItem(item);
+                          const unavailable =
+                            available !== null && item.quantity > available;
+                          return unavailable ? "opacity-50" : "";
+                        })()
+                      }
+                    >
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
@@ -852,6 +1092,27 @@ export default function CartPage() {
                             <p className="mt-2 font-bold">
                               {formatPrice(item.product.price)}
                             </p>
+                            {(() => {
+                              const available = getAvailableStockForItem(item);
+
+                              if (available === 0) {
+                                return (
+                                  <p className="mt-2 text-xs font-medium text-red-600">
+                                    Out of stock
+                                  </p>
+                                );
+                              }
+
+                              if (available !== null && item.quantity > available) {
+                                return (
+                                  <p className="mt-2 text-xs font-medium text-amber-700">
+                                    Only {available} available
+                                  </p>
+                                );
+                              }
+
+                              return null;
+                            })()}
                           </div>
 
                           <div className="flex flex-col items-end justify-between">
@@ -871,7 +1132,7 @@ export default function CartPage() {
                                 className="h-8 w-8"
                                 onClick={() =>
                                   handleQuantityChange(
-                                    item.product.id,
+                                    item,
                                     item.quantity - 1,
                                   )
                                 }
@@ -888,10 +1149,16 @@ export default function CartPage() {
                                 className="h-8 w-8"
                                 onClick={() =>
                                   handleQuantityChange(
-                                    item.product.id,
+                                    item,
                                     item.quantity + 1,
                                   )
                                 }
+                                disabled={(() => {
+                                  const available = getAvailableStockForItem(item);
+                                  return (
+                                    available !== null && item.quantity >= available
+                                  );
+                                })()}
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
@@ -1282,7 +1549,9 @@ export default function CartPage() {
                       className="w-full bg-black text-white hover:bg-gray-800"
                       size="lg"
                       onClick={handleCheckout}
-                      disabled={step === "cart" && items.length === 0}
+                      disabled={
+                        step === "cart" && (items.length === 0 || hasCartStockIssues)
+                      }
                     >
                       {step === "cart" && "Proceed to Checkout"}
                       {step === "shipping" && "Continue to Payment"}
