@@ -180,6 +180,14 @@ function buildProductTemplateKey(product: Product) {
 }
 
 function deduplicateProductTemplates(products: Product[]) {
+  const stockByTemplate = new Map<string, number>();
+
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const key = buildProductTemplateKey(product);
+    stockByTemplate.set(key, (stockByTemplate.get(key) ?? 0) + 1);
+  }
+
   const grouped = new Map<string, Product>();
 
   for (const product of products) {
@@ -211,12 +219,17 @@ function deduplicateProductTemplates(products: Product[]) {
       rating: Math.max(existing.rating, product.rating),
       reviewCount: Math.max(existing.reviewCount, product.reviewCount),
       inStock: existing.inStock || product.inStock,
+      availableStock: stockByTemplate.get(key) ?? 0,
       isPopular: Boolean(existing.isPopular || product.isPopular),
       isBestSeller: Boolean(existing.isBestSeller || product.isBestSeller),
     });
   }
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.entries()).map(([key, product]) => ({
+    ...product,
+    availableStock: product.availableStock ?? stockByTemplate.get(key) ?? 0,
+    inStock: (product.availableStock ?? stockByTemplate.get(key) ?? 0) > 0,
+  }));
 }
 
 // Type definitions for news/banners

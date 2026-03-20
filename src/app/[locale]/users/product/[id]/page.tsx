@@ -48,6 +48,14 @@ function buildProductTemplateKey(product: Product) {
 }
 
 function deduplicateProductTemplates(products: Product[]) {
+  const stockByTemplate = new Map<string, number>();
+
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const key = buildProductTemplateKey(product);
+    stockByTemplate.set(key, (stockByTemplate.get(key) ?? 0) + 1);
+  }
+
   const grouped = new Map<string, Product>();
 
   for (const product of products) {
@@ -74,12 +82,93 @@ function deduplicateProductTemplates(products: Product[]) {
       rating: Math.max(existing.rating, product.rating),
       reviewCount: Math.max(existing.reviewCount, product.reviewCount),
       inStock: existing.inStock || product.inStock,
+      availableStock: stockByTemplate.get(key) ?? 0,
       isPopular: Boolean(existing.isPopular || product.isPopular),
       isBestSeller: Boolean(existing.isBestSeller || product.isBestSeller),
     });
   }
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.entries()).map(([key, product]) => ({
+    ...product,
+    availableStock: product.availableStock ?? stockByTemplate.get(key) ?? 0,
+    inStock: (product.availableStock ?? stockByTemplate.get(key) ?? 0) > 0,
+  }));
+}
+
+function extractProductImages(product: Product | null) {
+  if (!product) return [] as string[];
+
+  const sources: unknown[] = [
+    product.images,
+    product.imageUrls,
+    product.image,
+  ];
+
+  const collected: string[] = [];
+
+  for (const source of sources) {
+    if (Array.isArray(source)) {
+      for (const value of source) {
+        if (typeof value === "string") {
+          collected.push(value);
+        }
+      }
+      continue;
+    }
+
+    if (typeof source === "string") {
+      const trimmed = source.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed) as unknown;
+          if (Array.isArray(parsed)) {
+            for (const value of parsed) {
+              if (typeof value === "string") {
+                collected.push(value);
+              }
+            }
+            continue;
+          }
+        } catch {
+          // fallback to raw string handling below
+        }
+      }
+
+      if (trimmed.includes(",")) {
+        collected.push(...trimmed.split(","));
+        continue;
+      }
+
+      collected.push(trimmed);
+    }
+  }
+
+  const normalized = collected
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(normalized));
+}
+
+function getStockLimit(product: Product | null) {
+  if (!product) return 0;
+
+  const candidates = [
+    product.availableStock,
+    product.stockQuantity,
+    product.stock,
+    product.quantity,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      return Math.floor(value);
+    }
+  }
+
+  return product.inStock ? Number.POSITIVE_INFINITY : 0;
 }
 
 export default function ProductDetailPage() {
@@ -117,11 +206,29 @@ export default function ProductDetailPage() {
         const productId = params.id as string;
         const response = await getProductById(accessToken, productId);
         const loadedProduct = response.data || null;
-        setProduct(loadedProduct);
 
         // Fetch related products
         const productsResponse = await getProducts(accessToken);
         const allProducts = productsResponse.data || [];
+        const stockByTemplate = new Map<string, number>();
+
+        for (const item of allProducts) {
+          if (!item.inStock) continue;
+          const key = buildProductTemplateKey(item);
+          stockByTemplate.set(key, (stockByTemplate.get(key) ?? 0) + 1);
+        }
+
+        const productWithStock = loadedProduct
+          ? {
+              ...loadedProduct,
+              availableStock:
+                stockByTemplate.get(buildProductTemplateKey(loadedProduct)) ??
+                0,
+            }
+          : null;
+
+        setProduct(productWithStock);
+
         const currentTemplateKey = loadedProduct
           ? buildProductTemplateKey(loadedProduct)
           : null;
@@ -145,6 +252,27 @@ export default function ProductDetailPage() {
     void fetchProduct();
   }, [params.id, pathname, router]);
 
+  useEffect(() => {
+    const stockLimit = getStockLimit(product);
+    if (stockLimit <= 0) {
+      setQuantity(1);
+      return;
+    }
+
+    setQuantity((current) => Math.max(1, Math.min(current, stockLimit)));
+  }, [product]);
+
+  const productImages = extractProductImages(product);
+  const stockLimit = getStockLimit(product);
+  const maxQuantity = stockLimit > 0 ? stockLimit : 1;
+  const selectedImageUrl = productImages[selectedImage] ?? productImages[0] ?? null;
+
+  useEffect(() => {
+    if (selectedImage >= productImages.length) {
+      setSelectedImage(0);
+    }
+  }, [productImages.length, selectedImage]);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -154,7 +282,8 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCartWithToast(product, quantity);
+      const safeQuantity = Math.max(1, Math.min(quantity, maxQuantity));
+      addToCartWithToast(product, safeQuantity);
     }
   };
 
@@ -242,9 +371,9 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             {/* Main Image */}
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden border">
-              {product.image ? (
+              {selectedImageUrl ? (
                 <img
-                  src={product.image}
+                  src={selectedImageUrl}
                   alt={product.name}
                   className="w-full h-full object-contain p-8"
                 />
@@ -269,9 +398,10 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Thumbnail Images (placeholder for multiple images) */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {[0, 1, 2, 3].map((idx) => (
+            {/* Thumbnail Images */}
+            {productImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {productImages.map((image, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
@@ -279,9 +409,9 @@ export default function ProductDetailPage() {
                     selectedImage === idx ? "border-black" : "border-gray-200"
                   }`}
                 >
-                  {product.image && idx === 0 ? (
+                  {image ? (
                     <img
-                      src={product.image}
+                      src={image}
                       alt={`${product.name} view ${idx + 1}`}
                       className="w-full h-full object-contain p-2"
                     />
@@ -291,8 +421,9 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                 </button>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right Column - Product Info */}
@@ -390,7 +521,8 @@ export default function ProductDetailPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                      disabled={quantity >= maxQuantity}
                       className="rounded-l-none"
                     >
                       <Plus className="h-4 w-4" />
