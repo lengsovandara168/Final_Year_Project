@@ -642,8 +642,8 @@ export default function ShopPage() {
             >
               <X className="h-5 w-5" />
             </Button>
-          </form>
-        </div>
+            </form>
+          </div>
       </PageHeader>
 
       {/* Navigation Bar - Categories */}
