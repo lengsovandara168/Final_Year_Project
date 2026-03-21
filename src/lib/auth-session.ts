@@ -7,6 +7,7 @@ export type SessionUser = {
   email: string;
   role: string;
   name: string;
+  profilePhotoUrl?: string;
   permissions: PermissionSet | null;
 };
 
@@ -109,6 +110,10 @@ export function getSessionSnapshot(): SessionSnapshot {
           id: parsed.id,
           email: parsed.email,
           role: parsed.role,
+          profilePhotoUrl:
+            typeof parsed.profilePhotoUrl === "string"
+              ? parsed.profilePhotoUrl
+              : undefined,
           permissions:
             parsed.permissions && typeof parsed.permissions === "object"
               ? {
@@ -130,4 +135,25 @@ export function getSessionSnapshot(): SessionSnapshot {
     user,
     accessToken,
   };
+}
+
+export function updateSessionUser(patch: Partial<SessionUser>) {
+  const snapshot = getSessionSnapshot();
+  if (!snapshot.user) return;
+
+  const nextUser: SessionUser = {
+    ...snapshot.user,
+    ...patch,
+    id: snapshot.user.id,
+    email: snapshot.user.email,
+    role: snapshot.user.role,
+  };
+
+  const serialized = JSON.stringify(nextUser);
+  setCookie("auth_user", serialized);
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("auth_user", serialized);
+    sessionStorage.setItem("auth_user", serialized);
+  }
 }

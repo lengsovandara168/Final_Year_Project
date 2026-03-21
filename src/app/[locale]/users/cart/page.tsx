@@ -958,7 +958,7 @@ export default function CartPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-bold">
+            <h1 className="max-w-[70vw] truncate text-base font-bold sm:max-w-none sm:text-xl">
               {step === "cart" && "Shopping Cart"}
               {step === "shipping" && "Shipping Address"}
               {step === "payment" && "Bakong Payment"}
@@ -1093,10 +1093,10 @@ export default function CartPage() {
 
                     return (
                     <Card key={item.product.id} className={isOutOfStock ? "border-amber-200 bg-amber-50/30" : ""}>
-                      <CardContent className="p-4">
-                        <div className="flex gap-4">
-                          <div className={`flex min-w-0 flex-1 gap-4 ${isOutOfStock ? "opacity-40" : ""}`}>
-                            <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                          <div className={`flex min-w-0 flex-1 gap-3 sm:gap-4 ${isOutOfStock ? "opacity-40" : ""}`}>
+                            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-24 sm:w-24">
                               {item.product.image ? (
                                 <img
                                   src={item.product.image}
@@ -1111,7 +1111,7 @@ export default function CartPage() {
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <h3 className="line-clamp-2 text-sm font-medium">
+                              <h3 className="line-clamp-2 text-sm font-medium sm:text-base">
                                 {item.product.name}
                               </h3>
                               <p className="mt-1 text-xs text-gray-500">
@@ -1119,13 +1119,13 @@ export default function CartPage() {
                                   .filter(Boolean)
                                   .join(" • ")}
                               </p>
-                              <p className="mt-2 font-bold">
+                              <p className="mt-2 text-sm font-bold sm:text-base">
                                 {formatPrice(item.product.price)}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex flex-col items-end justify-between">
+                          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-between sm:gap-2">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1135,7 +1135,7 @@ export default function CartPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
 
-                            <div className={`flex items-center gap-2 rounded-lg border ${isOutOfStock ? "opacity-40" : ""}`}>
+                            <div className={`flex shrink-0 items-center gap-1 rounded-lg border sm:gap-2 ${isOutOfStock ? "opacity-40" : ""}`}>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1150,7 +1150,7 @@ export default function CartPage() {
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
-                              <span className="w-8 text-center font-medium">
+                              <span className="w-7 text-center text-sm font-medium sm:w-8">
                                 {item.quantity}
                               </span>
                               <Button
@@ -1494,13 +1494,13 @@ export default function CartPage() {
                       return (
                         <div
                           key={item.product.id}
-                          className="flex justify-between text-sm"
+                          className="flex items-start justify-between gap-2 text-sm"
                         >
-                          <span className={`max-w-[200px] truncate ${isOutOfStock ? "text-amber-700" : "text-gray-600"}`}>
+                          <span className={`min-w-0 flex-1 truncate ${isOutOfStock ? "text-amber-700" : "text-gray-600"}`}>
                             {item.product.name} × {item.quantity}
                             {isOutOfStock ? " (Out of stock)" : ""}
                           </span>
-                          <span>
+                          <span className="shrink-0">
                             {isOutOfStock
                               ? formatPrice(0)
                               : formatPrice(item.product.price * item.quantity)}

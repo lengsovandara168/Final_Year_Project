@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useCart } from "@/contexts/cart-context";
+import { useWishlist } from "@/contexts/wishlist-context";
 import { useAddToCartWithToast } from "@/hooks/use-add-to-cart";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getProductById, getProducts, type Product } from "@/lib/api";
@@ -177,6 +178,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { getCartCount } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
   const addToCartWithToast = useAddToCartWithToast();
   const cartCount = getCartCount();
   const [product, setProduct] = useState<Product | null>(null);
@@ -184,7 +186,6 @@ export default function ProductDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [isWishlisted, setIsWishlisted] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -338,10 +339,18 @@ export default function ProductDetailPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                onClick={() => {
+                  if (product) {
+                    toggleWishlist(product);
+                  }
+                }}
               >
                 <Heart
-                  className={`h-5 w-5 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`}
+                  className={`h-5 w-5 ${
+                    product && isWishlisted(product.id)
+                      ? "fill-red-500 text-red-500"
+                      : ""
+                  }`}
                 />
               </Button>
               <Button variant="ghost" size="icon">
@@ -548,10 +557,12 @@ export default function ProductDetailPage() {
               <Button
                 variant="outline"
                 className="h-12 px-6"
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                onClick={() => toggleWishlist(product)}
               >
                 <Heart
-                  className={`h-5 w-5 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`}
+                  className={`h-5 w-5 ${
+                    isWishlisted(product.id) ? "fill-red-500 text-red-500" : ""
+                  }`}
                 />
               </Button>
             </div>
