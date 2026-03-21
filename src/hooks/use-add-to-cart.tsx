@@ -12,7 +12,14 @@ export function useAddToCartWithToast() {
 
   const addToCartWithToast = useCallback(
     (product: Product, quantity = 1) => {
-      addToCart(product, quantity);
+      const addedQuantity = addToCart(product, quantity);
+
+      if (addedQuantity < 1) {
+        toast.error("Stock limit reached", {
+          description: "You cannot add more of this item than available stock.",
+        });
+        return;
+      }
 
       toast.success("Added to cart", {
         description: (
@@ -33,7 +40,7 @@ export function useAddToCartWithToast() {
               <p className="text-sm font-medium truncate text-gray-900">{product.name}</p>
               <p className="text-xs text-gray-500">
                 Added successfully 
-                Qty: {quantity}
+                Qty: {addedQuantity}
               </p>
             </div>
           </div>

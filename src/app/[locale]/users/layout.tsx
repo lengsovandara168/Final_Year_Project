@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getValidatedServerSession } from "@/lib/auth-server";
 import { CartProvider } from "@/contexts/cart-context";
+import { WishlistProvider } from "@/contexts/wishlist-context";
 import { Toaster } from "@/components/ui/sonner";
 import { getFirstStaffAdminPath } from "@/lib/rbac";
 
@@ -28,8 +29,10 @@ export default async function UsersLayout({
 
   return (
     <CartProvider>
-      {children}
-      <Toaster position="top-right"/>
+      <WishlistProvider>
+        {children}
+        <Toaster position="top-center" />
+      </WishlistProvider>
     </CartProvider>
   );
 }

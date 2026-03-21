@@ -25,6 +25,12 @@ export type Product = {
   isBestSeller?: boolean;
   description?: string;
   specifications?: ProductSpecification[];
+  availableStock?: number;
+  quantity?: number | null;
+  stock?: number | null;
+  stockQuantity?: number | null;
+  imageUrls?: string[];
+  images?: string[];
 };
 
 export type GetProductsResponse = {
