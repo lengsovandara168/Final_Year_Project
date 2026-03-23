@@ -3,11 +3,10 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-
+import { AppSidebar } from "@/components/app-sidebar";
 import LocaleSwitcher from "@/components/lang/locale-switcher";
 import { getTranslations } from "next-intl/server";
 import { getValidatedServerSession } from "@/lib/auth-server";
-import { AppSidebar } from "./app-sidebar";
 
 export default async function DashboardLayout({
   locale,
@@ -18,19 +17,18 @@ export default async function DashboardLayout({
 }) {
   const t = await getTranslations({ locale, namespace: "Common" });
   const session = await getValidatedServerSession();
-  const user = session?.user;
-  const role = user?.role;
+  const role = session?.user?.role;
 
   return (
     <SidebarProvider>
       <AppSidebar role={role} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear border-b px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
           </div>
           <div className="flex w-full items-center justify-between">
-            <div className="px-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">
+            <div className="text-sm font-medium text-muted-foreground">
               {t("adminPanel")}
             </div>
             <div className="flex items-center gap-2">
@@ -38,7 +36,7 @@ export default async function DashboardLayout({
             </div>
           </div>
         </header>
-        <main className="flex flex-1 flex-col overflow-y-auto bg-gray-50/50 p-4">
+        <main className="flex flex-1 flex-col overflow-y-auto bg-sidebar/50 p-4">
           {children}
         </main>
       </SidebarInset>
