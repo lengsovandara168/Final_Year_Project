@@ -18,8 +18,7 @@ export default async function DashboardLayout({
 }) {
   const t = await getTranslations({ locale, namespace: "Common" });
   const session = await getValidatedServerSession();
-  const user = session?.user;
-  const role = user?.role;
+  const role = session?.user?.role;
 
   return (
     <SidebarProvider>
@@ -30,7 +29,7 @@ export default async function DashboardLayout({
             <SidebarTrigger className="-ml-1" />
           </div>
           <div className="flex w-full items-center justify-between">
-            <div className="px-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">
+            <div className="text-sm font-medium text-muted-foreground">
               {t("adminPanel")}
             </div>
             <div className="flex items-center gap-2">
