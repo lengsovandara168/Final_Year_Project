@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Define strict types for navigation items
 interface NavItem {
   title: string;
   url: string;
@@ -57,6 +58,7 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
   const isAdmin = role === "admin";
   const isStaff = role === "staff";
 
+  // Role-based navigation logic
   const navigation: NavItem[] = [
     ...(isAdmin
       ? [{ title: t("dashboard"), url: adminBasePath, icon: LayoutDashboard }]
@@ -98,15 +100,15 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href={adminBasePath}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg  text-sidebar-primary-foreground">
+                <div className="flex aspect-square size-20 items-center justify-center rounded-lg  text-primary-foreground">
                   <img
                     src="/logo/logo.png"
                     alt="Logo"
-                    className="size-10 object-contain"
+                    className="size-full object-contain"
                   />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Admin Panel</span>
+                  <span className="truncate font-semibold">Admin</span>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -116,7 +118,7 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => (
@@ -127,7 +129,7 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
                     isActive={pathname === item.url}
                   >
                     <a href={item.url}>
-                      <item.icon />
+                      <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </a>
                   </SidebarMenuButton>
@@ -147,10 +149,12 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <User2 />
+                  <User2 className="size-4" />
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">{t("admin")}</span>
-                    <span className="truncate text-xs capitalize">{role}</span>
+                    <span className="truncate text-xs capitalize">
+                      {role || "User"}
+                    </span>
                   </div>
                   <ChevronUp className="ml-auto size-4" />
                 </SidebarMenuButton>

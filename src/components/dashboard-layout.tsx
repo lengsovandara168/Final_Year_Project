@@ -3,10 +3,11 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+
 import LocaleSwitcher from "@/components/lang/locale-switcher";
 import { getTranslations } from "next-intl/server";
 import { getValidatedServerSession } from "@/lib/auth-server";
+import { AppSidebar } from "./app-sidebar";
 
 export default async function DashboardLayout({
   locale,
@@ -23,7 +24,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar role={role} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear">
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear border-b px-4">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
           </div>
@@ -36,7 +37,7 @@ export default async function DashboardLayout({
             </div>
           </div>
         </header>
-        <main className="flex flex-1 flex-col overflow-y-auto bg-sidebar/50 p-4">
+        <main className="flex flex-1 flex-col overflow-y-auto bg-gray-50/50 p-4">
           {children}
         </main>
       </SidebarInset>
