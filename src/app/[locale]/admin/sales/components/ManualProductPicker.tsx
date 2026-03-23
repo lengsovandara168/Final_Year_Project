@@ -1,4 +1,4 @@
-import { Product } from "@/lib/api";
+import { PosCatalogItem } from "@/lib/api/pos";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -20,8 +20,8 @@ type ManualProductPickerProps = {
   search: string;
   onSearchChange: (value: string) => void;
   loading: boolean;
-  products: Product[];
-  onAdd: (product: Product) => void;
+  products: PosCatalogItem[];
+  onAdd: (product: PosCatalogItem) => void;
   triggerLabel?: string;
   searchPlaceholder?: string;
   loadingText?: string;

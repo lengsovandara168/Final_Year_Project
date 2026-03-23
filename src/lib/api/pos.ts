@@ -1,92 +1,150 @@
 import { apiFetch } from "./client";
 
-// Stock Management Types for POS
-
-export type StockAdjustmentType =
-  | "addition"
-  | "damage"
-  | "loss"
-  | "return"
-  | "adjustment";
-
-export interface StockAdjustment {
+// ==========================================
+// 1. POS CATALOG SCHEMAS
+// ==========================================
+export interface PosCatalogItem {
   id: string;
-  productId: string;
-  productName: string;
-  brand: string;
-  category: string;
-  quantityChange: number;
-  adjustmentType: StockAdjustmentType;
-  reason?: string;
-  staffId: string;
-  staffName?: string;
-  timestamp: string;
-  notes?: string;
-}
-
-export interface StockHistory {
-  id: string;
-  productId: string;
-  previousQuantity: number;
-  newQuantity: number;
-  quantityChange: number;
-  adjustmentType: StockAdjustmentType;
-  reason?: string;
-  staffId: string;
-  staffName?: string;
-  timestamp: string;
-  notes?: string;
+  name: string;
+  price: number;
+  inStock: boolean;
+  imei?: string;
+  brand?: string;
+  category?: string;
+  image?: string;
 }
 
 export interface StockLevel {
   id: string;
-  productId: string;
   productName: string;
   brand: string;
   category: string;
   currentQuantity: number;
   minQuantity?: number;
-  maxQuantity?: number;
-  lastUpdated: string;
   status: "in-stock" | "low-stock" | "out-of-stock";
+  lastUpdated: string;
 }
 
-export interface AddStockRequest {
+export interface PosCatalogItem {
+  id: string;
+  name: string;
+  price: number;
+  inStock: boolean;
+  imei?: string;
+  brand?: string;
+  category?: string;
+}
+
+export interface PosProductListResponse {
+  ok: boolean;
+  data: PosCatalogItem[];
+}
+
+// ==========================================
+// 2. POS CHECKOUT SCHEMAS
+// ==========================================
+export interface PosCheckoutItem {
   productId: string;
   quantity: number;
-  adjustmentType: StockAdjustmentType;
-  reason?: string;
-  notes?: string;
 }
 
-export interface StockAdjustmentResponse {
+export interface PosCustomer {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface PosCheckoutRequest {
+  items: PosCheckoutItem[];
+  paymentMethod: "bakong" | "cash"; // Assuming these are your options
+  customer?: PosCustomer;
+  note?: string;
+}
+
+export interface PosCheckoutResult {
+  receiptId?: string;
+  orderNumber?: string;
+  paymentId?: string; // If Bakong
+  qrString?: string; // If Bakong
+  status: string;
+}
+
+export interface PosCheckoutResponse {
   ok: boolean;
-  message: string;
-  data?: StockAdjustment;
-  error?: {
-    message: string;
-    code?: string;
-  };
+  data: PosCheckoutResult;
 }
 
-export interface GetStockHistoryResponse {
+// ==========================================
+// 3. POS RECEIPT SCHEMAS
+// ==========================================
+export interface PosReceiptSummary {
+  id: string;
+  orderNumber?: string;
+  total: number;
+  status: string;
+  createdAt: string;
+  customerName?: string;
+  customerEmail?: string;
+  itemsCount?: number;
+}
+
+export interface PosReceiptHistoryResponse {
   ok: boolean;
-  data: StockHistory[];
+  data: PosReceiptSummary[];
 }
 
-export interface GetStockLevelsResponse {
+export interface PosSaleItem {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  imei?: string;
+  image?: string;
+}
+
+export interface PosCashier {
+  id: string;
+  name: string;
+}
+
+export interface PosReceiptDetail {
+  id: string;
+  orderNumber: string;
+  total: number;
+  subtotal: number;
+  status: string;
+  createdAt: string;
+  paymentMethod: string;
+  items: PosSaleItem[];
+  customer?: PosCustomer;
+  cashier?: PosCashier;
+}
+
+export interface PosReceiptDetailResponse {
   ok: boolean;
-  data: StockLevel[];
+  data: PosReceiptDetail;
 }
 
-/**
- * Add stock to a product
- */
-export async function addStock(
+// ==========================================
+// API FETCHERS
+// ==========================================
+
+/** GET /v1/pos/products */
+export async function getPosProducts(
   accessToken: string,
-  request: AddStockRequest,
-): Promise<StockAdjustmentResponse> {
-  return apiFetch<StockAdjustmentResponse>("/v1/pos/stock/add", {
+): Promise<PosProductListResponse> {
+  return apiFetch<PosProductListResponse>("/v1/pos/products", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+/** POST /v1/pos/checkout */
+export async function createPosCheckout(
+  request: PosCheckoutRequest,
+  accessToken: string,
+): Promise<PosCheckoutResponse> {
+  return apiFetch<PosCheckoutResponse>("/v1/pos/checkout", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -96,57 +154,23 @@ export async function addStock(
   });
 }
 
-/**
- * Adjust stock (deduct for damage/loss/returns)
- */
-export async function adjustStock(
+/** GET /v1/pos/receipts */
+export async function getPosReceipts(
   accessToken: string,
-  request: AddStockRequest,
-): Promise<StockAdjustmentResponse> {
-  return apiFetch<StockAdjustmentResponse>("/v1/pos/stock/adjust", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
+): Promise<PosReceiptHistoryResponse> {
+  return apiFetch<PosReceiptHistoryResponse>("/v1/pos/receipts", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
 
-export async function getStockHistory(
+/** GET /v1/pos/receipts/{receiptId} */
+export async function getPosReceiptDetail(
+  receiptId: string,
   accessToken: string,
-  filters?: {
-    productId?: string;
-    adjustmentType?: StockAdjustmentType;
-    startDate?: string;
-    endDate?: string;
-  },
-): Promise<GetStockHistoryResponse> {
-  const params = new URLSearchParams();
-  if (filters?.productId) params.append("productId", filters.productId);
-  if (filters?.adjustmentType)
-    params.append("adjustmentType", filters.adjustmentType);
-  if (filters?.startDate) params.append("startDate", filters.startDate);
-  if (filters?.endDate) params.append("endDate", filters.endDate);
-
-  const queryString = params.toString();
-  const url = `/v1/pos/stock/history${queryString ? `?${queryString}` : ""}`;
-
-  return apiFetch<GetStockHistoryResponse>(url, {
+): Promise<PosReceiptDetailResponse> {
+  return apiFetch<PosReceiptDetailResponse>(`/v1/pos/receipts/${receiptId}`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-}
-
-export async function getStockLevels(
-  accessToken: string,
-): Promise<GetStockLevelsResponse> {
-  return apiFetch<GetStockLevelsResponse>("/v1/pos/stock/levels", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
