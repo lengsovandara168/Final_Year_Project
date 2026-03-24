@@ -62,7 +62,7 @@ export function SalesHistoryPanel() {
           <div className="py-12 flex flex-col justify-center items-center text-destructive text-center">
             <AlertCircle className="h-8 w-8 mb-2 opacity-80" />
             <p className="text-lg font-medium">Failed to load receipts</p>
-            <p className="text-sm opacity-80 mt-1 max-w-[400px]">
+            <p className="text-sm opacity-80 mt-1 max-w-100">
               {error instanceof Error
                 ? error.message
                 : "The server encountered an error (500). Please check your backend logs."}
@@ -88,8 +88,8 @@ export function SalesHistoryPanel() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receipts.map((receipt: PosReceiptSummary) => (
-                  <TableRow key={receipt.id}>
+                {receipts.map((receipt: PosReceiptSummary, index: number) => (
+                  <TableRow key={receipt.id || receipt.orderNumber || index}>
                     <TableCell className="font-medium text-xs font-mono">
                       {receipt.orderNumber || receipt.id}
                     </TableCell>

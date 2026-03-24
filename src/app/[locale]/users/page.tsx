@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useLogout } from "@/hooks/use-logout";
 import { useCart } from "@/contexts/cart-context";
+import { useWishlist } from "@/contexts/wishlist-context";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
 
@@ -28,11 +29,11 @@ import {
   Tablet,
   Package,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   User,
   LogOut,
   BadgePercent,
+  Heart,
+  X,
 } from "lucide-react";
 import { useAddToCartWithToast } from "@/hooks/use-add-to-cart";
 import { locales } from "@/i18n/routing";
@@ -46,10 +47,9 @@ import {
 } from "@/components/ui/carousel";
 import { useTranslations } from "next-intl";
 
+import { PageHeader } from "@/components/page-header";
 // Product type imported from @/lib/api
 // Includes: id, name, imei, price, originalPrice, image, subcategoryId,
-// rating, reviewCount, inStock, isPopular, isBestSeller, description, specifications
-
 // Type definitions for categories
 interface Category {
   id: string;
@@ -180,6 +180,14 @@ function buildProductTemplateKey(product: Product) {
 }
 
 function deduplicateProductTemplates(products: Product[]) {
+  const stockByTemplate = new Map<string, number>();
+
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const key = buildProductTemplateKey(product);
+    stockByTemplate.set(key, (stockByTemplate.get(key) ?? 0) + 1);
+  }
+
   const grouped = new Map<string, Product>();
 
   for (const product of products) {
@@ -211,12 +219,17 @@ function deduplicateProductTemplates(products: Product[]) {
       rating: Math.max(existing.rating, product.rating),
       reviewCount: Math.max(existing.reviewCount, product.reviewCount),
       inStock: existing.inStock || product.inStock,
+      availableStock: stockByTemplate.get(key) ?? 0,
       isPopular: Boolean(existing.isPopular || product.isPopular),
       isBestSeller: Boolean(existing.isBestSeller || product.isBestSeller),
     });
   }
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.entries()).map(([key, product]) => ({
+    ...product,
+    availableStock: product.availableStock ?? stockByTemplate.get(key) ?? 0,
+    inStock: (product.availableStock ?? stockByTemplate.get(key) ?? 0) > 0,
+  }));
 }
 
 // Type definitions for news/banners
@@ -228,6 +241,8 @@ interface NewsItem {
   link?: string;
   bgColor?: string;
 }
+
+type SortOption = "price-low" | "price-high" | "popular" | "rating" | "newest";
 
 export default function ShopPage() {
   const t = useTranslations("Shop");
@@ -247,6 +262,8 @@ export default function ShopPage() {
     accessories: [],
   });
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [selectedSort, setSelectedSort] = useState<SortOption>("newest");
   const [failedBrandLogos, setFailedBrandLogos] = useState<
     Record<string, boolean>
   >({});
@@ -254,6 +271,7 @@ export default function ShopPage() {
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const { getCartCount } = useCart();
   const addToCartWithToast = useAddToCartWithToast();
+  const { toggleWishlist, getWishlistCount, isWishlisted } = useWishlist();
   const [totalSlides, setTotalSlides] = useState(0);
 
   const categories: Category[] = [
@@ -425,6 +443,32 @@ export default function ShopPage() {
     return matchesCategory && matchesBrand && matchesSearch;
   });
 
+  const sortedFilteredProducts = [...filteredProducts].sort((a, b) => {
+    if (selectedSort === "price-low") {
+      return a.price - b.price;
+    }
+
+    if (selectedSort === "price-high") {
+      return b.price - a.price;
+    }
+
+    if (selectedSort === "popular") {
+      if (a.isPopular !== b.isPopular) {
+        return a.isPopular ? -1 : 1;
+      }
+      return b.reviewCount - a.reviewCount;
+    }
+
+    if (selectedSort === "rating") {
+      if (b.rating !== a.rating) {
+        return b.rating - a.rating;
+      }
+      return b.reviewCount - a.reviewCount;
+    }
+
+    return 0;
+  });
+
   // Add to cart handler
   const handleAddToCart = (productId: string) => {
     const product = products.find((p) => p.id === productId);
@@ -433,81 +477,174 @@ export default function ShopPage() {
     }
   };
 
+  const handleSearchSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    setSelectedCategory("all");
+    setSelectedBrand("all");
+    setIsMobileSearchOpen(false);
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const allProductsAnchor = document.getElementById(
+            "all-products-section",
+          );
+          const fallbackAnchor = document.getElementById("products-results");
+          const target = allProductsAnchor ?? fallbackAnchor;
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+      });
+    }
+  };
+
   // Get cart count
   const cartCount = getCartCount();
+  const wishlistCount = getWishlistCount();
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header - Logo + Search + Cart */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
-            {/* Logo */}
-            <div className="flex items-center shrink-0">
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-black">
-                <Smartphone className="h-6 w-6 text-white" />
-              </div>
-              <span className="ml-2 text-xl font-bold hidden sm:block">
-                {t("brand")}
-              </span>
-            </div>
-
-            {/* Full Search Bar */}
-            <div className="flex-1 max-w-2xl">
-              <div className="flex">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder={t("searchPlaceholder")}
-                    className="pl-10 w-full rounded-r-none border-r-0"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <Button className="rounded-l-none bg-black text-white hover:bg-gray-800">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Cart + Account (aligned to the right) */}
-            <div className="flex items-center gap-4 shrink-0">
-              {/* Cart on the left */}
-              <Button
-                variant="outline"
-                className="relative shrink-0"
-                onClick={() => router.push("/users/cart")}
-                aria-label="Shopping cart"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartCount > 99 ? "99+" : cartCount}
-                  </span>
-                )}
-              </Button>
-
-              {/* Account on the right */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="relative shrink-0"
-                    aria-label="Open account menu"
-                  >
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>{t("logout")}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+      <PageHeader
+        className="bg-white border-b"
+        containerClassName="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+      >
+        <div className="relative flex items-center justify-between h-16 gap-3">
+          {/* Logo */}
+          <div
+            className={`flex items-center shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
+          >
+            <img
+              src="https://final-year-project-mocha-six.vercel.app/_next/image?url=%2Flogo%2Flogo.png&w=256&q=75"
+              alt="Astrix logo"
+              className="h-10 w-10 rounded-lg object-contain"
+            />
+            <span className="ml-2 text-xl font-bold hidden sm:block">
+              Astrix
+            </span>
           </div>
+
+          {/* Full Search Bar */}
+          <div className="hidden md:block flex-1 max-w-2xl">
+            <form className="flex" onSubmit={handleSearchSubmit}>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder={t("searchPlaceholder")}
+                  className="pl-10 w-full rounded-r-none border-r-0"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="rounded-l-none bg-black text-white hover:bg-gray-800"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
+
+          {/* Cart + Account (aligned to the right) */}
+          <div
+            className={`flex items-center gap-2 sm:gap-3 shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
+          >
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 md:hidden"
+              onClick={() => setIsMobileSearchOpen(true)}
+              aria-label="Open search"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+
+            {/* Wishlist */}
+            <Button
+              variant="outline"
+              className="relative shrink-0"
+              onClick={() => router.push("/users/wishlist")}
+              aria-label="Open wishlist"
+            >
+              <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+            </Button>
+
+            {/* Cart on the left */}
+            <Button
+              variant="outline"
+              className="relative shrink-0"
+              onClick={() => router.push("/users/cart")}
+              aria-label="Shopping cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+            </Button>
+
+            {/* Account on the right */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="relative shrink-0"
+                  aria-label="Open account menu"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+                <DropdownMenuItem onClick={() => router.push("/users/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>{t("logout")}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <form
+            className={`${isMobileSearchOpen ? "flex" : "hidden"} absolute inset-0 z-20 items-center gap-2 bg-white px-4 sm:px-6 md:hidden`}
+            onSubmit={handleSearchSubmit}
+          >
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                placeholder={t("searchPlaceholder")}
+                className="pl-10 w-full rounded-r-none border-r-0"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <Button
+              type="submit"
+              className="rounded-l-none bg-black text-white hover:bg-gray-800"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setIsMobileSearchOpen(false)}
+              aria-label="Close search"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </form>
         </div>
-      </header>
+      </PageHeader>
 
       {/* Navigation Bar - Categories */}
       <nav className="sticky top-0 z-50 bg-white border-b shadow-sm">
@@ -687,7 +824,10 @@ export default function ShopPage() {
         </section>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div
+        id="products-results"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      >
         {/* Hero Section - Only show on "All Products" */}
         {selectedCategory === "all" && (
           <>
@@ -697,13 +837,15 @@ export default function ShopPage() {
                 <TrendingUp className="h-5 w-5 text-orange-500" />
                 <h2 className="text-xl font-bold">{t("popularProducts")}</h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {popularProducts.length > 0 ? (
                   popularProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       onAddToCart={handleAddToCart}
+                      onWishlistClick={toggleWishlist}
+                      isWishlisted={isWishlisted(product.id)}
                     />
                   ))
                 ) : (
@@ -722,13 +864,15 @@ export default function ShopPage() {
                 <Star className="h-5 w-5 text-yellow-500" />
                 <h2 className="text-xl font-bold">{t("bestSellerProducts")}</h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {bestSellers.length > 0 ? (
                   bestSellers.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       onAddToCart={handleAddToCart}
+                      onWishlistClick={toggleWishlist}
+                      isWishlisted={isWishlisted(product.id)}
                     />
                   ))
                 ) : (
@@ -825,22 +969,40 @@ export default function ShopPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem>{t("priceLowToHigh")}</DropdownMenuItem>
-                    <DropdownMenuItem>{t("priceHighToLow")}</DropdownMenuItem>
-                    <DropdownMenuItem>{t("mostPopular")}</DropdownMenuItem>
-                    <DropdownMenuItem>{t("newest")}</DropdownMenuItem>
-                    <DropdownMenuItem>{t("bestRating")}</DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSelectedSort("price-low")}
+                    >
+                      {t("priceLowToHigh")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSelectedSort("price-high")}
+                    >
+                      {t("priceHighToLow")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSelectedSort("popular")}
+                    >
+                      {t("mostPopular")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("newest")}>
+                      {t("newest")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("rating")}>
+                      {t("bestRating")}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => (
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                {sortedFilteredProducts.length > 0 ? (
+                  sortedFilteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       onAddToCart={handleAddToCart}
+                      onWishlistClick={toggleWishlist}
+                      isWishlisted={isWishlisted(product.id)}
                     />
                   ))
                 ) : (
@@ -862,7 +1024,7 @@ export default function ShopPage() {
 
         {/* All Products Grid - Show only on home page */}
         {selectedCategory === "all" && (
-          <section>
+          <section id="all-products-section">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">{t("allProducts")}</h2>
               <DropdownMenu>
@@ -873,22 +1035,38 @@ export default function ShopPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem>{t("priceLowToHigh")}</DropdownMenuItem>
-                  <DropdownMenuItem>{t("priceHighToLow")}</DropdownMenuItem>
-                  <DropdownMenuItem>{t("mostPopular")}</DropdownMenuItem>
-                  <DropdownMenuItem>{t("newest")}</DropdownMenuItem>
-                  <DropdownMenuItem>{t("bestRating")}</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedSort("price-low")}
+                  >
+                    {t("priceLowToHigh")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedSort("price-high")}
+                  >
+                    {t("priceHighToLow")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedSort("popular")}>
+                    {t("mostPopular")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedSort("newest")}>
+                    {t("newest")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedSort("rating")}>
+                    {t("bestRating")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {sortedFilteredProducts.length > 0 ? (
+                sortedFilteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
                     onAddToCart={handleAddToCart}
+                    onWishlistClick={toggleWishlist}
+                    isWishlisted={isWishlisted(product.id)}
                   />
                 ))
               ) : (
@@ -913,9 +1091,13 @@ export default function ShopPage() {
 function ProductCard({
   product,
   onAddToCart,
+  onWishlistClick,
+  isWishlisted,
 }: {
   product: Product;
   onAddToCart: (productId: string) => void;
+  onWishlistClick: (product: Product) => void;
+  isWishlisted: boolean;
 }) {
   const t = useTranslations("Shop");
   const router = useRouter();
@@ -980,24 +1162,24 @@ function ProductCard({
         </div>
 
         {/* Product Info */}
-        <div className="flex flex-1 flex-col p-4">
-          <div className="space-y-1">
-            <h3 className="min-h-10 font-medium text-sm line-clamp-2">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
+          <div className="space-y-1 min-w-0">
+            <h3 className="min-h-8 text-xs font-medium line-clamp-2 break-words sm:min-h-10 sm:text-sm">
               {product.name}
             </h3>
-            <p className="min-h-4 text-xs text-gray-500">
+            <p className="min-h-3 text-[11px] text-gray-500 line-clamp-1 break-words sm:min-h-4 sm:text-xs">
               {[product.storage, product.color].filter(Boolean).join(" • ") || (
                 <span className="invisible">-</span>
               )}
             </p>
-            <p className="min-h-10 text-xs text-gray-600 line-clamp-2">
+            <p className="hidden min-h-10 text-xs text-gray-600 line-clamp-2 break-words sm:block">
               {product.description || (
                 <span className="invisible">{t("noDescription")}</span>
               )}
             </p>
           </div>
 
-          <div className="mt-auto pt-2">
+          <div className="mt-auto pt-1.5 sm:pt-2">
             {/* Rating */}
             <div className="flex min-h-4 items-center gap-1">
               <div className="flex items-center">
@@ -1018,30 +1200,48 @@ function ProductCard({
             </div>
 
             {/* Price */}
-            <div className="mb-3 mt-2 flex min-h-7 items-center gap-2">
-              <span className="text-lg font-bold">
+            <div className="mb-2 mt-1.5 flex min-h-6 items-center gap-1.5 sm:mb-3 sm:mt-2 sm:min-h-7 sm:gap-2">
+              <span className="text-sm font-bold sm:text-lg">
                 {formatPrice(product.price)}
               </span>
               {product.originalPrice ? (
-                <span className="text-sm text-gray-500 line-through">
+                <span className="text-xs text-gray-500 line-through sm:text-sm">
                   {formatPrice(product.originalPrice)}
                 </span>
               ) : (
-                <span className="invisible text-sm">.</span>
+                <span className="invisible text-xs sm:text-sm">.</span>
               )}
             </div>
 
-            <Button
-              className="w-full bg-black text-white hover:bg-gray-800"
-              disabled={!product.inStock}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(product.id);
-              }}
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {product.inStock ? t("addToCart") : t("outOfStock")}
-            </Button>
+            <div className="flex items-stretch gap-1.5 sm:gap-2">
+              <Button
+                variant="outline"
+                className="h-9 w-9 shrink-0 p-0 sm:h-10 sm:w-10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onWishlistClick(product);
+                }}
+                aria-label="Add to wishlist"
+              >
+                <Heart
+                  className={`h-4 w-4 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`}
+                />
+              </Button>
+              <Button
+                className="h-9 w-9 shrink-0 bg-black p-0 text-white hover:bg-gray-800 sm:h-10 sm:min-w-0 sm:flex-1 sm:px-3 sm:text-sm"
+                disabled={!product.inStock}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart(product.id);
+                }}
+                aria-label={product.inStock ? t("addToCart") : t("outOfStock")}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4" />
+                <span className="hidden truncate sm:inline">
+                  {product.inStock ? t("addToCart") : t("outOfStock")}
+                </span>
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

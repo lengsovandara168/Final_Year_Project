@@ -14,6 +14,29 @@ export interface PosCatalogItem {
   image?: string;
 }
 
+export interface PosCheckoutResult {
+  receiptId?: string;
+  orderNumber?: string;
+  paymentId?: string;
+  qrString?: string;
+  status: string;
+}
+
+export interface PosCheckoutResponse {
+  ok: boolean;
+  data: PosCheckoutResult;
+}
+
+export interface PosPaymentStatusResponse {
+  ok: boolean;
+  data: {
+    status: string;
+    receiptNumber?: string;
+    orderId?: string;
+    orderNumber?: string;
+  };
+}
+
 export interface StockLevel {
   id: string;
   productName: string;
@@ -56,22 +79,26 @@ export interface PosCustomer {
 
 export interface PosCheckoutRequest {
   items: PosCheckoutItem[];
-  paymentMethod: "bakong" | "cash"; // Assuming these are your options
-  customer?: PosCustomer;
+  paymentMethod: "bakong" | "cash";
   note?: string;
 }
 
 export interface PosCheckoutResult {
   receiptId?: string;
   orderNumber?: string;
-  paymentId?: string; // If Bakong
-  qrString?: string; // If Bakong
+  paymentId?: string;
+  qrString?: string;
   status: string;
 }
 
-export interface PosCheckoutResponse {
+export interface PosPaymentStatusResponse {
   ok: boolean;
-  data: PosCheckoutResult;
+  data: {
+    status: string;
+    receiptNumber?: string;
+    orderId?: string;
+    orderNumber?: string;
+  };
 }
 
 export interface PosPaymentStatusResponse {
@@ -195,4 +222,35 @@ export async function getPosReceiptDetail(
     method: "GET",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+}
+
+export async function getPosBakongPaymentStatus(
+  paymentId: string,
+  accessToken: string,
+): Promise<PosPaymentStatusResponse> {
+  return apiFetch<PosPaymentStatusResponse>(
+    `/v1/pos/payments/${paymentId}/status`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+}
+
+export interface CancelPosPaymentResponse {
+  ok: boolean;
+}
+
+/** POST /v1/pos/checkout/{paymentId}/cancel */
+export async function cancelPosBakongPayment(
+  paymentId: string,
+  accessToken: string,
+): Promise<CancelPosPaymentResponse> {
+  return apiFetch<CancelPosPaymentResponse>(
+    `/v1/pos/checkout/${paymentId}/cancel`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
 }

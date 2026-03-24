@@ -38,7 +38,7 @@ export function KhqrCode({
 
         <div className="relative z-10">
           <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-800">
-            {receiverName}
+            {process.env.MERCHANT_NAME || "Astrix"}
           </p>
           <p className="mt-2 text-[34px] font-semibold leading-none text-black">
             {amountLabel}

@@ -33,6 +33,7 @@ export function PaymentModal({
   onCancel,
 }: PaymentModalProps) {
   if (!paymentSession) return null;
+  const amount = paymentSession.amount || 0;
 
   return (
     <Dialog
@@ -61,7 +62,7 @@ export function PaymentModal({
               Amount Due
             </p>
             <p className="text-4xl font-bold text-primary">
-              ${paymentSession.amount.toFixed(2)}
+              ${amount.toFixed(2)}
             </p>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm font-medium mt-2">
               <Clock3 className="h-4 w-4" /> Expires in{" "}

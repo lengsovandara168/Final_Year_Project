@@ -2,17 +2,11 @@
 
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { type Product } from "@/lib/api/products";
 
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -28,7 +22,7 @@ import {
 
 // Custom Components
 import { ProductSearchBar } from "./components/ProductSearchBar";
-import { ManualProductPicker } from "./components/ManualProductPicker";
+
 import {
   PageAlertMessage,
   type PageAlertState,
@@ -190,26 +184,32 @@ export default function SalesPage() {
       ],
     };
     printReceiptHtml(
-      generateReceiptPrintHtml(summary as any, {
-        brandName: "LDHS",
-        title: "Receipt",
-      }),
+      generateReceiptPrintHtml(
+        summary as Parameters<typeof generateReceiptPrintHtml>[0],
+        {
+          brandName: "LDHS",
+          title: "Receipt",
+        },
+      ),
     );
   };
 
   // --- HANDLERS ---
-  const addProductToCart = (product: any) => {
+  const addProductToCart = (product: Product) => {
     if (!product.inStock) {
       toast.error("Out of stock");
       return;
     }
+
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
+
       if (existing) {
         return prev.map((i) =>
           i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
+
       return [
         ...prev,
         {
@@ -223,7 +223,6 @@ export default function SalesPage() {
     });
     toast.success(t("addedToCart"), { description: product.name });
   };
-
   const performCheckout = async (
     method: "bakong" | "cash",
     cashReceived?: number,
@@ -260,7 +259,7 @@ export default function SalesPage() {
         );
         setCartItems([]);
         setIsCashModalOpen(false);
-        refetch(); // Update stock counts
+        refetch();
       } else {
         const normalizedPayment = normalizePosPaymentSession(response);
         if (!normalizedPayment) {
@@ -279,8 +278,8 @@ export default function SalesPage() {
           3000,
         );
       }
-    } catch (err: any) {
-      toast.error(err.message || "Checkout failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Checkout failed");
     } finally {
       setIsProcessingCheckout(false);
     }
@@ -307,13 +306,13 @@ export default function SalesPage() {
         toast.success("Payment Complete");
         refetch();
       }
-    } catch (e: any) {
-      if (e?.status === 404 || e?.status === 400) return;
+    } catch (e: unknown) {
+      const err = e as { status?: number };
+      if (err?.status === 404 || err?.status === 400) return;
     }
   };
-
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 max-w-400 mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
           {t("title")}
@@ -358,7 +357,7 @@ export default function SalesPage() {
                   onBarcodeScan={(code) => {
                     const cleaned = code.trim().toLowerCase();
                     const p = products.find(
-                      (x: any) =>
+                      (x: Product) =>
                         x.imei?.toLowerCase() === cleaned ||
                         x.id.toLowerCase() === cleaned,
                     );
@@ -415,7 +414,7 @@ export default function SalesPage() {
         paymentSession={paymentSession}
         remainingMs={remainingMs}
         onCheckStatus={checkStatus}
-        onCancel={clearPayment}
+        onCancel={handleCancelPayment}
       />
       <Toaster />
     </div>

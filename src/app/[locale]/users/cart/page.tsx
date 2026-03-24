@@ -7,11 +7,13 @@ import { getSessionSnapshot } from "@/lib/auth-session";
 import {
   cancelBakongPayment,
   getBakongPaymentStatus,
+  getProducts,
   initBakongCheckout,
   type ApiError,
   type BakongCheckoutShipping,
   type CheckoutCurrency,
   type InitBakongCheckoutResponse,
+  type Product,
 } from "@/lib/api";
 import { persistCheckoutSummary } from "@/lib/checkout-storage";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -143,12 +145,73 @@ function normalizeBakongInitResponse(
   };
 }
 
-function buildCheckoutItems(items: ReturnType<typeof useCart>["items"]) {
-  return items.flatMap((item) =>
-    Array.from({ length: item.quantity }, () => ({
-      productId: item.product.id,
-    })),
-  );
+function buildProductTemplateKey(product: Product) {
+  const priceKey = Number(product.price ?? 0).toFixed(2);
+  const originalPriceKey =
+    product.originalPrice == null
+      ? "none"
+      : Number(product.originalPrice).toFixed(2);
+
+  if (product.templateId?.trim()) {
+    return `template:${product.templateId.trim()}:price:${priceKey}:original:${originalPriceKey}`;
+  }
+
+  const normalizedName = product.name.trim().toLowerCase();
+  const normalizedStorage = product.storage?.trim().toLowerCase() ?? "";
+  const normalizedColor = product.color?.trim().toLowerCase() ?? "";
+  return `legacy:${product.subcategoryId}:${normalizedName}:${normalizedStorage}:${normalizedColor}:price:${priceKey}:original:${originalPriceKey}`;
+}
+
+function buildInventoryBuckets(products: Product[]) {
+  const buckets = new Map<string, Product[]>();
+
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const key = buildProductTemplateKey(product);
+    const current = buckets.get(key) ?? [];
+    buckets.set(key, [...current, product]);
+  }
+
+  return buckets;
+}
+
+function allocateCheckoutItems(
+  cartItems: ReturnType<typeof useCart>["items"],
+  products: Product[],
+) {
+  const buckets = buildInventoryBuckets(products);
+  const checkoutItems: { productId: string }[] = [];
+  const outOfStockNames: string[] = [];
+  const stockByCartProductId: Record<string, number> = {};
+
+  for (const item of cartItems) {
+    const key = buildProductTemplateKey(item.product);
+    const bucket = buckets.get(key) ?? [];
+    stockByCartProductId[item.product.id] = bucket.length;
+
+    if (bucket.length <= 0) {
+      outOfStockNames.push(item.product.name);
+      continue;
+    }
+
+    if (item.quantity > bucket.length) {
+      outOfStockNames.push(item.product.name);
+    }
+
+    const reserveCount = Math.min(item.quantity, bucket.length);
+    const selected = bucket.slice(0, reserveCount);
+    buckets.set(key, bucket.slice(reserveCount));
+
+    for (const selectedProduct of selected) {
+      checkoutItems.push({ productId: selectedProduct.id });
+    }
+  }
+
+  return {
+    checkoutItems,
+    outOfStockNames: Array.from(new Set(outOfStockNames)),
+    stockByCartProductId,
+  };
 }
 
 function initialShippingState(): BakongCheckoutShipping {
@@ -183,12 +246,31 @@ function isPendingPaymentState(state: PaymentUiState) {
   return ["initializing", "ready"].includes(state);
 }
 
+function getCartItemStockLimit(
+  item: ReturnType<typeof useCart>["items"][number],
+) {
+  const product = item.product;
+  const candidates = [
+    product.availableStock,
+    product.stockQuantity,
+    product.stock,
+    product.quantity,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      return Math.floor(value);
+    }
+  }
+
+  return product.inStock ? Number.POSITIVE_INFINITY : 0;
+}
+
 export default function CartPage() {
   const t = useTranslations("Cart");
   const router = useRouter();
   const isMobile = useIsMobile();
-  const { items, updateQuantity, removeFromCart, getCartTotal, clearCart } =
-    useCart();
+  const { items, updateQuantity, removeFromCart, clearCart } = useCart();
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [shipping, setShipping] =
@@ -201,9 +283,31 @@ export default function CartPage() {
   );
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [cancelInFlight, setCancelInFlight] = useState(false);
+  const [stockByCartProductId, setStockByCartProductId] = useState<
+    Record<string, number>
+  >({});
+  const [outOfStockNames, setOutOfStockNames] = useState<string[]>([]);
+
+  const isItemOutOfStock = (
+    item: ReturnType<typeof useCart>["items"][number],
+  ) => {
+    const liveStockLimit = stockByCartProductId[item.product.id];
+    const stockLimit =
+      typeof liveStockLimit === "number"
+        ? liveStockLimit
+        : getCartItemStockLimit(item);
+
+    return stockLimit <= 0;
+  };
 
   const stepOrder: CheckoutStep[] = ["cart", "shipping", "payment"];
-  const subtotal = getCartTotal();
+  const subtotal = items.reduce((total, item) => {
+    if (isItemOutOfStock(item)) {
+      return total;
+    }
+
+    return total + item.product.price * item.quantity;
+  }, 0);
   const estimatedShipping = 0;
   const estimatedTotal = subtotal + estimatedShipping;
   const readyForShipping = items.length > 0;
@@ -213,6 +317,7 @@ export default function CartPage() {
   const actionLabel =
     paymentSession?.deeplink && isMobile ? "Open Bakong" : "I have paid";
   const normalizedBillName = normalizeBillName(shipping.fullName);
+  const hasOutOfStockItems = outOfStockNames.length > 0;
 
   const pollIntervalRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
@@ -269,6 +374,25 @@ export default function CartPage() {
     setRemainingMs(null);
     setCheckoutError(null);
     setPaymentState("idle");
+  }
+
+  async function syncCartStock(accessToken: string) {
+    const productsResponse = await getProducts(accessToken);
+    const allProducts = productsResponse.data || [];
+    const allocation = allocateCheckoutItems(items, allProducts);
+
+    setStockByCartProductId(allocation.stockByCartProductId);
+    setOutOfStockNames(allocation.outOfStockNames);
+
+    for (const item of items) {
+      const limit = allocation.stockByCartProductId[item.product.id];
+      if (typeof limit !== "number") continue;
+      if (limit > 0 && item.quantity > limit) {
+        updateQuantity(item.product.id, limit);
+      }
+    }
+
+    return allocation;
   }
 
   function startCountdown(expiresAt: string, paymentId: string) {
@@ -424,9 +548,26 @@ export default function CartPage() {
     lastCountdownTriggerRef.current = null;
 
     try {
+      const allocation = await syncCartStock(accessToken);
+      if (allocation.outOfStockNames.length > 0) {
+        setStep("shipping");
+        setPaymentState("idle");
+        setCheckoutError(
+          `Out of stock: ${allocation.outOfStockNames.join(", ")}. Please update your cart quantities.`,
+        );
+        return;
+      }
+
+      if (allocation.checkoutItems.length < 1) {
+        setStep("cart");
+        setPaymentState("idle");
+        setCheckoutError("No in-stock items available for checkout.");
+        return;
+      }
+
       const response = await initBakongCheckout(
         {
-          items: buildCheckoutItems(items),
+          items: allocation.checkoutItems,
           shipping: {
             fullName: normalizedBillName,
             phone: shipping.phone.trim(),
@@ -577,20 +718,63 @@ export default function CartPage() {
   }
 
   function handleQuantityChange(productId: string, newQuantity: number) {
+    const liveStockLimit = stockByCartProductId[productId];
+    const maxAllowed =
+      typeof liveStockLimit === "number" && Number.isFinite(liveStockLimit)
+        ? Math.max(0, liveStockLimit)
+        : Number.POSITIVE_INFINITY;
+
+    if (maxAllowed <= 0) return;
     if (newQuantity >= 1) {
-      updateQuantity(productId, newQuantity);
+      updateQuantity(productId, Math.min(newQuantity, maxAllowed));
     }
   }
 
-  function handleCheckout() {
+  async function handleCheckout() {
     if (step === "cart" && items.length > 0) {
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) return;
+
+      let hasStockIssue = false;
+      try {
+        const allocation = await syncCartStock(accessToken);
+        if (allocation.outOfStockNames.length > 0) {
+          hasStockIssue = true;
+          setCheckoutError(
+            `Out of stock: ${allocation.outOfStockNames.join(", ")}. Please review your cart.`,
+          );
+        }
+      } catch {
+        // keep current cart if sync fails
+      }
+
       setShowErrors(false);
-      setCheckoutError(null);
+      if (!hasStockIssue) {
+        setCheckoutError(null);
+      }
       setStep("shipping");
       return;
     }
 
     if (step === "shipping") {
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) return;
+
+      try {
+        const allocation = await syncCartStock(accessToken);
+        if (allocation.outOfStockNames.length > 0) {
+          setCheckoutError(
+            `Out of stock: ${allocation.outOfStockNames.join(", ")}. Please update your cart before payment.`,
+          );
+          return;
+        }
+      } catch {
+        setCheckoutError(
+          "Unable to validate stock right now. Please try again.",
+        );
+        return;
+      }
+
       const valid =
         isShippingComplete(shipping) && isValidBillName(shipping.fullName);
       if (!valid) {
@@ -627,6 +811,80 @@ export default function CartPage() {
 
     await checkPaymentStatus(paymentSession.paymentId);
   }
+
+  useEffect(() => {
+    const accessToken = getSessionSnapshot().accessToken;
+    if (!accessToken || items.length === 0) {
+      setStockByCartProductId({});
+      setOutOfStockNames([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const productsResponse = await getProducts(accessToken);
+        if (cancelled) return;
+
+        const allProducts = productsResponse.data || [];
+        const allocation = allocateCheckoutItems(items, allProducts);
+        if (cancelled) return;
+
+        setStockByCartProductId(allocation.stockByCartProductId);
+        setOutOfStockNames(allocation.outOfStockNames);
+      } catch {
+        if (!cancelled) {
+          setStockByCartProductId({});
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
+
+  useEffect(() => {
+    if (step === "payment" || items.length === 0) {
+      return;
+    }
+
+    const accessToken = getSessionSnapshot().accessToken;
+    if (!accessToken) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const productsResponse = await getProducts(accessToken);
+        if (cancelled) return;
+
+        const allProducts = productsResponse.data || [];
+        const allocation = allocateCheckoutItems(items, allProducts);
+        if (cancelled) return;
+
+        setStockByCartProductId(allocation.stockByCartProductId);
+        setOutOfStockNames(allocation.outOfStockNames);
+      } catch {
+        // keep last known stock state
+      }
+    };
+
+    void run();
+    const intervalId = window.setInterval(() => {
+      void run();
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [items, step]);
 
   useEffect(() => {
     return () => {
@@ -705,7 +963,7 @@ export default function CartPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-bold">
+            <h1 className="max-w-[70vw] truncate text-base font-bold sm:max-w-none sm:text-xl">
               {step === "cart" && "Shopping Cart"}
               {step === "shipping" && "Shipping Address"}
               {step === "payment" && "Bakong Payment"}
@@ -820,87 +1078,118 @@ export default function CartPage() {
                 </div>
               )}
 
+              {hasOutOfStockItems &&
+                (step === "cart" || step === "shipping") && (
+                  <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <CircleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span>
+                      Out of stock: {outOfStockNames.join(", ")}. Please reduce
+                      quantity or remove those items.
+                    </span>
+                  </div>
+                )}
+
               {step === "cart" && (
                 <>
-                  {items.map((item) => (
-                    <Card key={item.product.id}>
-                      <CardContent className="p-4">
-                        <div className="flex gap-4">
-                          <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                            {item.product.image ? (
-                              <img
-                                src={item.product.image}
-                                alt={item.product.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Package className="h-8 w-8 text-gray-300" />
-                              </div>
-                            )}
-                          </div>
+                  {items.map((item) => {
+                    const stockLimit =
+                      stockByCartProductId[item.product.id] ??
+                      getCartItemStockLimit(item);
+                    const isOutOfStock = stockLimit <= 0;
+                    const reachedStockLimit = item.quantity >= stockLimit;
 
-                          <div className="min-w-0 flex-1">
-                            <h3 className="line-clamp-2 text-sm font-medium">
-                              {item.product.name}
-                            </h3>
-                            <p className="mt-1 text-xs text-gray-500">
-                              {[item.product.storage, item.product.color]
-                                .filter(Boolean)
-                                .join(" • ")}
-                            </p>
-                            <p className="mt-2 font-bold">
-                              {formatPrice(item.product.price)}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-col items-end justify-between">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:bg-red-50 hover:text-red-700"
-                              onClick={() => removeFromCart(item.product.id)}
+                    return (
+                      <Card
+                        key={item.product.id}
+                        className={
+                          isOutOfStock ? "border-amber-200 bg-amber-50/30" : ""
+                        }
+                      >
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                            <div
+                              className={`flex min-w-0 flex-1 gap-3 sm:gap-4 ${isOutOfStock ? "opacity-40" : ""}`}
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-24 sm:w-24">
+                                {item.product.image ? (
+                                  <img
+                                    src={item.product.image}
+                                    alt={item.product.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <Package className="h-8 w-8 text-gray-300" />
+                                  </div>
+                                )}
+                              </div>
 
-                            <div className="flex items-center gap-2 rounded-lg border">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="line-clamp-2 text-sm font-medium sm:text-base">
+                                  {item.product.name}
+                                </h3>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  {[item.product.storage, item.product.color]
+                                    .filter(Boolean)
+                                    .join(" • ")}
+                                </p>
+                                <p className="mt-2 text-sm font-bold sm:text-base">
+                                  {formatPrice(item.product.price)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-between sm:gap-2">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  handleQuantityChange(
-                                    item.product.id,
-                                    item.quantity - 1,
-                                  )
-                                }
-                                disabled={item.quantity <= 1}
+                                className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                                onClick={() => removeFromCart(item.product.id)}
                               >
-                                <Minus className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                              <span className="w-8 text-center font-medium">
-                                {item.quantity}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  handleQuantityChange(
-                                    item.product.id,
-                                    item.quantity + 1,
-                                  )
-                                }
+
+                              <div
+                                className={`flex shrink-0 items-center gap-1 rounded-lg border sm:gap-2 ${isOutOfStock ? "opacity-40" : ""}`}
                               >
-                                <Plus className="h-4 w-4" />
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() =>
+                                    handleQuantityChange(
+                                      item.product.id,
+                                      item.quantity - 1,
+                                    )
+                                  }
+                                  disabled={item.quantity <= 1 || isOutOfStock}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="w-7 text-center text-sm font-medium sm:w-8">
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() =>
+                                    handleQuantityChange(
+                                      item.product.id,
+                                      item.quantity + 1,
+                                    )
+                                  }
+                                  disabled={reachedStockLimit || isOutOfStock}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </>
               )}
 
@@ -1060,7 +1349,9 @@ export default function CartPage() {
                               value={paymentSession.qrString}
                               size={320}
                               className="mx-auto"
-                              receiverName={normalizedBillName || shipping.fullName.trim()}
+                              receiverName={
+                                normalizedBillName || shipping.fullName.trim()
+                              }
                               amountLabel={formatPrice(
                                 paymentSession.amount,
                                 paymentSession.currency,
@@ -1216,19 +1507,27 @@ export default function CartPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="max-h-48 space-y-2 overflow-y-auto">
-                    {items.map((item) => (
-                      <div
-                        key={item.product.id}
-                        className="flex justify-between text-sm"
-                      >
-                        <span className="max-w-[200px] truncate text-gray-600">
-                          {item.product.name} × {item.quantity}
-                        </span>
-                        <span>
-                          {formatPrice(item.product.price * item.quantity)}
-                        </span>
-                      </div>
-                    ))}
+                    {items.map((item) => {
+                      const isOutOfStock = isItemOutOfStock(item);
+                      return (
+                        <div
+                          key={item.product.id}
+                          className="flex items-start justify-between gap-2 text-sm"
+                        >
+                          <span
+                            className={`min-w-0 flex-1 truncate ${isOutOfStock ? "text-amber-700" : "text-gray-600"}`}
+                          >
+                            {item.product.name} × {item.quantity}
+                            {isOutOfStock ? " (Out of stock)" : ""}
+                          </span>
+                          <span className="shrink-0">
+                            {isOutOfStock
+                              ? formatPrice(0)
+                              : formatPrice(item.product.price * item.quantity)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="space-y-2 border-t pt-4">
@@ -1282,7 +1581,10 @@ export default function CartPage() {
                       className="w-full bg-black text-white hover:bg-gray-800"
                       size="lg"
                       onClick={handleCheckout}
-                      disabled={step === "cart" && items.length === 0}
+                      disabled={
+                        (step === "cart" && items.length === 0) ||
+                        (step === "shipping" && hasOutOfStockItems)
+                      }
                     >
                       {step === "cart" && "Proceed to Checkout"}
                       {step === "shipping" && "Continue to Payment"}

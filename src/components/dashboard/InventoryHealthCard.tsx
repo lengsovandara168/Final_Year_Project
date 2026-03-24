@@ -39,7 +39,10 @@ export async function InventoryHealthCard({
       </CardHeader>
       <CardContent className="flex-1 space-y-4">
         {/* Segmented progress bar */}
-        <div className="overflow-hidden rounded-full bg-muted" style={{ height: 12 }}>
+        <div
+          className="overflow-hidden rounded-full bg-muted"
+          style={{ height: 12 }}
+        >
           <div
             className="h-full rounded-full bg-emerald-500 transition-all duration-700"
             style={{ width: `${inStockPct}%` }}
@@ -56,7 +59,9 @@ export async function InventoryHealthCard({
               <p className="text-2xl font-bold text-emerald-700">
                 {stockHealth.inStock}
               </p>
-              <p className="text-xs text-emerald-600">{t("analytics.inStock")}</p>
+              <p className="text-xs text-emerald-600">
+                {t("analytics.inStock")}
+              </p>
             </div>
           </div>
 
@@ -68,7 +73,9 @@ export async function InventoryHealthCard({
               <p className="text-2xl font-bold text-red-600">
                 {stockHealth.outOfStock}
               </p>
-              <p className="text-xs text-red-500">{t("analytics.outOfStock")}</p>
+              <p className="text-xs text-red-500">
+                {t("analytics.outOfStock")}
+              </p>
             </div>
           </div>
         </div>
