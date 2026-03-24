@@ -19,8 +19,8 @@ import { useTranslations } from "next-intl";
 
 // API & Helpers
 import { getSessionSnapshot } from "@/lib/auth-session";
-import { getBakongPaymentStatus, getAdminProducts } from "@/lib/api";
-import { createPosCheckout } from "@/lib/api/pos";
+import { getAdminProducts } from "@/lib/api";
+import { createPosCheckout, getPosPaymentStatus } from "@/lib/api/pos";
 import {
   generateReceiptPrintHtml,
   printReceiptHtml,
@@ -289,14 +289,19 @@ export default function SalesPage() {
   const checkStatus = async (id: string) => {
     try {
       const { accessToken } = getSessionSnapshot();
-      const res = await getBakongPaymentStatus(id, accessToken!);
+      const res = await getPosPaymentStatus(id, accessToken!);
       const currentStatus = String(res.status).toLowerCase();
       if (["failed", "expired", "timeout"].includes(currentStatus))
         return clearPayment();
 
       if (currentStatus === "paid" || res.receiptNumber) {
         stopTimers();
-        printReceipt(res.orderId || id);
+        printReceipt(
+          res.orderNumber ||
+            res.receiptNumber ||
+            paymentSession?.orderNumber ||
+            id,
+        );
         setCartItems([]);
         clearPayment();
         toast.success("Payment Complete");

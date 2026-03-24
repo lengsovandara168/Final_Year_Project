@@ -74,6 +74,14 @@ export interface PosCheckoutResponse {
   data: PosCheckoutResult;
 }
 
+export interface PosPaymentStatusResponse {
+  ok: boolean;
+  status: string;
+  paymentId?: string;
+  orderNumber?: string;
+  receiptNumber?: string;
+}
+
 // ==========================================
 // 3. POS RECEIPT SCHEMAS
 // ==========================================
@@ -152,6 +160,20 @@ export async function createPosCheckout(
     },
     body: JSON.stringify(request),
   });
+}
+
+/** GET /v1/pos/payments/{paymentId}/status */
+export async function getPosPaymentStatus(
+  paymentId: string,
+  accessToken: string,
+): Promise<PosPaymentStatusResponse> {
+  return apiFetch<PosPaymentStatusResponse>(
+    `/v1/pos/payments/${paymentId}/status`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
 }
 
 /** GET /v1/pos/receipts */
