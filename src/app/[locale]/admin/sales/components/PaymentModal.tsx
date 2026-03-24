@@ -9,8 +9,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { KhqrCode } from "@/components/khqr-code";
 
+export type PosPaymentSession = {
+  paymentId: string;
+  orderNumber: string;
+  amount: number;
+  currency: "USD" | "KHR";
+  qrString: string;
+  expiresAt: string;
+  status: string;
+};
+
 interface PaymentModalProps {
-  paymentSession: any;
+  paymentSession: PosPaymentSession | null;
   remainingMs: number | null;
   onCheckStatus: (paymentId: string) => void;
   onCancel: () => void;
@@ -39,7 +49,11 @@ export function PaymentModal({
 
         <div className="flex flex-col items-center gap-6 py-4">
           <div className="rounded-xl border-2 p-4 bg-white shadow-sm">
-            <KhqrCode value={paymentSession.qrString} size={240} />
+            <KhqrCode
+              value={paymentSession.qrString}
+              size={240}
+              amountLabel={`$${paymentSession.amount.toFixed(2)}`}
+            />
           </div>
 
           <div className="text-center space-y-1 w-full">

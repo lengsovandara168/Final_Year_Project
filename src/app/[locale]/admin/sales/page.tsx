@@ -36,9 +36,92 @@ import {
 import { CartItem } from "./components/CartItemList";
 import { QuickSelectGrid } from "./components/QuickSelectGrid";
 import { CartPanel } from "./components/CartPanel";
-import { PaymentModal } from "./components/PaymentModal";
+import { PaymentModal, type PosPaymentSession } from "./components/PaymentModal";
 import { SalesHistoryPanel } from "./components/SaleHistoryPanel";
 import { CashPaymentModal } from "./components/cashPaymentModal";
+
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function normalizePosPaymentSession(value: unknown): PosPaymentSession | null {
+  const payload = getRecord(value);
+  if (!payload) return null;
+
+  const nested = getRecord(payload.data);
+  const paymentId =
+    typeof nested?.paymentId === "string"
+      ? nested.paymentId
+      : typeof payload.paymentId === "string"
+        ? payload.paymentId
+        : null;
+  const orderNumber =
+    typeof nested?.orderNumber === "string"
+      ? nested.orderNumber
+      : typeof payload.orderNumber === "string"
+        ? payload.orderNumber
+        : null;
+  const amount =
+    typeof nested?.total === "number"
+      ? nested.total
+      : typeof nested?.subtotal === "number"
+        ? nested.subtotal
+        : typeof payload.total === "number"
+          ? payload.total
+          : typeof payload.amount === "number"
+            ? payload.amount
+            : null;
+  const qrString =
+    typeof nested?.qrString === "string"
+      ? nested.qrString
+      : typeof payload.qrString === "string"
+        ? payload.qrString
+        : typeof payload.khqrString === "string"
+          ? payload.khqrString
+          : typeof payload.khqr === "string"
+            ? payload.khqr
+            : null;
+  const expiresAt =
+    typeof nested?.expiresAt === "string"
+      ? nested.expiresAt
+      : typeof payload.expiresAt === "string"
+        ? payload.expiresAt
+        : null;
+  const currency =
+    nested?.currency === "USD" || nested?.currency === "KHR"
+      ? nested.currency
+      : payload.currency === "USD" || payload.currency === "KHR"
+        ? payload.currency
+        : "USD";
+  const status =
+    typeof nested?.status === "string"
+      ? nested.status
+      : typeof payload.status === "string"
+        ? payload.status
+        : "pending";
+
+  if (
+    !paymentId ||
+    !orderNumber ||
+    typeof amount !== "number" ||
+    !qrString ||
+    !expiresAt
+  ) {
+    return null;
+  }
+
+  return {
+    paymentId,
+    orderNumber,
+    amount,
+    currency,
+    qrString,
+    expiresAt,
+    status,
+  };
+}
 
 export default function SalesPage() {
   const t = useTranslations("AdminSales");
@@ -48,7 +131,8 @@ export default function SalesPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
-  const [paymentSession, setPaymentSession] = useState<any>(null);
+  const [paymentSession, setPaymentSession] =
+    useState<PosPaymentSession | null>(null);
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [isCashModalOpen, setIsCashModalOpen] = useState(false);
   const [pageAlert, setPageAlert] = useState<PageAlertState | null>(null);
@@ -163,23 +247,35 @@ export default function SalesPage() {
         accessToken!,
       );
 
-      const result = response.data;
-
       if (method === "cash") {
+        const result = getRecord(response.data);
         toast.success("Cash Sale Complete");
-        printReceipt(result.orderNumber || result.receiptId!, cashReceived);
+        printReceipt(
+          typeof result?.orderNumber === "string"
+            ? result.orderNumber
+            : typeof result?.receiptId === "string"
+              ? result.receiptId
+              : "POS-SALE",
+          cashReceived,
+        );
         setCartItems([]);
         setIsCashModalOpen(false);
         refetch(); // Update stock counts
       } else {
-        setPaymentSession(result);
-        const expiresAt = Date.now() + 3 * 60 * 1000;
+        const normalizedPayment = normalizePosPaymentSession(response);
+        if (!normalizedPayment) {
+          throw new Error("POS checkout returned an unexpected payment payload");
+        }
+
+        setPaymentSession(normalizedPayment);
+        const expiresAt = new Date(normalizedPayment.expiresAt).getTime();
+        setRemainingMs(Math.max(0, expiresAt - Date.now()));
         countdownIntervalRef.current = window.setInterval(() => {
           const diff = expiresAt - Date.now();
           setRemainingMs(Math.max(0, diff));
         }, 1000);
         pollIntervalRef.current = window.setInterval(
-          () => checkStatus(result.paymentId!),
+          () => checkStatus(normalizedPayment.paymentId),
           3000,
         );
       }
