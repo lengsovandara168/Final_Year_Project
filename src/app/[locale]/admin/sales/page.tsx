@@ -21,6 +21,7 @@ import {
 } from "@/lib/api/pos";
 import {
   generateReceiptPrintHtml,
+  openReceiptPrintWindow,
   printReceiptHtml,
 } from "@/components/receipt/receipt-print";
 
@@ -145,6 +146,7 @@ export default function SalesPage() {
   // --- REFS ---
   const pollIntervalRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
+  const pendingReceiptWindowRef = useRef<Window | null>(null);
 
   // --- DATA FETCHING (Using Admin API for full IMEI Inventory) ---
   const {
@@ -175,14 +177,38 @@ export default function SalesPage() {
       clearInterval(countdownIntervalRef.current);
   };
 
+  const prepareReceiptWindow = () => {
+    if (pendingReceiptWindowRef.current && !pendingReceiptWindowRef.current.closed) {
+      return pendingReceiptWindowRef.current;
+    }
+
+    const receiptWindow = openReceiptPrintWindow();
+    pendingReceiptWindowRef.current = receiptWindow ?? null;
+    return receiptWindow;
+  };
+
+  const closePendingReceiptWindow = () => {
+    if (
+      pendingReceiptWindowRef.current &&
+      !pendingReceiptWindowRef.current.closed
+    ) {
+      pendingReceiptWindowRef.current.close();
+    }
+
+    pendingReceiptWindowRef.current = null;
+  };
+
   const clearPayment = () => {
     stopTimers();
+    closePendingReceiptWindow();
     setPaymentSession(null);
     setRemainingMs(null);
     setIsCancellingPayment(false);
   };
 
   const printReceipt = (orderId: string, cashReceived?: number) => {
+    const targetWindow = pendingReceiptWindowRef.current;
+    pendingReceiptWindowRef.current = null;
     const summary = {
       orderNumber: orderId,
       createdAt: new Date().toISOString(),
@@ -203,6 +229,7 @@ export default function SalesPage() {
           title: "Sales Receipt",
         },
       ),
+      targetWindow,
     );
   };
 
@@ -240,8 +267,13 @@ export default function SalesPage() {
   ) => {
     if (cartItems.length === 0 || isProcessingCheckout) return;
     setIsProcessingCheckout(true);
+    const shouldPrepareReceiptWindow = method === "bakong";
 
     try {
+      if (shouldPrepareReceiptWindow) {
+        prepareReceiptWindow();
+      }
+
       const { accessToken } = getSessionSnapshot();
       const response = await createPosCheckout(
         {
@@ -274,6 +306,7 @@ export default function SalesPage() {
       } else {
         const normalizedPayment = normalizePosPaymentSession(response);
         if (!normalizedPayment) {
+          closePendingReceiptWindow();
           throw new Error("POS checkout returned an unexpected payment payload");
         }
 
@@ -290,6 +323,10 @@ export default function SalesPage() {
         );
       }
     } catch (err: unknown) {
+      if (shouldPrepareReceiptWindow) {
+        closePendingReceiptWindow();
+      }
+
       toast.error(err instanceof Error ? err.message : "Checkout failed");
     } finally {
       setIsProcessingCheckout(false);
@@ -461,7 +498,10 @@ export default function SalesPage() {
         paymentSession={paymentSession}
         remainingMs={remainingMs}
         isCancelling={isCancellingPayment}
-        onCheckStatus={checkStatus}
+        onCheckStatus={(paymentId) => {
+          prepareReceiptWindow();
+          checkStatus(paymentId);
+        }}
         onCancel={handleCancelPayment}
       />
       <Toaster position="top-center" offset={20} />
