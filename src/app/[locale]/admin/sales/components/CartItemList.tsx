@@ -6,6 +6,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   barcode?: string;
+  image?: string;
 }
 
 interface CartItemListProps {

@@ -7,6 +7,7 @@ export type StoredCheckoutItem = {
   name: string;
   price: number;
   quantity: number;
+  image?: string;
 };
 
 export type StoredCheckoutSummary = {

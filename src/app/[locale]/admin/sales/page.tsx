@@ -199,8 +199,8 @@ export default function SalesPage() {
       generateReceiptPrintHtml(
         summary as Parameters<typeof generateReceiptPrintHtml>[0],
         {
-          brandName: "LDHS",
-          title: "Receipt",
+          brandName: "Astrix",
+          title: "Sales Receipt",
         },
       ),
     );
@@ -223,14 +223,15 @@ export default function SalesPage() {
 
     setCartItems((prev) => [
       ...prev,
-      {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        barcode: product.imei ?? undefined,
-      },
-    ]);
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          barcode: product.imei ?? undefined,
+          image: product.image ?? undefined,
+        },
+      ]);
     toast.success(t("addedToCart"), { description: product.name });
   };
   const performCheckout = async (

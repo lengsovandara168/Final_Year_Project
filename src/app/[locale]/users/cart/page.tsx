@@ -458,6 +458,7 @@ export default function CartPage() {
         name: item.product.name,
         price: item.product.price,
         quantity: item.quantity,
+        image: item.product.image,
       })),
       shipping,
     });
