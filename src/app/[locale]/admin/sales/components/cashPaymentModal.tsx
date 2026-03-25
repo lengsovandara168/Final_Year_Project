@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,27 @@ export function CashPaymentModal({
   const receivedNum = parseFloat(received) || 0;
   const change = receivedNum - total;
 
+  useEffect(() => {
+    if (!open) {
+      setReceived("");
+    }
+  }, [open]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setReceived("");
+    }
+
+    onOpenChange(nextOpen);
+  };
+
+  const handleConfirm = () => {
+    setReceived("");
+    onConfirm(receivedNum);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle className="text-center">Cash Payment</DialogTitle>
@@ -58,7 +77,7 @@ export function CashPaymentModal({
           <Button
             className="w-full h-14 text-lg font-bold"
             disabled={receivedNum < total || loading}
-            onClick={() => onConfirm(receivedNum)}
+            onClick={handleConfirm}
           >
             Complete Sale & Print
           </Button>
