@@ -111,15 +111,6 @@ export default function CartSuccessPage() {
                 stored.
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={() => router.push("/users/cart/receipt")}
-              className="inline-flex items-center text-sm font-medium text-emerald-700 hover:text-emerald-800"
-            >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              {t("viewReceipt")}
-            </button>
           </CardContent>
         </Card>
       </div>

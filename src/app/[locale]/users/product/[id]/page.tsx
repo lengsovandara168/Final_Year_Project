@@ -9,6 +9,7 @@ import { useAddToCartWithToast } from "@/hooks/use-add-to-cart";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getProductById, getProducts, type Product } from "@/lib/api";
 import { locales } from "@/i18n/routing";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -288,6 +289,34 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleShareProduct = async () => {
+    if (!product || typeof window === "undefined") return;
+
+    const shareUrl = `${window.location.origin}${pathname}`;
+
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: product.description || product.name,
+          url: shareUrl,
+        });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Product link copied to clipboard");
+    } catch {
+      toast.error("Unable to share this product link");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -327,10 +356,10 @@ export default function ProductDetailPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               <div className="flex items-center">
-                <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-black">
-                  <Smartphone className="h-6 w-6 text-white" />
+                <div className="flex items-center justify-center h-20 w-20 rounded-lg">
+                  <img src="/logo/logo.png" alt="astrix logo" />
                 </div>
-                <span className="ml-2 text-xl font-bold hidden sm:block">{t("brand")}</span>
+                <span className="ml-2 text-xl font-bold hidden sm:block">Astrix</span>
               </div>
             </div>
 
@@ -353,7 +382,7 @@ export default function ProductDetailPage() {
                   }`}
                 />
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={handleShareProduct}>
                 <Share2 className="h-5 w-5" />
               </Button>
               <Button 
