@@ -450,8 +450,63 @@ export function generateReceiptPrintHtml(
 `;
 }
 
-export function printReceiptHtml(html: string) {
+export function openReceiptPrintWindow() {
   const printWindow = window.open("", "_blank", "width=760,height=900");
+  if (!printWindow) return;
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Preparing receipt...</title>
+        <style>
+          body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+            background: #f5f7fb;
+            color: #111827;
+          }
+          .card {
+            max-width: 420px;
+            padding: 24px;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+            text-align: center;
+          }
+          h1 {
+            margin: 0 0 12px;
+            font-size: 20px;
+          }
+          p {
+            margin: 0;
+            line-height: 1.6;
+            color: #4b5563;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Receipt is being prepared</h1>
+          <p>Leave this tab open. The printable receipt will appear once payment is confirmed.</p>
+        </div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  return printWindow;
+}
+
+export function printReceiptHtml(html: string, targetWindow?: Window | null) {
+  const printWindow =
+    targetWindow && !targetWindow.closed
+      ? targetWindow
+      : window.open("", "_blank", "width=760,height=900");
   if (!printWindow) return;
 
   printWindow.document.open();
