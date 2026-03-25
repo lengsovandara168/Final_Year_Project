@@ -242,7 +242,12 @@ interface NewsItem {
   bgColor?: string;
 }
 
-type SortOption = "price-low" | "price-high" | "popular" | "rating" | "newest";
+type SortOption =
+  | "price-low"
+  | "price-high"
+  | "popular"
+  | "rating"
+  | "newest";
 
 export default function ShopPage() {
   const t = useTranslations("Shop");
@@ -486,9 +491,7 @@ export default function ShopPage() {
     if (typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          const allProductsAnchor = document.getElementById(
-            "all-products-section",
-          );
+          const allProductsAnchor = document.getElementById("all-products-section");
           const fallbackAnchor = document.getElementById("products-results");
           const target = allProductsAnchor ?? fallbackAnchor;
           if (target) {
@@ -505,28 +508,115 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header - Logo + Search + Cart */}
-      <PageHeader
-        className="bg-white border-b"
-        containerClassName="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-      >
-        <div className="relative flex items-center justify-between h-16 gap-3">
-          {/* Logo */}
-          <div
-            className={`flex items-center shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
-          >
-            <img
-              src="https://final-year-project-mocha-six.vercel.app/_next/image?url=%2Flogo%2Flogo.png&w=256&q=75"
-              alt="Astrix logo"
-              className="h-10 w-10 rounded-lg object-contain"
-            />
-            <span className="ml-2 text-xl font-bold hidden sm:block">
-              Astrix
-            </span>
-          </div>
+      <PageHeader className="bg-white border-b" containerClassName="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative flex items-center justify-between h-16 gap-3">
+            {/* Logo */}
+            <div
+              className={`flex items-center shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
+            >
+              <img
+                src="https://final-year-project-mocha-six.vercel.app/_next/image?url=%2Flogo%2Flogo.png&w=256&q=75"
+                alt="Astrix logo"
+                className="h-10 w-10 rounded-lg object-contain"
+              />
+              <span className="ml-2 text-xl font-bold hidden sm:block">
+                Astrix
+              </span>
+            </div>
 
-          {/* Full Search Bar */}
-          <div className="hidden md:block flex-1 max-w-2xl">
-            <form className="flex" onSubmit={handleSearchSubmit}>
+            {/* Full Search Bar */}
+            <div className="hidden md:block flex-1 max-w-2xl">
+              <form className="flex" onSubmit={handleSearchSubmit}>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder={t("searchPlaceholder")}
+                    className="pl-10 w-full rounded-r-none border-r-0"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="rounded-l-none bg-black text-white hover:bg-gray-800"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
+
+            {/* Cart + Account (aligned to the right) */}
+            <div
+              className={`flex items-center gap-2 sm:gap-3 shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
+            >
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 md:hidden"
+                onClick={() => setIsMobileSearchOpen(true)}
+                aria-label="Open search"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+
+              {/* Wishlist */}
+              <Button
+                variant="outline"
+                className="relative shrink-0"
+                onClick={() => router.push("/users/wishlist")}
+                aria-label="Open wishlist"
+              >
+                <Heart className="h-5 w-5" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {wishlistCount > 99 ? "99+" : wishlistCount}
+                  </span>
+                )}
+              </Button>
+
+              {/* Cart on the left */}
+              <Button
+                variant="outline"
+                className="relative shrink-0"
+                onClick={() => router.push("/users/cart")}
+                aria-label="Shopping cart"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Button>
+
+              {/* Account on the right */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="relative shrink-0"
+                    aria-label="Open account menu"
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+                  <DropdownMenuItem onClick={() => router.push("/users/profile")}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>{t("logout")}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <form
+              className={`${isMobileSearchOpen ? "flex" : "hidden"} absolute inset-0 z-20 items-center gap-2 bg-white px-4 sm:px-6 md:hidden`}
+              onSubmit={handleSearchSubmit}
+            >
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
@@ -534,6 +624,7 @@ export default function ShopPage() {
                   className="pl-10 w-full rounded-r-none border-r-0"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
                 />
               </div>
               <Button
@@ -542,106 +633,15 @@ export default function ShopPage() {
               >
                 <Search className="h-4 w-4" />
               </Button>
-            </form>
-          </div>
-
-          {/* Cart + Account (aligned to the right) */}
-          <div
-            className={`flex items-center gap-2 sm:gap-3 shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
-          >
-            <Button
-              variant="outline"
-              size="icon"
-              className="shrink-0 md:hidden"
-              onClick={() => setIsMobileSearchOpen(true)}
-              aria-label="Open search"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-
-            {/* Wishlist */}
-            <Button
-              variant="outline"
-              className="relative shrink-0"
-              onClick={() => router.push("/users/wishlist")}
-              aria-label="Open wishlist"
-            >
-              <Heart className="h-5 w-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {wishlistCount > 99 ? "99+" : wishlistCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Cart on the left */}
-            <Button
-              variant="outline"
-              className="relative shrink-0"
-              onClick={() => router.push("/users/cart")}
-              aria-label="Shopping cart"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Account on the right */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="relative shrink-0"
-                  aria-label="Open account menu"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
-                <DropdownMenuItem onClick={() => router.push("/users/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>{t("logout")}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <form
-            className={`${isMobileSearchOpen ? "flex" : "hidden"} absolute inset-0 z-20 items-center gap-2 bg-white px-4 sm:px-6 md:hidden`}
-            onSubmit={handleSearchSubmit}
-          >
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder={t("searchPlaceholder")}
-                className="pl-10 w-full rounded-r-none border-r-0"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <Button
-              type="submit"
-              className="rounded-l-none bg-black text-white hover:bg-gray-800"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setIsMobileSearchOpen(false)}
-              aria-label="Close search"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setIsMobileSearchOpen(false)}
+                aria-label="Close search"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </form>
           </div>
       </PageHeader>
@@ -969,19 +969,13 @@ export default function ShopPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem
-                      onClick={() => setSelectedSort("price-low")}
-                    >
+                    <DropdownMenuItem onClick={() => setSelectedSort("price-low")}>
                       {t("priceLowToHigh")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setSelectedSort("price-high")}
-                    >
+                    <DropdownMenuItem onClick={() => setSelectedSort("price-high")}>
                       {t("priceHighToLow")}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setSelectedSort("popular")}
-                    >
+                    <DropdownMenuItem onClick={() => setSelectedSort("popular")}>
                       {t("mostPopular")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setSelectedSort("newest")}>
@@ -1035,25 +1029,21 @@ export default function ShopPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onClick={() => setSelectedSort("price-low")}
-                  >
-                    {t("priceLowToHigh")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSelectedSort("price-high")}
-                  >
-                    {t("priceHighToLow")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedSort("popular")}>
-                    {t("mostPopular")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedSort("newest")}>
-                    {t("newest")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedSort("rating")}>
-                    {t("bestRating")}
-                  </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("price-low")}>
+                      {t("priceLowToHigh")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("price-high")}>
+                      {t("priceHighToLow")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("popular")}>
+                      {t("mostPopular")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("newest")}>
+                      {t("newest")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedSort("rating")}>
+                      {t("bestRating")}
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

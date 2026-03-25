@@ -246,9 +246,7 @@ function isPendingPaymentState(state: PaymentUiState) {
   return ["initializing", "ready"].includes(state);
 }
 
-function getCartItemStockLimit(
-  item: ReturnType<typeof useCart>["items"][number],
-) {
+function getCartItemStockLimit(item: ReturnType<typeof useCart>["items"][number]) {
   const product = item.product;
   const candidates = [
     product.availableStock,
@@ -270,7 +268,8 @@ export default function CartPage() {
   const t = useTranslations("Cart");
   const router = useRouter();
   const isMobile = useIsMobile();
-  const { items, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart } =
+    useCart();
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [shipping, setShipping] =
@@ -288,9 +287,7 @@ export default function CartPage() {
   >({});
   const [outOfStockNames, setOutOfStockNames] = useState<string[]>([]);
 
-  const isItemOutOfStock = (
-    item: ReturnType<typeof useCart>["items"][number],
-  ) => {
+  const isItemOutOfStock = (item: ReturnType<typeof useCart>["items"][number]) => {
     const liveStockLimit = stockByCartProductId[item.product.id];
     const stockLimit =
       typeof liveStockLimit === "number"
@@ -769,9 +766,7 @@ export default function CartPage() {
           return;
         }
       } catch {
-        setCheckoutError(
-          "Unable to validate stock right now. Please try again.",
-        );
+        setCheckoutError("Unable to validate stock right now. Please try again.");
         return;
       }
 
@@ -1078,16 +1073,14 @@ export default function CartPage() {
                 </div>
               )}
 
-              {hasOutOfStockItems &&
-                (step === "cart" || step === "shipping") && (
-                  <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    <CircleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>
-                      Out of stock: {outOfStockNames.join(", ")}. Please reduce
-                      quantity or remove those items.
-                    </span>
-                  </div>
-                )}
+              {hasOutOfStockItems && (step === "cart" || step === "shipping") && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <CircleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>
+                    Out of stock: {outOfStockNames.join(", ")}. Please reduce quantity or remove those items.
+                  </span>
+                </div>
+              )}
 
               {step === "cart" && (
                 <>
@@ -1099,95 +1092,86 @@ export default function CartPage() {
                     const reachedStockLimit = item.quantity >= stockLimit;
 
                     return (
-                      <Card
-                        key={item.product.id}
-                        className={
-                          isOutOfStock ? "border-amber-200 bg-amber-50/30" : ""
-                        }
-                      >
-                        <CardContent className="p-3 sm:p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                            <div
-                              className={`flex min-w-0 flex-1 gap-3 sm:gap-4 ${isOutOfStock ? "opacity-40" : ""}`}
-                            >
-                              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-24 sm:w-24">
-                                {item.product.image ? (
-                                  <img
-                                    src={item.product.image}
-                                    alt={item.product.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center">
-                                    <Package className="h-8 w-8 text-gray-300" />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <h3 className="line-clamp-2 text-sm font-medium sm:text-base">
-                                  {item.product.name}
-                                </h3>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  {[item.product.storage, item.product.color]
-                                    .filter(Boolean)
-                                    .join(" • ")}
-                                </p>
-                                <p className="mt-2 text-sm font-bold sm:text-base">
-                                  {formatPrice(item.product.price)}
-                                </p>
-                              </div>
+                    <Card key={item.product.id} className={isOutOfStock ? "border-amber-200 bg-amber-50/30" : ""}>
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                          <div className={`flex min-w-0 flex-1 gap-3 sm:gap-4 ${isOutOfStock ? "opacity-40" : ""}`}>
+                            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-24 sm:w-24">
+                              {item.product.image ? (
+                                <img
+                                  src={item.product.image}
+                                  alt={item.product.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <Package className="h-8 w-8 text-gray-300" />
+                                </div>
+                              )}
                             </div>
 
-                            <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-between sm:gap-2">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="line-clamp-2 text-sm font-medium sm:text-base">
+                                {item.product.name}
+                              </h3>
+                              <p className="mt-1 text-xs text-gray-500">
+                                {[item.product.storage, item.product.color]
+                                  .filter(Boolean)
+                                  .join(" • ")}
+                              </p>
+                              <p className="mt-2 text-sm font-bold sm:text-base">
+                                {formatPrice(item.product.price)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-between sm:gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => removeFromCart(item.product.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+
+                            <div className={`flex shrink-0 items-center gap-1 rounded-lg border sm:gap-2 ${isOutOfStock ? "opacity-40" : ""}`}>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-red-500 hover:bg-red-50 hover:text-red-700"
-                                onClick={() => removeFromCart(item.product.id)}
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.product.id,
+                                    item.quantity - 1,
+                                  )
+                                }
+                                disabled={item.quantity <= 1 || isOutOfStock}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Minus className="h-4 w-4" />
                               </Button>
-
-                              <div
-                                className={`flex shrink-0 items-center gap-1 rounded-lg border sm:gap-2 ${isOutOfStock ? "opacity-40" : ""}`}
+                              <span className="w-7 text-center text-sm font-medium sm:w-8">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.product.id,
+                                    item.quantity + 1,
+                                  )
+                                }
+                                disabled={reachedStockLimit || isOutOfStock}
                               >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() =>
-                                    handleQuantityChange(
-                                      item.product.id,
-                                      item.quantity - 1,
-                                    )
-                                  }
-                                  disabled={item.quantity <= 1 || isOutOfStock}
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </Button>
-                                <span className="w-7 text-center text-sm font-medium sm:w-8">
-                                  {item.quantity}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() =>
-                                    handleQuantityChange(
-                                      item.product.id,
-                                      item.quantity + 1,
-                                    )
-                                  }
-                                  disabled={reachedStockLimit || isOutOfStock}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              </div>
+                                <Plus className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </CardContent>
+                    </Card>
                     );
                   })}
                 </>
@@ -1349,9 +1333,7 @@ export default function CartPage() {
                               value={paymentSession.qrString}
                               size={320}
                               className="mx-auto"
-                              receiverName={
-                                normalizedBillName || shipping.fullName.trim()
-                              }
+                              receiverName={normalizedBillName || shipping.fullName.trim()}
                               amountLabel={formatPrice(
                                 paymentSession.amount,
                                 paymentSession.currency,
@@ -1514,9 +1496,7 @@ export default function CartPage() {
                           key={item.product.id}
                           className="flex items-start justify-between gap-2 text-sm"
                         >
-                          <span
-                            className={`min-w-0 flex-1 truncate ${isOutOfStock ? "text-amber-700" : "text-gray-600"}`}
-                          >
+                          <span className={`min-w-0 flex-1 truncate ${isOutOfStock ? "text-amber-700" : "text-gray-600"}`}>
                             {item.product.name} × {item.quantity}
                             {isOutOfStock ? " (Out of stock)" : ""}
                           </span>
