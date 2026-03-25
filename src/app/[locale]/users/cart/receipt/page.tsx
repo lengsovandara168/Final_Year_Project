@@ -209,9 +209,20 @@ export default function ReceiptPage() {
                     {summary.items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="max-w-[220px]">
-                          <span className="line-clamp-2 font-medium">
-                            {item.name}
-                          </span>
+                          <div className="flex items-start gap-3">
+                            {item.image ? (
+                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-gray-50">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ) : null}
+                            <span className="line-clamp-2 font-medium">
+                              {item.name}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           {item.quantity}

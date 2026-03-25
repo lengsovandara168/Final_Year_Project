@@ -60,6 +60,7 @@ export type OrderSummaryV2 = {
     price: number;
     quantity: number;
     imei?: string;
+    image?: string;
   }>;
   shippingAddress: {
     fullName: string;

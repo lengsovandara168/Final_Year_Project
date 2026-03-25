@@ -119,15 +119,15 @@ export function QuickSelectGrid({
                   <Button
                     key={name}
                     variant="outline"
-                    className="group flex min-h-[180px] flex-col items-center p-2 text-center transition-all hover:border-primary hover:bg-primary/5"
+                    className="group flex min-h-[190px] flex-col items-center p-2 text-center transition-all hover:border-primary hover:bg-primary/5"
                     onClick={() => setSelectedModelName(name)}
                   >
-                    <div className="w-full aspect-square bg-muted rounded-md overflow-hidden relative mb-2">
+                    <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-md bg-muted">
                       {image ? (
                         <img
                           src={image}
                           alt={name}
-                          className="object-cover w-full h-full group-hover:scale-110 transition-transform"
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
                         />
                       ) : (
                         <span className="text-muted-foreground text-xs font-bold uppercase">
@@ -139,10 +139,10 @@ export function QuickSelectGrid({
                         {group.length}
                       </div>
                     </div>
-                    <span className="text-xs font-semibold line-clamp-1 h-4 w-full">
+                    <span className="min-h-[2rem] w-full px-1 text-xs font-semibold leading-tight line-clamp-2">
                       {name}
                     </span>
-                    <span className="text-sm font-bold text-primary mt-1">
+                    <span className="mt-1 text-sm font-bold text-primary">
                       ${firstItem.price.toFixed(2)}
                     </span>
                   </Button>
