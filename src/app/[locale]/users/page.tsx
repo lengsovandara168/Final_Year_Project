@@ -30,6 +30,7 @@ import {
   Package,
   Eye,
   User,
+  ReceiptText,
   LogOut,
   BadgePercent,
   Heart,
@@ -515,9 +516,9 @@ export default function ShopPage() {
               className={`flex items-center shrink-0 ${isMobileSearchOpen ? "invisible md:visible" : ""}`}
             >
               <img
-                src="https://final-year-project-mocha-six.vercel.app/_next/image?url=%2Flogo%2Flogo.png&w=256&q=75"
+                src="/logo/logo.png"
                 alt="Astrix logo"
-                className="h-10 w-10 rounded-lg object-contain"
+                className="h-20 w-20 rounded-lg object-contain"
               />
               <span className="ml-2 text-xl font-bold hidden sm:block">
                 Astrix
@@ -604,6 +605,10 @@ export default function ShopPage() {
                   <DropdownMenuItem onClick={() => router.push("/users/profile")}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/users/purchase")}>
+                    <ReceiptText className="mr-2 h-4 w-4" />
+                    <span>Purchase</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />

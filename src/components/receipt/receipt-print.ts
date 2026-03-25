@@ -124,12 +124,12 @@ export function generateReceiptPrintHtml(
       : "",
     `<div class="meta-pill"><span>Order</span><strong>${escapeHtml(orderSummary.orderNumber)}</strong></div>`,
     `<div class="meta-pill"><span>Date</span><strong>${escapeHtml(createdAt)}</strong></div>`,
+    customerAddress
+      ? `<div class="meta-pill meta-pill-full"><span>Shipping Address</span><strong>${escapeHtml(customerAddress)}</strong></div>`
+      : "",
   ]
     .filter(Boolean)
     .join("");
-  const customerAddressBlock = customerAddress
-    ? `<div class="customer-note">${escapeHtml(customerAddress)}</div>`
-    : "";
 
   return `
   <html>
@@ -221,6 +221,9 @@ export function generateReceiptPrintHtml(
           padding: 14px 16px;
           background: #f8fafc;
         }
+        .meta-pill-full {
+          grid-column: 1 / -1;
+        }
         .meta-pill span {
           display: block;
           font-size: 11px;
@@ -231,15 +234,12 @@ export function generateReceiptPrintHtml(
           margin-bottom: 6px;
         }
         .meta-pill strong {
+          display: block;
           font-size: 14px;
           font-weight: 700;
           color: #0f172a;
-        }
-        .customer-note {
-          margin-top: -6px;
-          margin-bottom: 22px;
-          color: #64748b;
-          font-size: 13px;
+          line-height: 1.4;
+          word-break: break-word;
         }
         .section-title {
           margin: 0 0 12px;
@@ -394,7 +394,6 @@ export function generateReceiptPrintHtml(
 
         <section class="content">
           <div class="meta-grid">${customerMeta}</div>
-          ${customerAddressBlock}
 
           <h2 class="section-title">Purchased Items</h2>
           <table>
