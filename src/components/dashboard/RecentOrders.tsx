@@ -60,8 +60,13 @@ export async function RecentOrders({ locale, orders }: RecentOrdersProps) {
                 <TableRow className="bg-muted/50">
                   <TableHead>{t("analytics.orderId")}</TableHead>
                   <TableHead>{t("analytics.customer")}</TableHead>
-                  <TableHead className="text-right">{t("analytics.total")}</TableHead>
-                  <TableHead>{t("status.completed").replace("Completed", "") || t("analytics.orderStatus")}</TableHead>
+                  <TableHead className="text-right">
+                    {t("analytics.total")}
+                  </TableHead>
+                  <TableHead>
+                    {t("status.completed").replace("Completed", "") ||
+                      t("analytics.orderStatus")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -70,8 +75,7 @@ export async function RecentOrders({ locale, orders }: RecentOrdersProps) {
                     STATUS_CLASSES[order.status?.toLowerCase()] ??
                     "bg-gray-100 text-gray-700";
                   const statusLabel =
-                    knownStatus[order.status?.toLowerCase()] ??
-                    order.status;
+                    knownStatus[order.status?.toLowerCase()] ?? order.status;
                   return (
                     <TableRow key={order.id}>
                       <TableCell className="font-mono text-xs">
@@ -79,9 +83,11 @@ export async function RecentOrders({ locale, orders }: RecentOrdersProps) {
                           ? `#${order.id.slice(-8).toUpperCase()}`
                           : `#${order.id}`}
                       </TableCell>
-                      <TableCell className="max-w-[120px] truncate">
+                      <TableCell className="max-w-30 truncate">
                         <div>
-                          <p className="truncate font-medium text-sm">{order.customer}</p>
+                          <p className="truncate font-medium text-sm">
+                            {order.customer}
+                          </p>
                           {order.date && (
                             <p className="text-xs text-muted-foreground">
                               {new Date(order.date).toLocaleDateString()}
@@ -90,7 +96,11 @@ export async function RecentOrders({ locale, orders }: RecentOrdersProps) {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        $
+                        {order.total.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </TableCell>
                       <TableCell>
                         <Badge className={statusClass}>{statusLabel}</Badge>
@@ -118,17 +128,27 @@ export function RecentOrdersSkeleton() {
           <TableHeader>
             <TableRow>
               {Array.from({ length: 4 }).map((_, i) => (
-                <TableHead key={i}><Skeleton className="h-3 w-16" /></TableHead>
+                <TableHead key={i}>
+                  <Skeleton className="h-3 w-16" />
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>
-                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

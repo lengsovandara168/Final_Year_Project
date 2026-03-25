@@ -1,92 +1,146 @@
 import { apiFetch } from "./client";
 
-// Stock Management Types for POS
-
-export type StockAdjustmentType =
-  | "addition"
-  | "damage"
-  | "loss"
-  | "return"
-  | "adjustment";
-
-export interface StockAdjustment {
+export interface PosCatalogItem {
   id: string;
-  productId: string;
-  productName: string;
-  brand: string;
-  category: string;
-  quantityChange: number;
-  adjustmentType: StockAdjustmentType;
-  reason?: string;
-  staffId: string;
-  staffName?: string;
-  timestamp: string;
-  notes?: string;
+  name: string;
+  price: number;
+  inStock: boolean;
+  imei?: string;
+  brand?: string;
+  category?: string;
+  image?: string;
 }
 
-export interface StockHistory {
-  id: string;
+export interface PosProductListResponse {
+  ok: boolean;
+  data: PosCatalogItem[];
+}
+
+export interface PosCheckoutItem {
   productId: string;
-  previousQuantity: number;
-  newQuantity: number;
-  quantityChange: number;
-  adjustmentType: StockAdjustmentType;
-  reason?: string;
-  staffId: string;
-  staffName?: string;
-  timestamp: string;
-  notes?: string;
+  quantity: number;
+}
+
+export interface PosCustomer {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface PosCheckoutRequest {
+  items: PosCheckoutItem[];
+  paymentMethod: "bakong" | "cash";
+  customer?: PosCustomer;
+  note?: string;
+}
+
+export interface PosCheckoutResult {
+  receiptId?: string;
+  orderNumber?: string;
+  paymentId?: string;
+  qrString?: string;
+  status: string;
+}
+
+export interface PosCheckoutResponse {
+  ok: boolean;
+  data: PosCheckoutResult;
+}
+
+export interface PosPaymentStatusPayload {
+  status?: string;
+  paymentId?: string;
+  orderId?: string;
+  orderNumber?: string;
+  receiptNumber?: string;
+}
+
+export interface PosPaymentStatusResponse {
+  ok: boolean;
+  status?: string;
+  paymentId?: string;
+  orderNumber?: string;
+  receiptNumber?: string;
+  data?: PosPaymentStatusPayload;
+}
+
+export interface CancelPosPaymentResponse {
+  ok: boolean;
 }
 
 export interface StockLevel {
   id: string;
-  productId: string;
   productName: string;
   brand: string;
   category: string;
   currentQuantity: number;
   minQuantity?: number;
-  maxQuantity?: number;
-  lastUpdated: string;
   status: "in-stock" | "low-stock" | "out-of-stock";
+  lastUpdated: string;
 }
 
-export interface AddStockRequest {
+export interface PosReceiptSummary {
+  id: string;
+  orderNumber?: string;
+  total: number;
+  status: string;
+  createdAt: string;
+  customerName?: string;
+  customerEmail?: string;
+  itemsCount?: number;
+}
+
+export interface PosReceiptHistoryResponse {
+  ok: boolean;
+  data: PosReceiptSummary[];
+}
+
+export interface PosSaleItem {
   productId: string;
+  name: string;
+  price: number;
   quantity: number;
-  adjustmentType: StockAdjustmentType;
-  reason?: string;
-  notes?: string;
+  imei?: string;
+  image?: string;
 }
 
-export interface StockAdjustmentResponse {
+export interface PosCashier {
+  id: string;
+  name: string;
+}
+
+export interface PosReceiptDetail {
+  id: string;
+  orderNumber: string;
+  total: number;
+  subtotal: number;
+  status: string;
+  createdAt: string;
+  paymentMethod: string;
+  items: PosSaleItem[];
+  customer?: PosCustomer;
+  cashier?: PosCashier;
+}
+
+export interface PosReceiptDetailResponse {
   ok: boolean;
-  message: string;
-  data?: StockAdjustment;
-  error?: {
-    message: string;
-    code?: string;
-  };
+  data: PosReceiptDetail;
 }
 
-export interface GetStockHistoryResponse {
-  ok: boolean;
-  data: StockHistory[];
-}
-
-export interface GetStockLevelsResponse {
-  ok: boolean;
-  data: StockLevel[];
-}
-
-/**
- * Add stock to a product
- */
-export async function addStock(
+export async function getPosProducts(
   accessToken: string,
-  request: AddStockRequest,
-): Promise<StockAdjustmentResponse> {
-  return apiFetch<StockAdjustmentResponse>("/v1/pos/stock/add", {
+): Promise<PosProductListResponse> {
+  return apiFetch<PosProductListResponse>("/v1/pos/products", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export async function createPosCheckout(
+  request: PosCheckoutRequest,
+  accessToken: string,
+): Promise<PosCheckoutResponse> {
+  return apiFetch<PosCheckoutResponse>("/v1/pos/checkout", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -96,57 +150,47 @@ export async function addStock(
   });
 }
 
-/**
- * Adjust stock (deduct for damage/loss/returns)
- */
-export async function adjustStock(
+export async function getPosPaymentStatus(
+  paymentId: string,
   accessToken: string,
-  request: AddStockRequest,
-): Promise<StockAdjustmentResponse> {
-  return apiFetch<StockAdjustmentResponse>("/v1/pos/stock/adjust", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
+): Promise<PosPaymentStatusResponse> {
+  return apiFetch<PosPaymentStatusResponse>(
+    `/v1/pos/payments/${paymentId}/status`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
     },
-    body: JSON.stringify(request),
+  );
+}
+
+export async function cancelPosPayment(
+  paymentId: string,
+  accessToken: string,
+): Promise<CancelPosPaymentResponse> {
+  return apiFetch<CancelPosPaymentResponse>(
+    `/v1/pos/payments/${paymentId}/cancel`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+}
+
+export async function getPosReceipts(
+  accessToken: string,
+): Promise<PosReceiptHistoryResponse> {
+  return apiFetch<PosReceiptHistoryResponse>("/v1/pos/receipts", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
 
-export async function getStockHistory(
+export async function getPosReceiptDetail(
+  receiptId: string,
   accessToken: string,
-  filters?: {
-    productId?: string;
-    adjustmentType?: StockAdjustmentType;
-    startDate?: string;
-    endDate?: string;
-  },
-): Promise<GetStockHistoryResponse> {
-  const params = new URLSearchParams();
-  if (filters?.productId) params.append("productId", filters.productId);
-  if (filters?.adjustmentType)
-    params.append("adjustmentType", filters.adjustmentType);
-  if (filters?.startDate) params.append("startDate", filters.startDate);
-  if (filters?.endDate) params.append("endDate", filters.endDate);
-
-  const queryString = params.toString();
-  const url = `/v1/pos/stock/history${queryString ? `?${queryString}` : ""}`;
-
-  return apiFetch<GetStockHistoryResponse>(url, {
+): Promise<PosReceiptDetailResponse> {
+  return apiFetch<PosReceiptDetailResponse>(`/v1/pos/receipts/${receiptId}`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-}
-
-export async function getStockLevels(
-  accessToken: string,
-): Promise<GetStockLevelsResponse> {
-  return apiFetch<GetStockLevelsResponse>("/v1/pos/stock/levels", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 }

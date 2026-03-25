@@ -17,7 +17,10 @@ import {
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
 
-function toErrorMessage(error: unknown, defaultMessage: string = "Something went wrong.") {
+function toErrorMessage(
+  error: unknown,
+  defaultMessage: string = "Something went wrong.",
+) {
   if (error && typeof error === "object" && "error" in error) {
     return String((error as { error?: unknown }).error ?? "Unknown error");
   }
@@ -119,7 +122,8 @@ export default function AddStockPage() {
   const selectedTemplate = selectedTemplateId
     ? templateById.get(selectedTemplateId)
     : null;
-  const isAccessoryTemplate = selectedTemplate?.parentCategory === "accessories";
+  const isAccessoryTemplate =
+    selectedTemplate?.parentCategory === "accessories";
 
   const filteredTemplates = useMemo(() => {
     const normalized = templateSearch.trim().toLowerCase();
@@ -194,7 +198,10 @@ export default function AddStockPage() {
       setStockForm((prev) => ({ ...prev, imei: "" }));
       setSuccess(
         created.data.imei
-          ? t("stockAdded", { name: created.data.name, imei: created.data.imei })
+          ? t("stockAdded", {
+              name: created.data.name,
+              imei: created.data.imei,
+            })
           : t("stockAddedWithoutImei", { name: created.data.name }),
       );
     } catch (stockError) {
@@ -318,9 +325,7 @@ export default function AddStockPage() {
                   }}
                 />
                 <p className="text-xs text-gray-500">
-                  {isAccessoryTemplate
-                    ? t("imeiOptionalTip")
-                    : t("imeiTip")}
+                  {isAccessoryTemplate ? t("imeiOptionalTip") : t("imeiTip")}
                 </p>
               </div>
 

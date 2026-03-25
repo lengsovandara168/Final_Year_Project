@@ -14,7 +14,7 @@ export function KhqrCode({
   value,
   size = 280,
   className,
-  receiverName = "Bakong payment",
+  receiverName = process.env.MERCHANT_NAME || "Astrix",
   amountLabel = "Scan to pay",
 }: KhqrCodeProps) {
   const qrSize = Math.max(size - 120, 180);

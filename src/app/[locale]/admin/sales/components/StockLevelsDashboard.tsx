@@ -56,8 +56,7 @@ export function StockLevelsDashboard({ levels }: StockLevelsDashboardProps) {
         l.productName.toLowerCase().includes(q) ||
         l.brand.toLowerCase().includes(q) ||
         l.category.toLowerCase().includes(q);
-      const matchesStatus =
-        statusFilter === "all" || l.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || l.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
   }, [levels, query, statusFilter]);
@@ -83,7 +82,9 @@ export function StockLevelsDashboard({ levels }: StockLevelsDashboardProps) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardHeader className="pb-1 pt-3">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Total Products</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">
+              Total Products
+            </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
             <p className="text-2xl font-bold">{stats.total}</p>
@@ -91,7 +92,9 @@ export function StockLevelsDashboard({ levels }: StockLevelsDashboardProps) {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3">
-            <CardTitle className="text-xs font-medium text-green-600">In Stock</CardTitle>
+            <CardTitle className="text-xs font-medium text-green-600">
+              In Stock
+            </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
             <p className="text-2xl font-bold text-green-700">{stats.inStock}</p>
@@ -99,18 +102,26 @@ export function StockLevelsDashboard({ levels }: StockLevelsDashboardProps) {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3">
-            <CardTitle className="text-xs font-medium text-yellow-600">Low Stock</CardTitle>
+            <CardTitle className="text-xs font-medium text-yellow-600">
+              Low Stock
+            </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-2xl font-bold text-yellow-700">{stats.lowStock}</p>
+            <p className="text-2xl font-bold text-yellow-700">
+              {stats.lowStock}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3">
-            <CardTitle className="text-xs font-medium text-red-600">Out of Stock</CardTitle>
+            <CardTitle className="text-xs font-medium text-red-600">
+              Out of Stock
+            </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-2xl font-bold text-red-700">{stats.outOfStock}</p>
+            <p className="text-2xl font-bold text-red-700">
+              {stats.outOfStock}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -158,7 +169,10 @@ export function StockLevelsDashboard({ levels }: StockLevelsDashboardProps) {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="py-8 text-center text-muted-foreground"
+                  >
                     No results match your search or filter.
                   </TableCell>
                 </TableRow>
@@ -167,25 +181,40 @@ export function StockLevelsDashboard({ levels }: StockLevelsDashboardProps) {
                   const d = new Date(level.lastUpdated);
                   return (
                     <TableRow key={level.id}>
-                      <TableCell className="font-medium">{level.productName}</TableCell>
+                      <TableCell className="font-medium">
+                        {level.productName}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline">{level.brand}</Badge>
                       </TableCell>
-                      <TableCell className="capitalize">{level.category}</TableCell>
+                      <TableCell className="capitalize">
+                        {level.category}
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         {level.currentQuantity}
                       </TableCell>
-                      <TableCell className="text-right">{level.minQuantity ?? "—"}</TableCell>
+                      <TableCell className="text-right">
+                        {level.minQuantity ?? "—"}
+                      </TableCell>
                       <TableCell>
                         <Badge
-                          className={statusColors[level.status] ?? "bg-gray-100 text-gray-800"}
+                          className={
+                            statusColors[level.status] ??
+                            "bg-gray-100 text-gray-800"
+                          }
                         >
-                          {statusLabels[level.status] ?? level.status.replace(/-/g, " ")}
+                          {statusLabels[level.status] ??
+                            level.status.replace(/-/g, " ")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         <span>{d.toLocaleDateString()}</span>
-                        <span className="ml-1 text-xs">{d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="ml-1 text-xs">
+                          {d.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </TableCell>
                     </TableRow>
                   );
