@@ -1,8 +1,5 @@
 import { apiFetch } from "./client";
 
-// ==========================================
-// 1. POS CATALOG SCHEMAS
-// ==========================================
 export interface PosCatalogItem {
   id: string;
   name: string;
@@ -12,6 +9,29 @@ export interface PosCatalogItem {
   brand?: string;
   category?: string;
   image?: string;
+}
+
+export interface PosProductListResponse {
+  ok: boolean;
+  data: PosCatalogItem[];
+}
+
+export interface PosCheckoutItem {
+  productId: string;
+  quantity: number;
+}
+
+export interface PosCustomer {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface PosCheckoutRequest {
+  items: PosCheckoutItem[];
+  paymentMethod: "bakong" | "cash";
+  customer?: PosCustomer;
+  note?: string;
 }
 
 export interface PosCheckoutResult {
@@ -27,14 +47,25 @@ export interface PosCheckoutResponse {
   data: PosCheckoutResult;
 }
 
+export interface PosPaymentStatusPayload {
+  status?: string;
+  paymentId?: string;
+  orderId?: string;
+  orderNumber?: string;
+  receiptNumber?: string;
+}
+
 export interface PosPaymentStatusResponse {
   ok: boolean;
-  data: {
-    status: string;
-    receiptNumber?: string;
-    orderId?: string;
-    orderNumber?: string;
-  };
+  status?: string;
+  paymentId?: string;
+  orderNumber?: string;
+  receiptNumber?: string;
+  data?: PosPaymentStatusPayload;
+}
+
+export interface CancelPosPaymentResponse {
+  ok: boolean;
 }
 
 export interface StockLevel {
@@ -48,70 +79,6 @@ export interface StockLevel {
   lastUpdated: string;
 }
 
-export interface PosCatalogItem {
-  id: string;
-  name: string;
-  price: number;
-  inStock: boolean;
-  imei?: string;
-  brand?: string;
-  category?: string;
-}
-
-export interface PosProductListResponse {
-  ok: boolean;
-  data: PosCatalogItem[];
-}
-
-// ==========================================
-// 2. POS CHECKOUT SCHEMAS
-// ==========================================
-export interface PosCheckoutItem {
-  productId: string;
-  quantity: number;
-}
-
-export interface PosCustomer {
-  fullName?: string;
-  phone?: string;
-  email?: string;
-}
-
-export interface PosCheckoutRequest {
-  items: PosCheckoutItem[];
-  paymentMethod: "bakong" | "cash";
-  note?: string;
-}
-
-export interface PosCheckoutResult {
-  receiptId?: string;
-  orderNumber?: string;
-  paymentId?: string;
-  qrString?: string;
-  status: string;
-}
-
-export interface PosPaymentStatusResponse {
-  ok: boolean;
-  data: {
-    status: string;
-    receiptNumber?: string;
-    orderId?: string;
-    orderNumber?: string;
-  };
-}
-
-export interface PosPaymentStatusResponse {
-  ok: boolean;
-  status: string;
-  paymentId?: string;
-  orderNumber?: string;
-  receiptNumber?: string;
-}
-
-// ==========================================
-// 3. POS RECEIPT SCHEMAS
-// ==========================================
 export interface PosReceiptSummary {
   id: string;
   orderNumber?: string;
@@ -160,11 +127,6 @@ export interface PosReceiptDetailResponse {
   data: PosReceiptDetail;
 }
 
-// ==========================================
-// API FETCHERS
-// ==========================================
-
-/** GET /v1/pos/products */
 export async function getPosProducts(
   accessToken: string,
 ): Promise<PosProductListResponse> {
@@ -174,7 +136,6 @@ export async function getPosProducts(
   });
 }
 
-/** POST /v1/pos/checkout */
 export async function createPosCheckout(
   request: PosCheckoutRequest,
   accessToken: string,
@@ -189,7 +150,6 @@ export async function createPosCheckout(
   });
 }
 
-/** GET /v1/pos/payments/{paymentId}/status */
 export async function getPosPaymentStatus(
   paymentId: string,
   accessToken: string,
@@ -203,7 +163,19 @@ export async function getPosPaymentStatus(
   );
 }
 
-/** GET /v1/pos/receipts */
+export async function cancelPosPayment(
+  paymentId: string,
+  accessToken: string,
+): Promise<CancelPosPaymentResponse> {
+  return apiFetch<CancelPosPaymentResponse>(
+    `/v1/pos/payments/${paymentId}/cancel`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+}
+
 export async function getPosReceipts(
   accessToken: string,
 ): Promise<PosReceiptHistoryResponse> {
@@ -213,7 +185,6 @@ export async function getPosReceipts(
   });
 }
 
-/** GET /v1/pos/receipts/{receiptId} */
 export async function getPosReceiptDetail(
   receiptId: string,
   accessToken: string,
@@ -222,35 +193,4 @@ export async function getPosReceiptDetail(
     method: "GET",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-}
-
-export async function getPosBakongPaymentStatus(
-  paymentId: string,
-  accessToken: string,
-): Promise<PosPaymentStatusResponse> {
-  return apiFetch<PosPaymentStatusResponse>(
-    `/v1/pos/payments/${paymentId}/status`,
-    {
-      method: "GET",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
-}
-
-export interface CancelPosPaymentResponse {
-  ok: boolean;
-}
-
-/** POST /v1/pos/checkout/{paymentId}/cancel */
-export async function cancelPosBakongPayment(
-  paymentId: string,
-  accessToken: string,
-): Promise<CancelPosPaymentResponse> {
-  return apiFetch<CancelPosPaymentResponse>(
-    `/v1/pos/checkout/${paymentId}/cancel`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
 }

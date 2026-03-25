@@ -14,7 +14,11 @@ import { useTranslations } from "next-intl";
 // API & Helpers
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getAdminProducts } from "@/lib/api";
-import { createPosCheckout, getPosPaymentStatus } from "@/lib/api/pos";
+import {
+  cancelPosPayment,
+  createPosCheckout,
+  getPosPaymentStatus,
+} from "@/lib/api/pos";
 import {
   generateReceiptPrintHtml,
   printReceiptHtml,
@@ -117,6 +121,12 @@ function normalizePosPaymentSession(value: unknown): PosPaymentSession | null {
   };
 }
 
+function normalizePosPaymentStatus(value: unknown): Record<string, unknown> | null {
+  const payload = getRecord(value);
+  if (!payload) return null;
+  return getRecord(payload.data) ?? payload;
+}
+
 export default function SalesPage() {
   const t = useTranslations("AdminSales");
 
@@ -128,6 +138,7 @@ export default function SalesPage() {
   const [paymentSession, setPaymentSession] =
     useState<PosPaymentSession | null>(null);
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [isCancellingPayment, setIsCancellingPayment] = useState(false);
   const [isCashModalOpen, setIsCashModalOpen] = useState(false);
   const [pageAlert, setPageAlert] = useState<PageAlertState | null>(null);
 
@@ -168,6 +179,7 @@ export default function SalesPage() {
     stopTimers();
     setPaymentSession(null);
     setRemainingMs(null);
+    setIsCancellingPayment(false);
   };
 
   const printReceipt = (orderId: string, cashReceived?: number) => {
@@ -201,26 +213,24 @@ export default function SalesPage() {
       return;
     }
 
-    setCartItems((prev) => {
-      const existing = prev.find((i) => i.id === product.id);
+    const existing = cartItems.find((item) => item.id === product.id);
+    if (existing) {
+      toast.info("This inventory unit is already in the current order.", {
+        description: product.name,
+      });
+      return;
+    }
 
-      if (existing) {
-        return prev.map((i) =>
-          i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          quantity: 1,
-          barcode: product.imei ?? undefined,
-        },
-      ];
-    });
+    setCartItems((prev) => [
+      ...prev,
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        barcode: product.imei ?? undefined,
+      },
+    ]);
     toast.success(t("addedToCart"), { description: product.name });
   };
   const performCheckout = async (
@@ -288,16 +298,17 @@ export default function SalesPage() {
   const checkStatus = async (id: string) => {
     try {
       const { accessToken } = getSessionSnapshot();
-      const res = await getPosPaymentStatus(id, accessToken!);
-      const currentStatus = String(res.status).toLowerCase();
+      const response = await getPosPaymentStatus(id, accessToken!);
+      const res = normalizePosPaymentStatus(response);
+      const currentStatus = String(res?.status || "").toLowerCase();
       if (["failed", "expired", "timeout"].includes(currentStatus))
         return clearPayment();
 
-      if (currentStatus === "paid" || res.receiptNumber) {
+      if (currentStatus === "paid" || res?.receiptNumber) {
         stopTimers();
         printReceipt(
-          res.orderNumber ||
-            res.receiptNumber ||
+          (typeof res?.orderNumber === "string" && res.orderNumber) ||
+            (typeof res?.receiptNumber === "string" && res.receiptNumber) ||
             paymentSession?.orderNumber ||
             id,
         );
@@ -311,8 +322,39 @@ export default function SalesPage() {
       if (err?.status === 404 || err?.status === 400) return;
     }
   };
+
+  const handleCancelPayment = async () => {
+    if (isCancellingPayment) {
+      return;
+    }
+
+    if (!paymentSession?.paymentId) {
+      clearPayment();
+      return;
+    }
+
+    const { accessToken } = getSessionSnapshot();
+    if (!accessToken) {
+      toast.error("Not authenticated");
+      return;
+    }
+
+    setIsCancellingPayment(true);
+
+    try {
+      await cancelPosPayment(paymentSession.paymentId, accessToken);
+      toast.success("Payment cancelled. Stock released.");
+      clearPayment();
+      refetch();
+    } catch (err: unknown) {
+      setIsCancellingPayment(false);
+      toast.error(
+        err instanceof Error ? err.message : "Unable to cancel payment",
+      );
+    }
+  };
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-400 mx-auto">
+    <div className="mx-auto w-full max-w-[1600px] px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
           {t("title")}
@@ -346,9 +388,9 @@ export default function SalesPage() {
 
         <TabsContent
           value="sell"
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2"
+          className="mt-2 grid grid-cols-1 gap-6 lg:min-h-[calc(100vh-220px)] lg:grid-cols-12"
         >
-          <div className="lg:col-span-8 flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4 lg:col-span-8">
             <Card className="shadow-sm border-dashed shrink-0">
               <CardContent className="pt-6">
                 <ProductSearchBar
@@ -372,14 +414,16 @@ export default function SalesPage() {
               </CardContent>
             </Card>
 
-            <QuickSelectGrid
-              products={products}
-              loading={loadingProducts}
-              onAddProduct={addProductToCart}
-            />
+            <div className="min-h-0 flex-1">
+              <QuickSelectGrid
+                products={products}
+                loading={loadingProducts}
+                onAddProduct={addProductToCart}
+              />
+            </div>
           </div>
 
-          <div className="lg:col-span-4 lg:sticky lg:top-6">
+          <div className="lg:col-span-4 lg:self-start">
             <CartPanel
               cartItems={cartItems}
               cartSubtotal={cartSubtotal}
@@ -390,7 +434,9 @@ export default function SalesPage() {
               }
               onUpdateQuantity={(id, q) =>
                 setCartItems((prev) =>
-                  prev.map((i) => (i.id === id ? { ...i, quantity: q } : i)),
+                  prev.map((i) =>
+                    i.id === id ? { ...i, quantity: 1 } : i,
+                  ),
                 )
               }
               onCheckout={() => performCheckout("bakong")}
@@ -398,7 +444,7 @@ export default function SalesPage() {
             />
           </div>
         </TabsContent>
-        <TabsContent value="history">
+        <TabsContent value="history" className="mt-2">
           <SalesHistoryPanel />
         </TabsContent>
       </Tabs>
@@ -413,10 +459,11 @@ export default function SalesPage() {
       <PaymentModal
         paymentSession={paymentSession}
         remainingMs={remainingMs}
+        isCancelling={isCancellingPayment}
         onCheckStatus={checkStatus}
         onCancel={handleCancelPayment}
       />
-      <Toaster />
+      <Toaster position="top-center" offset={20} />
     </div>
   );
 }

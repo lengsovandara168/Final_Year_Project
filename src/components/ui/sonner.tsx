@@ -19,11 +19,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       toastOptions={{
         classNames: {
-          success: "!bg-white !text-black !border-white",
-          error: "!bg-red-400 !text-black !border-red-400",
-          description: "!text-white/90",
-          actionButton: "!bg-white/20 !text-white",
-          cancelButton: "!bg-black/20 !text-white",
+          toast:
+            "!rounded-xl !border !border-border/70 !bg-background !text-foreground !shadow-lg",
+          title: "!font-medium",
+          description: "!text-muted-foreground",
+          success:
+            "!border-emerald-200 !bg-emerald-50 !text-emerald-950 dark:!border-emerald-900 dark:!bg-emerald-950/40 dark:!text-emerald-100",
+          info: "!border-sky-200 !bg-sky-50 !text-sky-950 dark:!border-sky-900 dark:!bg-sky-950/40 dark:!text-sky-100",
+          warning:
+            "!border-amber-200 !bg-amber-50 !text-amber-950 dark:!border-amber-900 dark:!bg-amber-950/40 dark:!text-amber-100",
+          error:
+            "!border-red-200 !bg-red-50 !text-red-950 dark:!border-red-900 dark:!bg-red-950/40 dark:!text-red-100",
+          actionButton: "!bg-foreground !text-background",
+          cancelButton: "!bg-muted !text-foreground",
         },
       }}
       icons={{

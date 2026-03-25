@@ -43,7 +43,7 @@ export function QuickSelectGrid({
   if (selectedModelName) {
     const units = groupedProducts[selectedModelName] || [];
     return (
-      <Card className="flex-1 flex flex-col min-h-[400px] border-primary/10">
+      <Card className="flex h-full min-h-[420px] flex-col overflow-hidden border-primary/10 lg:min-h-[calc(100vh-320px)]">
         <CardHeader className="border-b bg-muted/20">
           <div className="flex items-center gap-2">
             <Button
@@ -59,14 +59,14 @@ export function QuickSelectGrid({
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-1 relative">
+        <CardContent className="relative flex-1 p-0">
           <ScrollArea className="absolute inset-0 h-full w-full">
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {units.map((unit) => (
                 <Button
                   key={unit.id}
                   variant="outline"
-                  className="h-auto flex flex-col items-start p-4 text-left hover:border-primary hover:bg-primary/5 transition-all"
+                  className="flex h-full min-h-[132px] flex-col items-start p-4 text-left transition-all hover:border-primary hover:bg-primary/5"
                   onClick={() => {
                     onAddProduct(unit);
                     setSelectedModelName(null);
@@ -95,15 +95,15 @@ export function QuickSelectGrid({
 
   // --- VIEW 1: Main Product Selection ---
   return (
-    <Card className="flex-1 flex flex-col min-h-[400px] border-primary/10">
+    <Card className="flex h-full min-h-[420px] flex-col overflow-hidden border-primary/10 lg:min-h-[calc(100vh-320px)]">
       <CardHeader className="border-b bg-muted/20">
         <CardTitle className="flex items-center gap-2 text-lg">
           <PackageOpen className="h-5 w-5" /> Quick Select
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0 flex-1 relative">
+      <CardContent className="relative flex-1 p-0">
         <ScrollArea className="absolute inset-0 h-full w-full">
-          <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {modelNames.length === 0 ? (
               <div className="col-span-full py-20 text-center text-muted-foreground">
                 No products in stock.
@@ -119,7 +119,7 @@ export function QuickSelectGrid({
                   <Button
                     key={name}
                     variant="outline"
-                    className="h-auto flex flex-col items-center p-2 text-center group transition-all hover:border-primary hover:bg-primary/5"
+                    className="group flex min-h-[180px] flex-col items-center p-2 text-center transition-all hover:border-primary hover:bg-primary/5"
                     onClick={() => setSelectedModelName(name)}
                   >
                     <div className="w-full aspect-square bg-muted rounded-md overflow-hidden relative mb-2">

@@ -48,11 +48,11 @@ export function SalesHistoryPanel() {
   };
 
   return (
-    <Card className="shadow-sm border-primary/10">
+    <Card className="min-h-[calc(100vh-220px)] shadow-sm border-primary/10">
       <CardHeader>
         <CardTitle>In-Store Sales History</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-h-[calc(100vh-320px)]">
         {isLoading ? (
           <div className="py-12 flex justify-center items-center text-muted-foreground">
             <LoaderCircle className="h-6 w-6 animate-spin mr-2" />

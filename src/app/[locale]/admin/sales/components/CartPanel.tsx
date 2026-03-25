@@ -34,7 +34,7 @@ export function CartPanel({
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <Card className="flex flex-col h-[calc(100vh-160px)] lg:max-h-[800px] shadow-md border-primary/10">
+    <Card className="flex min-h-[420px] flex-col overflow-hidden border-primary/10 shadow-md lg:sticky lg:top-4 lg:h-[62dvh] lg:min-h-[520px] lg:max-h-[680px]">
       <CardHeader className="bg-muted/30 pb-4 border-b">
         <CardTitle className="flex items-center justify-between text-xl">
           <div className="flex items-center gap-2">
@@ -47,21 +47,22 @@ export function CartPanel({
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="flex-1 p-0 overflow-hidden relative">
-        <ScrollArea className="h-full w-full absolute inset-0">
+      <CardContent className="relative flex-1 overflow-hidden p-0">
+        <ScrollArea className="absolute inset-0 h-full w-full">
           <div className="p-4">
             <CartItemList
               items={cartItems}
               onRemove={onRemoveItem}
               onQuantityChange={onUpdateQuantity}
+              lockQuantity
             />
           </div>
         </ScrollArea>
       </CardContent>
 
-      <div className="bg-muted/30 mt-auto">
+      <div className="mt-auto bg-muted/30">
         <Separator />
-        <div className="bg-muted/30 mt-auto p-4 md:p-6 border-t">
+        <div className="border-t bg-muted/30 p-4 md:p-6">
           <div className="flex items-center justify-between w-full text-lg mb-6">
             <span className="font-medium text-muted-foreground">Total</span>
             <span className="text-3xl font-bold text-primary">

@@ -22,13 +22,15 @@ export type PosPaymentSession = {
 interface PaymentModalProps {
   paymentSession: PosPaymentSession | null;
   remainingMs: number | null;
+  isCancelling?: boolean;
   onCheckStatus: (paymentId: string) => void;
-  onCancel: () => void;
+  onCancel: () => void | Promise<void>;
 }
 
 export function PaymentModal({
   paymentSession,
   remainingMs,
+  isCancelling = false,
   onCheckStatus,
   onCancel,
 }: PaymentModalProps) {
@@ -74,6 +76,7 @@ export function PaymentModal({
             <Button
               className="w-full h-12 text-md"
               onClick={() => onCheckStatus(paymentSession.paymentId)}
+              disabled={isCancelling}
             >
               Check Payment Status
             </Button>
@@ -81,8 +84,9 @@ export function PaymentModal({
               variant="outline"
               className="w-full h-12 text-md"
               onClick={onCancel}
+              disabled={isCancelling}
             >
-              Cancel Transaction
+              {isCancelling ? "Cancelling..." : "Cancel Transaction"}
             </Button>
           </div>
         </div>
