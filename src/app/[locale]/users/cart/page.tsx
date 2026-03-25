@@ -307,6 +307,7 @@ export default function CartPage() {
   }, 0);
   const estimatedShipping = 0;
   const estimatedTotal = subtotal + estimatedShipping;
+  const hasNonPositiveTotal = estimatedTotal <= 0;
   const readyForShipping = items.length > 0;
   const readyForPayment =
     Boolean(isShippingComplete(shipping)) && isValidBillName(shipping.fullName);
@@ -450,6 +451,7 @@ export default function CartPage() {
       orderId,
       paymentId,
       receiptNumber: status.receiptNumber,
+      userEmail: getSessionSnapshot().user?.email,
       createdAt: new Date().toISOString(),
       amount: currentSession.amount,
       currency: currentSession.currency,
@@ -529,6 +531,12 @@ export default function CartPage() {
 
     if (items.length === 0) {
       setStep("cart");
+      return;
+    }
+
+    if (estimatedTotal <= 0) {
+      setStep("cart");
+      setCheckoutError("Checkout amount must be greater than $0.00.");
       return;
     }
 
@@ -730,6 +738,13 @@ export default function CartPage() {
 
   async function handleCheckout() {
     if (step === "cart" && items.length > 0) {
+      if (hasOutOfStockItems) {
+        setCheckoutError(
+          `Out of stock: ${outOfStockNames.join(", ")}. Remove these items to proceed checkout.`,
+        );
+        return;
+      }
+
       const accessToken = await ensureAccessToken();
       if (!accessToken) return;
 
@@ -750,6 +765,16 @@ export default function CartPage() {
       if (!hasStockIssue) {
         setCheckoutError(null);
       }
+
+      if (hasStockIssue) {
+        return;
+      }
+
+      if (estimatedTotal <= 0) {
+        setCheckoutError("Checkout amount must be greater than $0.00.");
+        return;
+      }
+
       setStep("shipping");
       return;
     }
@@ -785,6 +810,12 @@ export default function CartPage() {
 
       setShowErrors(false);
       setCheckoutError(null);
+
+      if (estimatedTotal <= 0) {
+        setCheckoutError("Checkout amount must be greater than $0.00.");
+        return;
+      }
+
       setStep("payment");
       void startBakongPayment();
     }
@@ -1564,7 +1595,9 @@ export default function CartPage() {
                       onClick={handleCheckout}
                       disabled={
                         (step === "cart" && items.length === 0) ||
-                        (step === "shipping" && hasOutOfStockItems)
+                        (step === "cart" && hasOutOfStockItems) ||
+                        (step === "shipping" && hasOutOfStockItems) ||
+                        hasNonPositiveTotal
                       }
                     >
                       {step === "cart" && "Proceed to Checkout"}
