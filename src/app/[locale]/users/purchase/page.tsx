@@ -8,6 +8,7 @@ import {
   setStoredCheckoutSummary,
   type StoredCheckoutSummary,
 } from "@/lib/checkout-storage";
+import { formatOrderDisplayId } from "@/lib/order-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,7 +83,9 @@ export default function UserPurchaseHistoryPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-gray-500">Order</p>
                       <p className="font-semibold text-gray-900">
-                        {summary.receiptNumber || summary.orderId}
+                        {formatOrderDisplayId(
+                          summary.receiptNumber || summary.orderId,
+                        )}
                       </p>
                       <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
                         Paid

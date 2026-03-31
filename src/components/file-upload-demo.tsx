@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 type FileUploadDemoProps = {
   onFilesChange?: (files: File[]) => void;
   className?: string;
+  multiple?: boolean;
 };
 
 export default function FileUploadDemo({
   onFilesChange,
   className,
+  multiple = false,
 }: FileUploadDemoProps) {
   return (
     <div
@@ -20,7 +22,10 @@ export default function FileUploadDemo({
         className,
       )}
     >
-      <FileUpload onChange={(files) => onFilesChange?.(files)} />
+      <FileUpload
+        multiple={multiple}
+        onChange={(files) => onFilesChange?.(files)}
+      />
     </div>
   );
 }

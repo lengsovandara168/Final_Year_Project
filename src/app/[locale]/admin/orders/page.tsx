@@ -20,6 +20,7 @@ import { Search, ChevronDown, Eye, AlertCircle } from "lucide-react";
 import { getOrders, type Order } from "@/lib/api/orders";
 import { cookies } from "next/headers";
 import { getTranslations } from "next-intl/server";
+import { getOrderDisplayId } from "@/lib/order-display";
 
 function getStatusColor(status: string) {
   const colors: Record<string, string> = {
@@ -96,7 +97,9 @@ function OrdersTable({
         <TableBody>
           {data.map((order) => (
             <TableRow key={order.id}>
-              <TableCell className="font-medium">{order.id}</TableCell>
+              <TableCell className="font-medium">
+                {getOrderDisplayId(order) || "-"}
+              </TableCell>
               <TableCell>
                 <div>
                   <p className="font-medium">{order.customer}</p>

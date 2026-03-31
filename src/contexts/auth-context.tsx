@@ -7,6 +7,7 @@ import {
   persistAuthSession,
   type AuthSessionPayload,
 } from "@/lib/auth-session";
+import { getMe } from "@/lib/api";
 import type { PermissionSet } from "@/lib/rbac";
 
 interface User {
@@ -37,17 +38,79 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   // Load auth session from cookies after mount to avoid hydration mismatch
   React.useEffect(() => {
-    const session = getSessionSnapshot();
+    let isCancelled = false;
 
-    if (session.accessToken && session.user) {
-      setUser(session.user);
-      setIsAuthenticated(true);
-    } else {
-      setUser(null);
-      setIsAuthenticated(false);
-    }
+    const loadSession = async () => {
+      const session = getSessionSnapshot();
 
-    setIsLoading(false);
+      if (!session.accessToken) {
+        if (!isCancelled) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (session.user && !isCancelled) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+      }
+
+      try {
+        const profile = await getMe(session.accessToken);
+        const resolvedId = profile.userId ?? profile.user_id ?? session.user?.id;
+        const resolvedEmail = profile.email || session.user?.email;
+        const resolvedRole = profile.role || session.user?.role;
+        const resolvedName =
+          profile.name || "User";
+
+        if (!resolvedId || !resolvedEmail || !resolvedRole) {
+          throw new Error("Invalid user profile response");
+        }
+
+        const nextUser: User = {
+          id: resolvedId,
+          email: resolvedEmail,
+          role: resolvedRole,
+          name: resolvedName,
+          permissions: session.user?.permissions ?? null,
+        };
+
+        if (session.user) {
+          // No need to update session user name from fallback, always use backend name
+        } else {
+          persistAuthSession({
+            userId: resolvedId,
+            email: resolvedEmail,
+            role: resolvedRole,
+            name: profile.name || "User",
+            permissions: nextUser.permissions,
+            accessToken: session.accessToken,
+          });
+        }
+
+        if (!isCancelled) {
+          setUser(nextUser);
+          setIsAuthenticated(true);
+        }
+      } catch {
+        if (!isCancelled) {
+          setUser(session.user);
+          setIsAuthenticated(Boolean(session.user));
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadSession();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   const login = (payload: AuthSessionPayload) => {
@@ -66,6 +129,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     clearAuthSession();
     localStorage.removeItem("verifyEmail");
     localStorage.removeItem("verifyFlow");
+    localStorage.removeItem("verifyName");
     localStorage.removeItem("postLoginRedirect");
     setUser(null);
     setIsAuthenticated(false);

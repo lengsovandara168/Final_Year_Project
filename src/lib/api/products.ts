@@ -1,6 +1,6 @@
 // f:\AUPP\2026\FYP\FYP_Project\src\lib\api\products.ts
 
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchPublic } from "./client";
 
 export type ProductSpecification = {
   key: string;
@@ -123,6 +123,77 @@ export async function uploadProductImage(file: File, accessToken: string) {
   });
 }
 
+export type ProductGalleryImage = {
+  key: string;
+  url: string;
+  contentType: string;
+  size: number;
+};
+
+type UploadProductGalleryImagesResponse =
+  | ProductGalleryImage[]
+  | {
+      ok?: boolean;
+      data?: ProductGalleryImage[];
+    };
+
+export async function uploadProductGalleryImages(
+  files: File[],
+  accessToken: string,
+) {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  const response = await apiFetch<UploadProductGalleryImagesResponse>(
+    "/v1/add-product/images/gallery/upload",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    },
+  );
+
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  if (Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  throw new Error("Uploaded gallery response is invalid.");
+}
+
+export type GetProductGalleryResponse = {
+  ok: boolean;
+  total: number;
+  data: ProductGalleryImage[];
+};
+
+export async function getProductGallery(
+  productId: string,
+  accessToken?: string,
+) {
+  const path = `/v1/products/${encodeURIComponent(productId)}/gallery`;
+
+  if (accessToken?.trim()) {
+    return apiFetch<GetProductGalleryResponse>(path, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  return apiFetchPublic<GetProductGalleryResponse>(path, {
+    method: "GET",
+  });
+}
+
 export type CreateProductRequest = {
   templateId: string;
   imei?: string;
@@ -159,6 +230,9 @@ export type ProductTemplate = {
   storage?: string | null;
   color: string;
   image?: string;
+  gallery?: ProductGalleryImage[];
+  imageUrls?: string[];
+  images?: string[];
   description?: string;
   subcategoryId: string;
   subcategoryName?: string;
@@ -189,6 +263,7 @@ export type CreateProductTemplateRequest = {
   storage?: string;
   color: string;
   image?: string;
+  gallery?: ProductGalleryImage[];
   description?: string;
   specifications?: ProductSpecification[];
   isActive?: boolean;

@@ -33,7 +33,10 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
 
-    if (!name.trim() || !email.trim()) {
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim();
+
+    if (!normalizedName || !normalizedEmail) {
       setError(t("nameEmailRequired"));
       setIsLoading(false);
       return;
@@ -41,12 +44,13 @@ export default function RegisterPage() {
 
     try {
       await register({
-        email: email.trim(),
-        name: name.trim(),
+        email: normalizedEmail,
+        name: normalizedName,
       });
 
-      localStorage.setItem("verifyEmail", email.trim());
+      localStorage.setItem("verifyEmail", normalizedEmail);
       localStorage.setItem("verifyFlow", "register");
+      localStorage.setItem("verifyName", normalizedName);
 
       const localePrefix = getLocalePrefix(pathname);
       router.push(`${localePrefix}/verify-otp?flow=register`);

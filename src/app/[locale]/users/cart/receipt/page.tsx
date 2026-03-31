@@ -14,6 +14,7 @@ import {
   printReceiptHtml,
 } from "@/components/receipt/receipt-print";
 import { useTranslations } from "next-intl";
+import { formatOrderDisplayId } from "@/lib/order-display";
 
 export default function ReceiptPage() {
   const t = useTranslations("Receipt");
@@ -45,7 +46,7 @@ export default function ReceiptPage() {
   }
 
   const orderSummary: OrderSummaryV2 = {
-    orderNumber: summary.receiptNumber || summary.orderId,
+    orderNumber: formatOrderDisplayId(summary.receiptNumber || summary.orderId),
     createdAt: summary.createdAt,
     items: summary.items.map((item) => ({
       id: item.id,

@@ -7,6 +7,7 @@ import {
   getStoredCheckoutSummary,
   type StoredCheckoutSummary,
 } from "@/lib/checkout-storage";
+import { formatOrderDisplayId } from "@/lib/order-display";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ export default function CartSuccessPage() {
   const orderId = summary?.orderId ?? fallbackSummary.orderId;
   const paymentId = summary?.paymentId ?? fallbackSummary.paymentId;
   const receiptNumber = summary?.receiptNumber ?? fallbackSummary.receiptNumber;
+  const displayOrderId = formatOrderDisplayId(receiptNumber || orderId);
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6 lg:px-8">
@@ -66,7 +68,7 @@ export default function CartSuccessPage() {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-gray-500">Order ID</span>
                   <span className="text-right font-medium text-gray-900">
-                    {orderId ?? "Unavailable"}
+                    {displayOrderId || "Unavailable"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
@@ -79,7 +81,7 @@ export default function CartSuccessPage() {
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-gray-500">Receipt Number</span>
                     <span className="text-right font-medium text-gray-900">
-                      {receiptNumber}
+                      {formatOrderDisplayId(receiptNumber)}
                     </span>
                   </div>
                 )}

@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  getMe,
   login,
   verifyLoginOtp,
   verifyRegisterOtp,
@@ -37,6 +38,7 @@ import { locales } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { RefreshCwIcon } from "lucide-react";
 import { getFirstStaffAdminPath } from "@/lib/rbac";
+import { getRememberedUserName } from "@/lib/auth-session";
 
 type VerifyFlow = "register" | "login";
 
@@ -100,18 +102,30 @@ export default function VerifyOtpPage() {
           ? await verifyLoginOtp({ email, code: otpCode })
           : await verifyRegisterOtp({ email, code: otpCode });
 
+      let profileName = "";
+      try {
+        const profile = await getMe(response.accessToken);
+        profileName = profile.name?.trim() ?? "";
+      } catch {
+        profileName = "";
+      }
+
+      // Always use the name from the database (profileName), fallback to "User"
+      const resolvedName = profileName || "User";
+
       setSession({
         userId: response.userId,
         email: response.email,
         role: response.role,
         permissions: null,
         accessToken: response.accessToken,
-        name: response.email.split("@")[0] || "User",
+        name: resolvedName,
       });
 
       setSuccess(t("verifiedRedirecting"));
       localStorage.removeItem("verifyEmail");
       localStorage.removeItem("verifyFlow");
+      localStorage.removeItem("verifyName");
 
       const localePrefix = getLocalePrefix(pathname);
       const postLoginRedirect = localStorage.getItem("postLoginRedirect");
