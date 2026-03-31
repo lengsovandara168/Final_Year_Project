@@ -4,6 +4,7 @@ import { getAdminProducts } from "./products";
 import { getAdminCategoryBoard, getCategories } from "./categories";
 import { getOrders } from "./orders";
 import { getCustomers } from "./customers";
+import { getOrderDisplayId } from "@/lib/order-display";
 
 export type DashboardStats = {
   totalRevenue: number;
@@ -25,6 +26,7 @@ export type TopProduct = {
 
 export type RecentOrder = {
   id: string;
+  displayId: string;
   customer: string;
   items: number;
   total: number;
@@ -232,6 +234,7 @@ export async function getDashboardData(
     // Extract recent orders (top 5) from the real payload
     const recentOrders: RecentOrder[] = orders.slice(0, 5).map((order) => ({
       id: order.id,
+      displayId: getOrderDisplayId(order),
       customer: order.customer || order.email || "Unknown",
       items: order.items,
       total:

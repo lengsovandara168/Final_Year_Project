@@ -57,6 +57,7 @@ export type OtpVerifyResponse = {
   ok: boolean;
   userId: string;
   email: string;
+  name?: string;
   role: string;
   accessToken: string;
 };
@@ -85,9 +86,13 @@ export async function logout(accessToken: string) {
 }
 
 export type UserProfile = {
+  ok?: boolean;
+  userId?: string;
   user_id: string;
   email: string;
+  name?: string;
   role: string;
+  permissions?: unknown;
 };
 
 export async function getMe(accessToken: string) {

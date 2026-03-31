@@ -1,4 +1,3 @@
-import { AuthProvider } from "@/contexts/auth-context";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { redirect } from "next/navigation";
@@ -30,7 +29,7 @@ export default async function VerifyOtpLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <AuthProvider>{children}</AuthProvider>
+      {children}
     </NextIntlClientProvider>
   );
 }

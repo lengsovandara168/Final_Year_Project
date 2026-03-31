@@ -25,6 +25,8 @@ type SessionSnapshot = {
   accessToken: string | null;
 };
 
+const REMEMBERED_USER_NAMES_KEY = "remembered_user_names";
+
 function getCookieValue(name: string) {
   if (typeof document === "undefined") {
     return null;
@@ -55,6 +57,64 @@ function setCookie(
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax`;
 }
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function readRememberedUserNames(): Record<string, string> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const raw = localStorage.getItem(REMEMBERED_USER_NAMES_KEY);
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([email, name]) =>
+          typeof email === "string" &&
+          typeof name === "string" &&
+          name.trim().length > 0,
+      ),
+    ) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+export function rememberUserName(email: string, name: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedName = name.trim();
+
+  if (!normalizedEmail || !normalizedName) {
+    return;
+  }
+
+  const nextNames = {
+    ...readRememberedUserNames(),
+    [normalizedEmail]: normalizedName,
+  };
+
+  localStorage.setItem(REMEMBERED_USER_NAMES_KEY, JSON.stringify(nextNames));
+}
+
+export function getRememberedUserName(email: string): string | null {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  return readRememberedUserNames()[normalizedEmail] ?? null;
+}
+
 export function persistAuthSession(payload: AuthSessionPayload) {
   const user: SessionUser = {
     id: payload.userId,
@@ -64,6 +124,7 @@ export function persistAuthSession(payload: AuthSessionPayload) {
     permissions: payload.permissions,
   };
 
+  rememberUserName(payload.email, payload.name);
   setCookie("access_token", payload.accessToken);
   setCookie("auth_user", JSON.stringify(user));
 
@@ -104,7 +165,7 @@ export function getSessionSnapshot(): SessionSnapshot {
         typeof parsed.email === "string" &&
         typeof parsed.role === "string"
       ) {
-        const fallbackName = parsed.email.split("@")[0] || "User";
+        const fallbackName = getRememberedUserName(parsed.email) ?? "User";
         user = {
           name: typeof parsed.name === "string" ? parsed.name : fallbackName,
           id: parsed.id,
@@ -150,6 +211,7 @@ export function updateSessionUser(patch: Partial<SessionUser>) {
   };
 
   const serialized = JSON.stringify(nextUser);
+  rememberUserName(nextUser.email, nextUser.name);
   setCookie("auth_user", serialized);
 
   if (typeof window !== "undefined") {
