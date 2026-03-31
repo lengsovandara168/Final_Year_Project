@@ -79,9 +79,7 @@ export async function RecentOrders({ locale, orders }: RecentOrdersProps) {
                   return (
                     <TableRow key={order.id}>
                       <TableCell className="font-mono text-xs">
-                        {order.id.length > 8
-                          ? `#${order.id.slice(-8).toUpperCase()}`
-                          : `#${order.id}`}
+                        {order.displayId || "-"}
                       </TableCell>
                       <TableCell className="max-w-30 truncate">
                         <div>

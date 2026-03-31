@@ -4,6 +4,8 @@ import { apiFetch } from "./client";
 
 export type Order = {
   id: string;
+  orderNumber?: string;
+  receiptNumber?: string;
   customer: string;
   email: string;
   items: number;

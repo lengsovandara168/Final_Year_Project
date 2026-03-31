@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { useLogout } from "@/hooks/use-logout";
 import { useCart } from "@/contexts/cart-context";
 import { useWishlist } from "@/contexts/wishlist-context";
+import { useAuth } from "@/contexts/auth-context";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
 
@@ -180,6 +181,72 @@ function buildProductTemplateKey(product: Product) {
   return `legacy:${product.subcategoryId}:${normalizedName}:${normalizedStorage}:${normalizedColor}:price:${priceKey}:original:${originalPriceKey}`;
 }
 
+function normalizeProductImageValues(sources: unknown[]) {
+  const collected: string[] = [];
+
+  for (const source of sources) {
+    if (Array.isArray(source)) {
+      for (const value of source) {
+        if (typeof value === "string") {
+          collected.push(value);
+        }
+      }
+      continue;
+    }
+
+    if (typeof source === "string") {
+      const trimmed = source.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed) as unknown;
+          if (Array.isArray(parsed)) {
+            for (const value of parsed) {
+              if (typeof value === "string") {
+                collected.push(value);
+              }
+            }
+            continue;
+          }
+        } catch {
+          // Fall through to raw string handling.
+        }
+      }
+
+      if (trimmed.includes(",")) {
+        collected.push(...trimmed.split(","));
+        continue;
+      }
+
+      collected.push(trimmed);
+    }
+  }
+
+  return Array.from(
+    new Set(
+      collected.map((value) => value.trim()).filter(Boolean),
+    ),
+  );
+}
+
+function resolveProductCoverImage(product: Product) {
+  const directImage = normalizeProductImageValues([product.image])[0];
+  if (directImage) {
+    return directImage;
+  }
+
+  return normalizeProductImageValues([product.images, product.imageUrls])[0];
+}
+
+function firstImageCollection(
+  ...collections: Array<string[] | undefined>
+) {
+  return collections.find(
+    (collection) => Array.isArray(collection) && collection.length > 0,
+  );
+}
+
 function deduplicateProductTemplates(products: Product[]) {
   const stockByTemplate = new Map<string, number>();
 
@@ -210,7 +277,20 @@ function deduplicateProductTemplates(products: Product[]) {
 
     grouped.set(key, {
       ...preferred,
-      image: preferred.image || existing.image || product.image,
+      image:
+        resolveProductCoverImage(preferred) ||
+        resolveProductCoverImage(existing) ||
+        resolveProductCoverImage(product),
+      images: firstImageCollection(
+        preferred.images,
+        existing.images,
+        product.images,
+      ),
+      imageUrls: firstImageCollection(
+        preferred.imageUrls,
+        existing.imageUrls,
+        product.imageUrls,
+      ),
       description:
         preferred.description || existing.description || product.description,
       storage: preferred.storage || existing.storage || product.storage,
@@ -254,6 +334,7 @@ export default function ShopPage() {
   const t = useTranslations("Shop");
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
   const handleLogout = useLogout();
   const [products, setProducts] = useState<Product[]>([]);
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
@@ -506,6 +587,8 @@ export default function ShopPage() {
   // Get cart count
   const cartCount = getCartCount();
   const wishlistCount = getWishlistCount();
+  const accountInitial = (user?.name ?? "").trim().slice(0, 1).toUpperCase() || "U";
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header - Logo + Search + Cart */}
@@ -595,10 +678,14 @@ export default function ShopPage() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="relative shrink-0"
-                    aria-label="Open account menu"
+                    className="relative h-10 w-10 shrink-0 rounded-full p-0 font-semibold"
+                    aria-label={
+                      user?.name
+                        ? `Open account menu for ${user.name}`
+                        : "Open account menu"
+                    }
                   >
-                    <User className="h-5 w-5" />
+                    <span className="text-sm uppercase">{accountInitial}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="bottom" sideOffset={8}>

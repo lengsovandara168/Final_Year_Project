@@ -7,7 +7,12 @@ import { useCart } from "@/contexts/cart-context";
 import { useWishlist } from "@/contexts/wishlist-context";
 import { useAddToCartWithToast } from "@/hooks/use-add-to-cart";
 import { getSessionSnapshot } from "@/lib/auth-session";
-import { getProductById, getProducts, type Product } from "@/lib/api";
+import {
+  getProductById,
+  getProductGallery,
+  getProducts,
+  type Product,
+} from "@/lib/api";
 import { locales } from "@/i18n/routing";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +32,6 @@ import {
   RotateCcw,
   Heart,
   Share2,
-  Smartphone,
   Loader2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -49,63 +53,7 @@ function buildProductTemplateKey(product: Product) {
   return `legacy:${product.subcategoryId}:${normalizedName}:${normalizedStorage}:${normalizedColor}:price:${priceKey}:original:${originalPriceKey}`;
 }
 
-function deduplicateProductTemplates(products: Product[]) {
-  const stockByTemplate = new Map<string, number>();
-
-  for (const product of products) {
-    if (!product.inStock) continue;
-    const key = buildProductTemplateKey(product);
-    stockByTemplate.set(key, (stockByTemplate.get(key) ?? 0) + 1);
-  }
-
-  const grouped = new Map<string, Product>();
-
-  for (const product of products) {
-    const key = buildProductTemplateKey(product);
-    const existing = grouped.get(key);
-
-    if (!existing) {
-      grouped.set(key, product);
-      continue;
-    }
-
-    const preferred = !existing.inStock && product.inStock ? product : existing;
-    const maxOriginalPrice = Math.max(existing.originalPrice ?? 0, product.originalPrice ?? 0);
-    const mergedOriginalPrice = preferred.originalPrice ?? (maxOriginalPrice || undefined);
-
-    grouped.set(key, {
-      ...preferred,
-      image: preferred.image || existing.image || product.image,
-      description: preferred.description || existing.description || product.description,
-      storage: preferred.storage || existing.storage || product.storage,
-      color: preferred.color || existing.color || product.color,
-      price: preferred.price,
-      originalPrice: mergedOriginalPrice,
-      rating: Math.max(existing.rating, product.rating),
-      reviewCount: Math.max(existing.reviewCount, product.reviewCount),
-      inStock: existing.inStock || product.inStock,
-      availableStock: stockByTemplate.get(key) ?? 0,
-      isPopular: Boolean(existing.isPopular || product.isPopular),
-      isBestSeller: Boolean(existing.isBestSeller || product.isBestSeller),
-    });
-  }
-
-  return Array.from(grouped.entries()).map(([key, product]) => ({
-    ...product,
-    availableStock: product.availableStock ?? stockByTemplate.get(key) ?? 0,
-    inStock: (product.availableStock ?? stockByTemplate.get(key) ?? 0) > 0,
-  }));
-}
-
-function extractProductImages(product: Product | null) {
-  if (!product) return [] as string[];
-
-  const sources: unknown[] = [
-    product.images,
-    product.imageUrls,
-    product.image,
-  ];
-
+function normalizeProductImageValues(sources: unknown[]) {
   const collected: string[] = [];
 
   for (const source of sources) {
@@ -134,7 +82,7 @@ function extractProductImages(product: Product | null) {
             continue;
           }
         } catch {
-          // fallback to raw string handling below
+          // Fall through to raw string handling.
         }
       }
 
@@ -147,11 +95,102 @@ function extractProductImages(product: Product | null) {
     }
   }
 
-  const normalized = collected
-    .map((value) => value.trim())
-    .filter(Boolean);
+  return Array.from(
+    new Set(
+      collected.map((value) => value.trim()).filter(Boolean),
+    ),
+  );
+}
 
-  return Array.from(new Set(normalized));
+function resolveProductCoverImage(product: Product | null) {
+  if (!product) return undefined;
+
+  const directImage = normalizeProductImageValues([product.image])[0];
+  if (directImage) {
+    return directImage;
+  }
+
+  return normalizeProductImageValues([product.images, product.imageUrls])[0];
+}
+
+function extractProductGalleryImages(
+  product: Product | null,
+  coverImageUrl: string | undefined,
+) {
+  if (!product) return [] as string[];
+
+  return normalizeProductImageValues([product.images, product.imageUrls]).filter(
+    (image) => image !== coverImageUrl,
+  );
+}
+
+function firstImageCollection(
+  ...collections: Array<string[] | undefined>
+) {
+  return collections.find(
+    (collection) => Array.isArray(collection) && collection.length > 0,
+  );
+}
+
+function deduplicateProductTemplates(products: Product[]) {
+  const stockByTemplate = new Map<string, number>();
+
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const key = buildProductTemplateKey(product);
+    stockByTemplate.set(key, (stockByTemplate.get(key) ?? 0) + 1);
+  }
+
+  const grouped = new Map<string, Product>();
+
+  for (const product of products) {
+    const key = buildProductTemplateKey(product);
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, product);
+      continue;
+    }
+
+    const preferred = !existing.inStock && product.inStock ? product : existing;
+    const maxOriginalPrice = Math.max(existing.originalPrice ?? 0, product.originalPrice ?? 0);
+    const mergedOriginalPrice = preferred.originalPrice ?? (maxOriginalPrice || undefined);
+
+    grouped.set(key, {
+      ...preferred,
+      image:
+        resolveProductCoverImage(preferred) ||
+        resolveProductCoverImage(existing) ||
+        resolveProductCoverImage(product),
+      images: firstImageCollection(
+        preferred.images,
+        existing.images,
+        product.images,
+      ),
+      imageUrls: firstImageCollection(
+        preferred.imageUrls,
+        existing.imageUrls,
+        product.imageUrls,
+      ),
+      description: preferred.description || existing.description || product.description,
+      storage: preferred.storage || existing.storage || product.storage,
+      color: preferred.color || existing.color || product.color,
+      price: preferred.price,
+      originalPrice: mergedOriginalPrice,
+      rating: Math.max(existing.rating, product.rating),
+      reviewCount: Math.max(existing.reviewCount, product.reviewCount),
+      inStock: existing.inStock || product.inStock,
+      availableStock: stockByTemplate.get(key) ?? 0,
+      isPopular: Boolean(existing.isPopular || product.isPopular),
+      isBestSeller: Boolean(existing.isBestSeller || product.isBestSeller),
+    });
+  }
+
+  return Array.from(grouped.entries()).map(([key, product]) => ({
+    ...product,
+    availableStock: product.availableStock ?? stockByTemplate.get(key) ?? 0,
+    inStock: (product.availableStock ?? stockByTemplate.get(key) ?? 0) > 0,
+  }));
 }
 
 function getStockLimit(product: Product | null) {
@@ -183,6 +222,7 @@ export default function ProductDetailPage() {
   const addToCartWithToast = useAddToCartWithToast();
   const cartCount = getCartCount();
   const [product, setProduct] = useState<Product | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -206,11 +246,16 @@ export default function ProductDetailPage() {
       try {
         setIsLoading(true);
         const productId = params.id as string;
-        const response = await getProductById(accessToken, productId);
+        const [response, productsResponse, galleryResponse] = await Promise.all([
+          getProductById(accessToken, productId),
+          getProducts(accessToken),
+          getProductGallery(productId, accessToken).catch((error) => {
+            console.error("Failed to load product gallery", error);
+            return null;
+          }),
+        ]);
         const loadedProduct = response.data || null;
 
-        // Fetch related products
-        const productsResponse = await getProducts(accessToken);
         const allProducts = productsResponse.data || [];
         const stockByTemplate = new Map<string, number>();
 
@@ -223,6 +268,9 @@ export default function ProductDetailPage() {
         const productWithStock = loadedProduct
           ? {
               ...loadedProduct,
+              image:
+                resolveProductCoverImage(loadedProduct) ??
+                loadedProduct.image,
               availableStock:
                 stockByTemplate.get(buildProductTemplateKey(loadedProduct)) ??
                 0,
@@ -230,6 +278,14 @@ export default function ProductDetailPage() {
           : null;
 
         setProduct(productWithStock);
+        setGalleryImages(
+          galleryResponse
+            ? normalizeProductImageValues([
+                galleryResponse.data.map((image) => image.url),
+              ])
+            : [],
+        );
+        setSelectedImage(0);
 
         const currentTemplateKey = loadedProduct
           ? buildProductTemplateKey(loadedProduct)
@@ -246,6 +302,8 @@ export default function ProductDetailPage() {
         );
       } catch {
         setProduct(null);
+        setGalleryImages([]);
+        setSelectedImage(0);
       } finally {
         setIsLoading(false);
       }
@@ -264,16 +322,22 @@ export default function ProductDetailPage() {
     setQuantity((current) => Math.max(1, Math.min(current, stockLimit)));
   }, [product]);
 
-  const productImages = extractProductImages(product);
+  const coverImageUrl = resolveProductCoverImage(product);
+  const previewImages = normalizeProductImageValues([
+    coverImageUrl ? [coverImageUrl] : [],
+    galleryImages.length > 0
+      ? galleryImages.filter((image) => image !== coverImageUrl)
+      : extractProductGalleryImages(product, coverImageUrl),
+  ]);
   const stockLimit = getStockLimit(product);
   const maxQuantity = stockLimit > 0 ? stockLimit : 1;
-  const selectedImageUrl = productImages[selectedImage] ?? productImages[0] ?? null;
+  const selectedImageUrl = previewImages[selectedImage] ?? previewImages[0] ?? null;
 
   useEffect(() => {
-    if (selectedImage >= productImages.length) {
+    if (selectedImage >= previewImages.length) {
       setSelectedImage(0);
     }
-  }, [productImages.length, selectedImage]);
+  }, [previewImages.length, selectedImage]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -437,29 +501,42 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Thumbnail Images */}
-            {productImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {productImages.map((image, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedImage(idx)}
-                  className={`shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden bg-white ${
-                    selectedImage === idx ? "border-black" : "border-gray-200"
-                  }`}
-                >
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={`${product.name} view ${idx + 1}`}
-                      className="w-full h-full object-contain p-2"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                      <Package className="h-6 w-6 text-gray-300" />
-                    </div>
-                  )}
-                </button>
-                ))}
+            {previewImages.length > 0 && (
+              <div className="rounded-2xl border bg-white p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {t("gallery")}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {selectedImage + 1}/{previewImages.length}
+                  </p>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {previewImages.map((image, idx) => (
+                    <button
+                      key={`${image}-${idx}`}
+                      type="button"
+                      onClick={() => setSelectedImage(idx)}
+                      className={`shrink-0 overflow-hidden rounded-xl border-2 bg-white transition ${
+                        selectedImage === idx
+                          ? "border-black shadow-sm"
+                          : "border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      {image ? (
+                        <img
+                          src={image}
+                          alt={`${product.name} view ${idx + 1}`}
+                          className="h-24 w-24 object-contain p-2"
+                        />
+                      ) : (
+                        <div className="flex h-24 w-24 items-center justify-center bg-gray-50">
+                          <Package className="h-6 w-6 text-gray-300" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

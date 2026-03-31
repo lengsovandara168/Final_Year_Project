@@ -171,11 +171,24 @@ export default function AddStockPage() {
       return;
     }
 
+    if (parsedPrice <= 0) {
+      setError(t("priceMustBeGreaterThanZero"));
+      return;
+    }
+
     if (
       parsedOriginalPrice !== undefined &&
       Number.isNaN(parsedOriginalPrice)
     ) {
       setError(t("invalidOriginalPrice"));
+      return;
+    }
+
+    if (
+      parsedOriginalPrice !== undefined &&
+      parsedOriginalPrice <= 0
+    ) {
+      setError(t("originalPriceMustBeGreaterThanZero"));
       return;
     }
 
@@ -336,6 +349,8 @@ export default function AddStockPage() {
                 <Input
                   placeholder={t("pricePlaceholder")}
                   type="number"
+                  min="0.01"
+                  step="0.01"
                   value={stockForm.price}
                   onChange={(e) =>
                     setStockForm((prev) => ({ ...prev, price: e.target.value }))
@@ -350,6 +365,8 @@ export default function AddStockPage() {
                 <Input
                   placeholder={t("originalPricePlaceholder")}
                   type="number"
+                  min="0.01"
+                  step="0.01"
                   value={stockForm.originalPrice}
                   onChange={(e) =>
                     setStockForm((prev) => ({

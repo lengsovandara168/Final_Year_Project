@@ -21,7 +21,9 @@ import {
   createProductTemplate,
   getAddProductSubcategories,
   getProductTemplates,
+  type ProductGalleryImage,
   type ProductTemplate,
+  uploadProductGalleryImages,
   uploadProductImage,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
@@ -32,6 +34,8 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 type ParentCategory = "phones" | "tablets" | "accessories";
 type BrandLibraryItem = { name: string; domain: string };
 type BrandOption = { name: string; logoUrl?: string };
+type UploadedImageState = { name: string; url: string };
+type UploadedGalleryImageState = ProductGalleryImage & { name: string };
 
 const STORAGE_PRESETS: Record<ParentCategory, string[]> = {
   phones: ["64GB", "128GB", "256GB", "512GB", "1TB", "2TB"],
@@ -220,13 +224,18 @@ export default function ProductTemplatesPage() {
     Record<string, boolean>
   >({});
 
-  const [imageUrl, setImageUrl] = useState("");
-  const [uploadedImageName, setUploadedImageName] = useState<string | null>(
+  const [coverImage, setCoverImage] = useState<UploadedImageState | null>(
     null,
   );
+  const [galleryImages, setGalleryImages] = useState<UploadedGalleryImageState[]>(
+    [],
+  );
+  const [coverUploadKey, setCoverUploadKey] = useState(0);
+  const [galleryUploadKey, setGalleryUploadKey] = useState(0);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isCoverUploading, setIsCoverUploading] = useState(false);
+  const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -372,35 +381,129 @@ export default function ProductTemplatesPage() {
     });
   }, [templateSearch, templates]);
 
-  const onUploadImage = async (file: File) => {
-    setError(null);
-    setSuccess(null);
+  const validateImageFile = useCallback(
+    (file: File) => {
+      if (!IMAGE_ACCEPT.split(",").includes(file.type)) {
+        return t("invalidFileType");
+      }
 
-    if (!IMAGE_ACCEPT.split(",").includes(file.type)) {
-      setError(t("invalidFileType"));
-      return;
-    }
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        return t("fileTooLarge");
+      }
 
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setError(t("fileTooLarge"));
-      return;
-    }
+      return null;
+    },
+    [t],
+  );
 
-    const accessToken = await ensureAccessToken();
-    if (!accessToken) return;
-
-    try {
-      setIsUploading(true);
+  const uploadTemplateImage = useCallback(
+    async (file: File, accessToken: string) => {
       const uploadResponse = await uploadProductImage(file, accessToken);
-      setImageUrl(uploadResponse.data.url ?? "");
-      setUploadedImageName(file.name);
-      setSuccess(t("imageUploaded"));
-    } catch (uploadError) {
-      setError(toErrorMessage(uploadError));
-    } finally {
-      setIsUploading(false);
-    }
-  };
+      const imageUrl = uploadResponse.data.url?.trim();
+
+      if (!imageUrl) {
+        throw new Error("Uploaded image URL is missing.");
+      }
+
+      return {
+        name: file.name,
+        url: imageUrl,
+      } satisfies UploadedImageState;
+    },
+    [],
+  );
+
+  const clearQueuedGalleryImages = useCallback(() => {
+    setGalleryImages([]);
+  }, []);
+
+  const removeQueuedGalleryImage = useCallback((imageId: string) => {
+    setGalleryImages((prev) => prev.filter((image) => image.key !== imageId));
+  }, []);
+
+  const onUploadCoverImage = useCallback(
+    async (files: File[]) => {
+      const file = files[0];
+      if (!file) return;
+
+      setError(null);
+      setSuccess(null);
+
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) return;
+
+      try {
+        setIsCoverUploading(true);
+        const uploadedImage = await uploadTemplateImage(file, accessToken);
+        setCoverImage(uploadedImage);
+        setCoverUploadKey((prev) => prev + 1);
+        setSuccess(t("coverImageUploaded"));
+      } catch (uploadError) {
+        setError(toErrorMessage(uploadError));
+      } finally {
+        setIsCoverUploading(false);
+      }
+    },
+    [ensureAccessToken, t, uploadTemplateImage, validateImageFile],
+  );
+
+  const onUploadGalleryImages = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return;
+
+      setError(null);
+      setSuccess(null);
+
+      for (const file of files) {
+        const validationError = validateImageFile(file);
+        if (validationError) {
+          setError(validationError);
+          return;
+        }
+      }
+
+      const accessToken = await ensureAccessToken();
+      if (!accessToken) return;
+
+      try {
+        setIsGalleryUploading(true);
+        const uploadedImages = await uploadProductGalleryImages(
+          files,
+          accessToken,
+        );
+        const uploadedGalleryItems = uploadedImages.map((image, index) => ({
+          ...image,
+          name: files[index]?.name ?? image.key.split("/").pop() ?? image.key,
+        }));
+
+        setGalleryImages((prev) => {
+          const next = [...prev];
+          for (const image of uploadedGalleryItems) {
+            if (next.some((item) => item.key === image.key || item.url === image.url)) {
+              continue;
+            }
+            next.push(image);
+          }
+          return next;
+        });
+        setGalleryUploadKey((prev) => prev + 1);
+        setSuccess(
+          t("galleryImagesUploaded", { count: uploadedGalleryItems.length }),
+        );
+      } catch (uploadError) {
+        setError(toErrorMessage(uploadError));
+      } finally {
+        setIsGalleryUploading(false);
+      }
+    },
+    [ensureAccessToken, t, validateImageFile],
+  );
 
   const onCreateTemplate = async () => {
     setError(null);
@@ -425,8 +528,8 @@ export default function ProductTemplatesPage() {
       return;
     }
 
-    if (!imageUrl) {
-      setError(t("uploadImageFirst"));
+    if (!coverImage?.url) {
+      setError(t("uploadCoverImageFirst"));
       return;
     }
 
@@ -450,7 +553,19 @@ export default function ProductTemplatesPage() {
             ? { storage: templateForm.storage.trim() }
             : {}),
           color: templateForm.color.trim(),
-          image: imageUrl,
+          image: coverImage.url,
+          ...(galleryImages.length > 0
+            ? {
+                gallery: galleryImages.map(
+                  ({ key, url, contentType, size }) => ({
+                    key,
+                    url,
+                    contentType,
+                    size,
+                  }),
+                ),
+              }
+            : {}),
           description: templateForm.description.trim() || undefined,
           specifications: specParse.value,
           isActive: templateForm.isActive,
@@ -464,14 +579,17 @@ export default function ProductTemplatesPage() {
         parentCategory: prev.parentCategory,
         subcategoryName: prev.subcategoryName,
       }));
-      setImageUrl("");
-      setUploadedImageName(null);
+      setCoverImage(null);
+      clearQueuedGalleryImages();
+      setCoverUploadKey((prev) => prev + 1);
+      setGalleryUploadKey((prev) => prev + 1);
       setSuccess(t("templateCreated", { name: created.data.name }));
       void loadData();
     } catch (createError) {
       setError(toErrorMessage(createError));
     } finally {
       setIsCreatingTemplate(false);
+      setIsGalleryUploading(false);
     }
   };
 
@@ -742,39 +860,116 @@ export default function ProductTemplatesPage() {
             />
           </div>
 
-          <div className="mt-4 space-y-3">
-            <p className="text-sm font-medium">{t("templateImage")}</p>
-            <p className="text-xs text-gray-500">{t("templateImageHint")}</p>
+          <div className="mt-4 space-y-6">
             <div className="space-y-3">
-              <FileUploadDemo
-                className="max-w-none min-h-55"
-                onFilesChange={(files) => {
-                  const file = files[0];
-                  if (file) {
-                    void onUploadImage(file);
-                  }
-                }}
-              />
-              <p className="text-xs text-gray-500">
-                {t("uploadImageDemoHint")}
-              </p>
-              {isUploading && (
-                <span className="inline-flex items-center text-sm text-gray-600">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("uploading")}
-                </span>
-              )}
-              {uploadedImageName && (
-                <span className="text-sm text-gray-600">
-                  {uploadedImageName}
-                </span>
-              )}
+              <p className="text-sm font-medium">{t("coverImage")}</p>
+              <p className="text-xs text-gray-500">{t("coverImageHint")}</p>
+              <div className="space-y-3">
+                <FileUploadDemo
+                  key={`cover-upload-${coverUploadKey}`}
+                  className="min-h-55 max-w-none"
+                  onFilesChange={(files) => {
+                    void onUploadCoverImage(files);
+                  }}
+                />
+                <p className="text-xs text-gray-500">
+                  {t("uploadImageDemoHint")}
+                </p>
+                {isCoverUploading && (
+                  <span className="inline-flex items-center text-sm text-gray-600">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("uploadingCover")}
+                  </span>
+                )}
+                {coverImage && (
+                  <div className="rounded-lg border bg-gray-50 p-3">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={coverImage.url}
+                        alt={coverImage.name}
+                        className="h-20 w-20 rounded-md border bg-white object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {coverImage.name}
+                        </p>
+                        <p className="break-all text-xs text-gray-600">
+                          {t("imageUrl", { url: coverImage.url })}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setCoverImage(null);
+                          setCoverUploadKey((prev) => prev + 1);
+                        }}
+                      >
+                        {t("removeImage")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            {imageUrl && (
-              <p className="break-all text-xs text-gray-600">
-                {t("imageUrl", { url: imageUrl })}
-              </p>
-            )}
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{t("galleryImages")}</p>
+              <p className="text-xs text-gray-500">{t("galleryImagesHint")}</p>
+              <div className="space-y-3">
+                <FileUploadDemo
+                  key={`gallery-upload-${galleryUploadKey}`}
+                  multiple
+                  className="min-h-55 max-w-none"
+                  onFilesChange={(files) => {
+                    void onUploadGalleryImages(files);
+                  }}
+                />
+                <p className="text-xs text-gray-500">
+                  {t("uploadGalleryDemoHint")}
+                </p>
+                {isGalleryUploading && (
+                  <span className="inline-flex items-center text-sm text-gray-600">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("uploadingGallery")}
+                  </span>
+                )}
+                {galleryImages.length > 0 && (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {galleryImages.map((image) => (
+                      <div
+                        key={image.key}
+                        className="rounded-lg border bg-gray-50 p-3"
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.name}
+                          className="mb-3 h-32 w-full rounded-md border bg-white object-cover"
+                        />
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {image.name}
+                        </p>
+                        <p className="mt-1 break-all text-xs text-gray-600">
+                          {t("imageUrl", { url: image.url })}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => {
+                            removeQueuedGalleryImage(image.key);
+                          }}
+                        >
+                          {t("removeImage")}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex items-center gap-2 text-sm">
@@ -794,7 +989,9 @@ export default function ProductTemplatesPage() {
           <div className="mt-5 flex justify-end">
             <Button
               onClick={onCreateTemplate}
-              disabled={isCreatingTemplate || isUploading}
+              disabled={
+                isCreatingTemplate || isCoverUploading || isGalleryUploading
+              }
               className="bg-black text-white hover:bg-gray-800"
             >
               {isCreatingTemplate ? (
