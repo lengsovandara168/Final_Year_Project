@@ -51,6 +51,19 @@ export async function getProducts(
   return getCatalogProducts("/v1/products", accessToken, subcategorySlug);
 }
 
+export async function searchProducts(
+  accessToken: string,
+  searchQuery: string,
+  subcategorySlug?: string,
+) {
+  return getCatalogProducts(
+    "/v1/products",
+    accessToken,
+    subcategorySlug,
+    searchQuery,
+  );
+}
+
 export async function getAdminProducts(
   accessToken: string,
   subcategorySlug?: string,
@@ -62,11 +75,25 @@ async function getCatalogProducts(
   endpoint: string,
   accessToken: string,
   subcategorySlug?: string,
+  searchQuery?: string,
 ) {
-  const params = subcategorySlug
-    ? `?subcategory=${encodeURIComponent(subcategorySlug)}`
-    : "";
-  return apiFetch<GetProductsResponse>(`${endpoint}${params}`, {
+  const params = new URLSearchParams();
+
+  if (subcategorySlug) {
+    params.set("subcategory", subcategorySlug);
+  }
+
+  const normalizedSearchQuery = searchQuery?.trim();
+  if (normalizedSearchQuery) {
+    // Keep both keys for backend compatibility.
+    params.set("q", normalizedSearchQuery);
+    params.set("search", normalizedSearchQuery);
+  }
+
+  const queryString = params.toString();
+  const path = queryString ? `${endpoint}?${queryString}` : endpoint;
+
+  return apiFetch<GetProductsResponse>(path, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,

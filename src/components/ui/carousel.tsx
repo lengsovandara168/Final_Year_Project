@@ -1,32 +1,18 @@
 "use client"
 
 import * as React from "react"
+import useEmblaCarousel, {
+  type UseEmblaCarouselType,
+} from "embla-carousel-react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-type CarouselEvent = "reInit" | "select"
-
-type CarouselApi = {
-  canScrollNext: () => boolean
-  canScrollPrev: () => boolean
-  off: (event: CarouselEvent, callback: () => void) => void
-  on: (event: CarouselEvent, callback: () => void) => void
-  scrollNext: () => void
-  scrollPrev: () => void
-  scrollSnapList: () => number[]
-  scrollTo: (index: number) => void
-  selectedScrollSnap: () => number
-}
-
-type CarouselOptions = {
-  axis?: "x" | "y"
-  loop?: boolean
-  startIndex?: number
-}
-
-type CarouselPlugin = unknown[]
+type CarouselApi = UseEmblaCarouselType[1]
+type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
+type CarouselOptions = UseCarouselParameters[0]
+type CarouselPlugin = UseCarouselParameters[1]
 
 type CarouselProps = {
   opts?: CarouselOptions
@@ -36,12 +22,10 @@ type CarouselProps = {
 }
 
 type CarouselContextProps = {
-  api: CarouselApi
-  carouselRef: React.RefObject<HTMLDivElement | null>
-  currentIndex: number
+  carouselRef: ReturnType<typeof useEmblaCarousel>[0]
+  api: ReturnType<typeof useEmblaCarousel>[1]
   scrollPrev: () => void
   scrollNext: () => void
-  setSlideCount: (count: number) => void
   canScrollPrev: boolean
   canScrollNext: boolean
 } & CarouselProps
@@ -67,97 +51,28 @@ function Carousel({
   children,
   ...props
 }: React.ComponentProps<"div"> & CarouselProps) {
-  const carouselRef = React.useRef<HTMLDivElement>(null)
-  const apiRef = React.useRef<CarouselApi | null>(null)
-  const listenersRef = React.useRef<Record<CarouselEvent, Set<() => void>>>({
-    reInit: new Set(),
-    select: new Set(),
-  })
-  const selectedIndexRef = React.useRef(opts?.startIndex ?? 0)
-  const slideCountRef = React.useRef(0)
-  const loopRef = React.useRef(Boolean(opts?.loop))
-  const [currentIndex, setCurrentIndex] = React.useState(opts?.startIndex ?? 0)
-  const [slideCount, setSlideCount] = React.useState(0)
-
-  void plugins
-
-  const resolvedOrientation =
-    orientation === "vertical" || opts?.axis === "y" ? "vertical" : "horizontal"
-
-  const emit = React.useCallback((event: CarouselEvent) => {
-    for (const callback of listenersRef.current[event]) {
-      callback()
-    }
-  }, [])
-
-  const normalizeIndex = React.useCallback((index: number) => {
-    const count = slideCountRef.current
-
-    if (count <= 0) {
-      return 0
-    }
-
-    if (loopRef.current) {
-      return ((index % count) + count) % count
-    }
-
-    return Math.min(Math.max(index, 0), count - 1)
-  }, [])
-
-  const updateIndex = React.useCallback(
-    (index: number) => {
-      setCurrentIndex((previousIndex) => {
-        const nextIndex = normalizeIndex(index)
-        return previousIndex === nextIndex ? previousIndex : nextIndex
-      })
+  const [carouselRef, api] = useEmblaCarousel(
+    {
+      ...opts,
+      axis: orientation === "horizontal" ? "x" : "y",
     },
-    [normalizeIndex]
+    plugins
   )
+  const [canScrollPrev, setCanScrollPrev] = React.useState(false)
+  const [canScrollNext, setCanScrollNext] = React.useState(false)
 
-  if (!apiRef.current) {
-    apiRef.current = {
-      canScrollNext: () => {
-        const count = slideCountRef.current
-        if (count <= 1) return false
-        return loopRef.current || selectedIndexRef.current < count - 1
-      },
-      canScrollPrev: () => {
-        const count = slideCountRef.current
-        if (count <= 1) return false
-        return loopRef.current || selectedIndexRef.current > 0
-      },
-      off: (event, callback) => {
-        listenersRef.current[event].delete(callback)
-      },
-      on: (event, callback) => {
-        listenersRef.current[event].add(callback)
-      },
-      scrollNext: () => {
-        updateIndex(selectedIndexRef.current + 1)
-      },
-      scrollPrev: () => {
-        updateIndex(selectedIndexRef.current - 1)
-      },
-      scrollSnapList: () =>
-        Array.from({ length: slideCountRef.current }, (_, index) => index),
-      scrollTo: (index) => {
-        updateIndex(index)
-      },
-      selectedScrollSnap: () => selectedIndexRef.current,
-    }
-  }
-
-  const api = apiRef.current
-
-  const canScrollPrev = api.canScrollPrev()
-  const canScrollNext = api.canScrollNext()
+  const onSelect = React.useCallback((api: CarouselApi) => {
+    if (!api) return
+    setCanScrollPrev(api.canScrollPrev())
+    setCanScrollNext(api.canScrollNext())
+  }, [])
 
   const scrollPrev = React.useCallback(() => {
-    api.scrollPrev()
+    api?.scrollPrev()
   }, [api])
 
   const scrollNext = React.useCallback(() => {
-    api.scrollNext()
+    api?.scrollNext()
   }, [api])
 
   const handleKeyDown = React.useCallback(
@@ -174,33 +89,31 @@ function Carousel({
   )
 
   React.useEffect(() => {
-    selectedIndexRef.current = currentIndex
-    emit("select")
-  }, [currentIndex, emit])
-
-  React.useEffect(() => {
-    slideCountRef.current = slideCount
-    loopRef.current = Boolean(opts?.loop)
-    setCurrentIndex((previousIndex) => normalizeIndex(previousIndex))
-    emit("reInit")
-  }, [emit, normalizeIndex, opts?.loop, slideCount])
-
-  React.useEffect(() => {
-    if (!setApi) return
+    if (!api || !setApi) return
     setApi(api)
   }, [api, setApi])
+
+  React.useEffect(() => {
+    if (!api) return
+    onSelect(api)
+    api.on("reInit", onSelect)
+    api.on("select", onSelect)
+
+    return () => {
+      api?.off("select", onSelect)
+    }
+  }, [api, onSelect])
 
   return (
     <CarouselContext.Provider
       value={{
-        api: api,
         carouselRef,
-        currentIndex,
+        api: api,
         opts,
-        orientation: resolvedOrientation,
+        orientation:
+          orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
         scrollPrev,
         scrollNext,
-        setSlideCount,
         canScrollPrev,
         canScrollNext,
       }}
@@ -219,24 +132,8 @@ function Carousel({
   )
 }
 
-function CarouselContent({
-  className,
-  children,
-  style,
-  ...props
-}: React.ComponentProps<"div">) {
-  const { carouselRef, currentIndex, orientation, setSlideCount } = useCarousel()
-  const childCount = React.Children.count(children)
-
-  React.useEffect(() => {
-    setSlideCount(childCount)
-  }, [childCount, setSlideCount])
-
-  React.useEffect(() => {
-    return () => {
-      setSlideCount(0)
-    }
-  }, [setSlideCount])
+function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
+  const { carouselRef, orientation } = useCarousel()
 
   return (
     <div
@@ -246,22 +143,12 @@ function CarouselContent({
     >
       <div
         className={cn(
-          "flex transition-transform duration-300 ease-out",
+          "flex",
           orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
           className
         )}
-        style={{
-          transform:
-            orientation === "horizontal"
-              ? `translate3d(-${currentIndex * 100}%, 0, 0)`
-              : `translate3d(0, -${currentIndex * 100}%, 0)`,
-          ...style,
-        }}
-        aria-live="polite"
         {...props}
-      >
-        {children}
-      </div>
+      />
     </div>
   )
 }

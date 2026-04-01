@@ -3,6 +3,9 @@ import { getValidatedServerSession } from "@/lib/auth-server";
 import { CartProvider } from "@/contexts/cart-context";
 import { WishlistProvider } from "@/contexts/wishlist-context";
 import { Toaster } from "@/components/ui/sonner";
+import UsersLayoutHeader from "@/components/shop/users-layout";
+import UsersSidebar from "@/components/shop/users-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getFirstStaffAdminPath } from "@/lib/rbac";
 
 type UsersLayoutProps = {
@@ -30,8 +33,14 @@ export default async function UsersLayout({
   return (
     <CartProvider>
       <WishlistProvider>
-        {children}
-        <Toaster position="top-center" />
+        <SidebarProvider>
+          <UsersSidebar />
+          <SidebarInset>
+            <UsersLayoutHeader />
+            <Toaster position="top-center" />
+            {children}
+          </SidebarInset>
+        </SidebarProvider>
       </WishlistProvider>
     </CartProvider>
   );
