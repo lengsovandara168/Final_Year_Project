@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { useLogout } from "@/hooks/use-logout";
@@ -9,6 +9,14 @@ import { useWishlist } from "@/contexts/wishlist-context";
 import { useAuth } from "@/contexts/auth-context";
 import { getSessionSnapshot } from "@/lib/auth-session";
 import { getCategoryBoard, getProducts, type Product } from "@/lib/api";
+import {
+  buildBrandNameBySubcategoryId,
+  buildSearchRecommendations,
+  matchesBrandFilter,
+  matchesCategoryFilter,
+  matchesProductSearchQuery,
+  normalizeSearchText,
+} from "./products-search";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -510,25 +518,66 @@ export default function ShopPage() {
       ? brandsByCategory[selectedCategory].map((b) => b.id)
       : [];
 
+  const brandNameBySubcategoryId = useMemo(
+    () => buildBrandNameBySubcategoryId(brandsByCategory),
+    [brandsByCategory],
+  );
+
+  const normalizedSearchQuery = normalizeSearchText(searchQuery.trim());
+
   // Filter products based on category (group), subcategory, and search
   const filteredProducts = products.filter((product) => {
-    const matchesCategory =
-      selectedCategory === "all" ||
-      categorySubcategoryIds.includes(product.subcategoryId);
-    const matchesBrand =
-      selectedBrand === "all" || product.subcategoryId === selectedBrand;
-    const matchesSearch =
-      searchQuery === "" ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.storage ?? "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      (product.color ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.description ?? "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesBrand && matchesSearch;
+    return (
+      matchesCategoryFilter(
+        product.subcategoryId,
+        selectedCategory,
+        categorySubcategoryIds,
+      ) &&
+      matchesBrandFilter(product.subcategoryId, selectedBrand) &&
+      matchesProductSearchQuery(
+        product,
+        normalizedSearchQuery,
+        brandNameBySubcategoryId,
+      )
+    );
   });
+
+  const searchRecommendations = useMemo(() => {
+    return buildSearchRecommendations(products, {
+      selectedCategory,
+      categorySubcategoryIds,
+      selectedBrand,
+      normalizedSearchQuery,
+      brandNameBySubcategoryId,
+      limit: 8,
+    });
+  }, [
+    brandNameBySubcategoryId,
+    categorySubcategoryIds,
+    normalizedSearchQuery,
+    products,
+    selectedBrand,
+    selectedCategory,
+  ]);
+
+  const handleSearchRecommendationSelect = (name: string) => {
+    setSearchQuery(name);
+    setIsMobileSearchOpen(false);
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const target =
+            selectedCategory === "all"
+              ? document.getElementById("all-products-section")
+              : document.getElementById("category-products-section");
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+      });
+    }
+  };
 
   const sortedFilteredProducts = [...filteredProducts].sort((a, b) => {
     if (selectedSort === "price-low") {
@@ -566,16 +615,15 @@ export default function ShopPage() {
 
   const handleSearchSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
-    setSelectedCategory("all");
-    setSelectedBrand("all");
     setIsMobileSearchOpen(false);
 
     if (typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          const allProductsAnchor = document.getElementById("all-products-section");
-          const fallbackAnchor = document.getElementById("products-results");
-          const target = allProductsAnchor ?? fallbackAnchor;
+          const target =
+            selectedCategory === "all"
+              ? document.getElementById("all-products-section")
+              : document.getElementById("category-products-section");
           if (target) {
             target.scrollIntoView({ behavior: "smooth", block: "start" });
           }
@@ -619,6 +667,21 @@ export default function ShopPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  {searchQuery.trim() && searchRecommendations.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-[70] mt-1 rounded-md border bg-white py-1 shadow-lg">
+                      {searchRecommendations.map((name) => (
+                        <button
+                          key={`desktop-rec-${name}`}
+                          type="button"
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSearchRecommendationSelect(name)}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Button
                   type="submit"
@@ -718,6 +781,21 @@ export default function ShopPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
                 />
+                {searchQuery.trim() && searchRecommendations.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full z-[70] mt-1 rounded-md border bg-white py-1 shadow-lg">
+                    {searchRecommendations.map((name) => (
+                      <button
+                        key={`mobile-rec-${name}`}
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSearchRecommendationSelect(name)}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button
                 type="submit"
@@ -1048,7 +1126,7 @@ export default function ShopPage() {
             )}
 
             {/* Products Grid */}
-            <section className="flex-1">
+            <section id="category-products-section" className="flex-1">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">
                   {categories.find((c) => c.id === selectedCategory)?.name}
