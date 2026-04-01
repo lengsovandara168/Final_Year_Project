@@ -24,7 +24,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   if (children) {
     return (
-      <header className={cn("border-b bg-white", className)}>
+      <header className={cn("sticky top-0 z-50 border-b bg-white", className)}>
         <div
           className={cn(
             "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8",
@@ -38,7 +38,7 @@ export function PageHeader({
   }
 
   return (
-    <div className={cn("border-b bg-white px-8 py-4", className)}>
+    <div className={cn("sticky top-0 z-50 border-b bg-white px-8 py-4", className)}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{title ?? ""}</h1>
