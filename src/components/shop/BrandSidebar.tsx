@@ -38,7 +38,11 @@ export default function BrandSidebar({
   return (
     <Wrapper className={wrapperClassName}>
       <div className={variant === "desktop" ? "lg:sticky lg:top-20" : ""}>
-        <Card className={variant === "drawer" ? "rounded-none border-0 shadow-none" : ""}>
+        <Card
+          className={
+            variant === "drawer" ? "rounded-none border-0 shadow-none" : ""
+          }
+        >
           <CardHeader>
             <CardTitle className="text-sm">{filterByBrandLabel}</CardTitle>
           </CardHeader>

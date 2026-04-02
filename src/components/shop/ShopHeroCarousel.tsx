@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 import type { NewsItem } from "@/lib/shop.types";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +59,7 @@ export default function ShopHeroCarousel({
 
     const interval = setInterval(() => {
       carouselApi.scrollNext();
-    }, 5000);
+    }, 8000);
 
     return () => clearInterval(interval);
   }, [carouselApi, totalSlides]);
@@ -67,7 +68,7 @@ export default function ShopHeroCarousel({
     return (
       <div className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 md:py-16">
-          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 shadow-sm md:p-8">
+          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-linear-to-br from-slate-100 via-white to-slate-200 p-4 shadow-sm md:p-8">
             <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
               <Badge className="mb-4 bg-black text-white">
                 {fallbackBadgeLabel}
@@ -80,7 +81,7 @@ export default function ShopHeroCarousel({
               </p>
               <Button
                 size="lg"
-                className="w-full bg-black text-white hover:bg-gray-800 md:w-auto"
+                className="w-full bg-black text-white hover:bg-gray-800 md:w-52"
                 onClick={onFallbackCtaAction}
               >
                 {fallbackCtaLabel}
@@ -95,25 +96,30 @@ export default function ShopHeroCarousel({
   return (
     <div className="relative">
       <Carousel
-        opts={{ loop: true }}
+        opts={{ align: "start", loop: true }}
         setApi={setCarouselApi}
         className="w-full"
       >
-        <CarouselContent>
-          {newsItems.map((news) => (
-            <CarouselItem key={news.id} className="bg-white">
+        <CarouselContent className="ml-0">
+          {newsItems.map((news, index) => (
+            <CarouselItem
+              key={news.id}
+              className="min-w-full basis-full pl-0 bg-white"
+            >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col gap-6 py-8 md:min-h-100 md:flex-row md:items-center md:gap-10 md:py-16">
+                <div className="flex min-h-140 flex-col gap-6 py-8 md:flex-row md:items-center md:gap-10 md:py-16">
                   {news.image && (
-                    <div className="overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 md:flex-1 md:p-8">
-                      <img
+                    <div className="flex h-96 items-center justify-center overflow-hidden rounded-3xl border border-gray-200 bg-linear-to-br from-slate-100 via-white to-slate-200 p-4 md:flex-1 md:p-8">
+                      <Image
                         src={news.image}
                         alt={news.title}
                         width={640}
                         height={640}
-                        loading="lazy"
-                        decoding="async"
-                        className="mx-auto max-h-64 h-auto max-w-full object-contain md:max-h-96"
+                        priority={index === 0}
+                        fetchPriority={index === 0 ? "high" : "auto"}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                   )}
@@ -126,13 +132,15 @@ export default function ShopHeroCarousel({
                       {news.description}
                     </p>
                     {news.link && (
-                      <Button
-                        asChild
-                        size="lg"
-                        className="w-full bg-black text-white hover:bg-gray-800 md:w-auto"
-                      >
-                        <a href={news.link}>{buyNowLabel}</a>
-                      </Button>
+                      <div className="flex justify-center md:justify-start">
+                        <Button
+                          asChild
+                          size="lg"
+                          className="w-full bg-black text-white hover:bg-gray-800 md:w-52"
+                        >
+                          <a href={news.link}>{buyNowLabel}</a>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

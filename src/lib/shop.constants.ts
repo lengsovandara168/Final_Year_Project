@@ -86,16 +86,14 @@ export const SHOP_NEWS_TEMPLATES: ShopNewsTemplate[] = [
     id: 1,
     titleKey: "news.iphone17Title",
     descriptionKey: "news.iphone17Description",
-    image:
-      "https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-17-pro-17-pro-max-hero.png",
+    image: "/17promax.png",
     link: "#",
   },
   {
     id: 2,
     titleKey: "news.galaxyS25Title",
     descriptionKey: "news.galaxyS25Description",
-    image:
-      "https://images.samsung.com/lb/smartphones/galaxy-s25-ultra/buy/kv_global_PC_v2.jpg?imbypass=true",
+    image: "/galaxyS25.jpg",
     link: "#",
   },
 ];

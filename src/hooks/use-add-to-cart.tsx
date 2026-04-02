@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import { ShoppingCart } from "lucide-react";
+import { CircleCheck, ShoppingCart, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { useCart } from "@/contexts/cart-context";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { Product } from "@/lib/api";
 
 export function useAddToCartWithToast() {
@@ -15,39 +16,52 @@ export function useAddToCartWithToast() {
       const addedQuantity = addToCart(product, quantity);
 
       if (addedQuantity < 1) {
-        toast.error("Stock limit reached", {
-          description: "You cannot add more of this item than available stock.",
-        });
+        toast.custom(() => (
+          <Alert variant="destructive" className="shadow-lg">
+            <TriangleAlert className="h-4 w-4" />
+            <AlertTitle>Stock limit reached</AlertTitle>
+            <AlertDescription>
+              You cannot add more of this item than available stock.
+            </AlertDescription>
+          </Alert>
+        ), { position: "bottom-right" });
         return;
       }
 
-      toast.success("Added to cart", {
-        description: (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {product.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <ShoppingCart className="h-5 w-5 text-gray-500" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate text-gray-900">{product.name}</p>
-              <p className="text-xs text-gray-500">
-                Added successfully 
-                Qty: {addedQuantity}
-              </p>
-            </div>
-          </div>
+      toast.custom(
+        () => (
+          <Alert className="w-90 border-green-200 bg-green-50 text-green-900 shadow-lg">
+            <CircleCheck className="h-4 w-4 text-green-700" />
+            <AlertTitle>Added to cart</AlertTitle>
+            <AlertDescription>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md">
+                  {product.image ? (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ShoppingCart className="h-5 w-5 text-gray-500" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-gray-900">
+                    {product.name}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Added successfully Qty: {addedQuantity}
+                  </p>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
         ),
-      });
+        { position: "bottom-right" },
+      );
     },
-    [addToCart]
+    [addToCart],
   );
 
   return addToCartWithToast;
