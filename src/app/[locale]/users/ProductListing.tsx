@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
@@ -58,13 +58,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-function SortDropdown({
-  t,
-  onSelect,
-}: {
+type SortDropdownProps = {
   t: ReturnType<typeof useTranslations>;
   onSelect: (value: SortOption) => void;
-}) {
+};
+
+function SortDropdown({ t, onSelect }: SortDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -100,6 +99,13 @@ export default function ProductListing() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isBrandFilterOpen, setIsBrandFilterOpen] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    setAccessToken(getSessionSnapshot().accessToken ?? undefined);
+  }, []);
 
   const addToCartWithToast = useAddToCartWithToast();
   const { toggleWishlist, isWishlisted } = useWishlist();
@@ -279,27 +285,30 @@ export default function ProductListing() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ProductCategoryTabs />
+      <ProductCategoryTabs accessToken={accessToken} />
 
-      {selectedCategory === ShopCategoryView.ALL && (
-        <section className="relative overflow-hidden">
-          <ShopHeroCarousel
-            newsItems={newsItems}
-            buyNowLabel={t("buyNow")}
-            fallbackBadgeLabel={t("newArrivals")}
-            fallbackTitle={t("discoverLatestTech")}
-            fallbackDescription={t("discoverSubtitle")}
-            fallbackCtaLabel={t("shopPhones")}
-            onFallbackCtaAction={() =>
-              updateUrlState({ category: "phone", brand: "all", search: "" })
-            }
-          />
-        </section>
-      )}
       <div
         id="products-results"
         className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
       >
+        
+
+        {selectedCategory === ShopCategoryView.ALL && (
+          <section className="relative overflow-hidden">
+            <ShopHeroCarousel
+              newsItems={newsItems}
+              buyNowLabel={t("buyNow")}
+              fallbackBadgeLabel={t("newArrivals")}
+              fallbackTitle={t("discoverLatestTech")}
+              fallbackDescription={t("discoverSubtitle")}
+              fallbackCtaLabel={t("shopPhones")}
+              onFallbackCtaAction={() =>
+                updateUrlState({ category: "phone", brand: "all", search: "" })
+              }
+            />
+          </section>
+        )}
+
         {selectedCategory === ShopCategoryView.ALL && (
           <>
             <ProductGridSection

@@ -11,6 +11,11 @@ import { ShopCategoryView } from "@/lib/shop.types";
 import { isAllShopCategory, parseShopCategory } from "@/lib/shop-category";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SearchSuggestionsDropdown from "@/components/search-suggestions-dropdown";
+
+type ProductCategoryTabsProps = {
+  accessToken?: string;
+};
 
 const TABS = [
   { id: ShopCategoryView.ALL, label: "allProducts" },
@@ -20,7 +25,9 @@ const TABS = [
   { id: ShopCategoryView.OFFER, label: "specialOffer" },
 ] as const;
 
-export default function ProductCategoryTabs() {
+export default function ProductCategoryTabs({
+  accessToken,
+}: ProductCategoryTabsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("Shop");
@@ -47,28 +54,40 @@ export default function ProductCategoryTabs() {
 
   return (
     <div className="sticky top-16 z-40 border-b bg-white shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8 ">
         <div className="relative">
-          <Tabs
-            value={activeTab}
-            onValueChange={handleTabChange}
-            className="w-full"
-          >
-            <TabsList
-              variant="line"
-              className="h-auto w-full flex-nowrap justify-start gap-4 overflow-x-auto bg-transparent p-0 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          <div className="md:flex md:items-start md:gap-4">
+            <Tabs
+              value={activeTab}
+              onValueChange={handleTabChange}
+              className="w-full md:flex-1"
             >
-              {TABS.map(({ id, label }) => (
-                <TabsTrigger
-                  key={id}
-                  value={id}
-                  className="flex-none whitespace-nowrap px-0 py-2 text-sm font-medium text-gray-500 shadow-none transition-colors data-[state=active]:bg-transparent data-[state=active]:text-black"
-                >
-                  {t(label)}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+              <TabsList
+                variant="line"
+                className="h-auto w-full flex-nowrap justify-start gap-10 overflow-x-auto bg-transparent p-0 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {TABS.map(({ id, label }) => (
+                  <TabsTrigger
+                    key={id}
+                    value={id}
+                    className="flex-none whitespace-nowrap px-0 py-2 text-sm font-medium text-gray-500 shadow-none transition-colors data-[state=active]:bg-transparent data-[state=active]:text-black"
+                  >
+                    {t(label)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            <div className="mt-3 w-full md:ml-auto md:mt-0 md:w-md md:shrink-0 lg:w-lg">
+              {accessToken && (
+                <SearchSuggestionsDropdown
+                  accessToken={accessToken}
+                  placeholder={t("searchPlaceholder")}
+                  className="w-full"
+                />
+              )}
+            </div>
+          </div>
 
           <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-linear-to-l from-white to-transparent md:hidden" />
         </div>
