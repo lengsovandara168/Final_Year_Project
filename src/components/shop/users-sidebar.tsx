@@ -28,9 +28,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 
 type UsersNavItem = {
   label: string;
@@ -41,20 +43,23 @@ type UsersNavItem = {
 export default function UsersSidebar() {
   const t = useTranslations("Shop");
   const pathname = usePathname();
-  const router = useRouter();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const handleLogout = useLogout();
+  const { setOpenMobile } = useSidebar();
 
   if (!isMobile) {
     return null;
   }
 
+  const handleSidebarNavigate = () => {
+    setOpenMobile(false);
+  };
+
   const navItems: UsersNavItem[] = [
     { label: "Shop", href: "/users", icon: Store },
     { label: "Cart", href: "/users/cart", icon: ShoppingCart },
     { label: "Wishlist", href: "/users/wishlist", icon: Heart },
-    { label: "Profile", href: "/users/profile", icon: User },
     { label: "Purchase", href: "/users/purchase", icon: ReceiptText },
   ];
 
@@ -103,7 +108,7 @@ export default function UsersSidebar() {
                       isActive={isActive}
                       tooltip={item.label}
                     >
-                      <Link href={item.href}>
+                      <Link href={item.href} onClick={handleSidebarNavigate}>
                         <Icon className="size-4" />
                         <span>{item.label}</span>
                       </Link>
@@ -119,13 +124,22 @@ export default function UsersSidebar() {
       <SidebarFooter>
         <div className="px-2 pb-2">
           <Separator className="mb-3" />
-          <div className="mb-2 text-xs text-muted-foreground">
-            {(user?.name ?? "").trim() || t("brand")}
+          <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={"https://github.com/shadcn.png"}
+                alt={user?.name || "User avatar"}
+              />
+            </Avatar>
+            <span className="truncate text-sm">{user?.name || "User"}</span>
           </div>
           <Button
             variant="outline"
             className="w-full justify-start gap-3"
-            onClick={handleLogout}
+            onClick={() => {
+              setOpenMobile(false);
+              handleLogout();
+            }}
           >
             <LogOut className="size-4" />
             <span>{t("logout")}</span>

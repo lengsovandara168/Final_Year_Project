@@ -133,7 +133,7 @@ export default function ProductCard({
               )}
             </div>
 
-            <div className="flex items-stretch gap-1.5 sm:gap-2">
+            <div className="flex items-stretch gap-1.5 sm:gap-2 justify-end">
               <Button
                 variant="outline"
                 className="h-9 w-9 shrink-0 p-0 sm:h-10 sm:w-10"
