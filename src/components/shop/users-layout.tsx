@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useLogout } from "@/hooks/use-logout";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
+import LocaleSwitcher from "@/components/lang/locale-switcher";
 import { PageHeader } from "@/components/page-header";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,10 @@ export default function UsersLayoutHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="shrink-0">
+            <LocaleSwitcher />
+          </div>
+
           <Button
             variant="outline"
             className="relative shrink-0"

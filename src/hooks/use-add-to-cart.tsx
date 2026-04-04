@@ -24,7 +24,7 @@ export function useAddToCartWithToast() {
               You cannot add more of this item than available stock.
             </AlertDescription>
           </Alert>
-        ), { position: "bottom-right" });
+        ), { position: "top-right" });
         return;
       }
 
@@ -58,7 +58,7 @@ export function useAddToCartWithToast() {
             </AlertDescription>
           </Alert>
         ),
-        { position: "bottom-right" },
+        { position: "top-right" },
       );
     },
     [addToCart],

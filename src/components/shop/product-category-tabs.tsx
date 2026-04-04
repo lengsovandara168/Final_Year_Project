@@ -54,17 +54,17 @@ export default function ProductCategoryTabs({
 
   return (
     <div className="sticky top-16 z-40 border-b bg-white shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8 ">
+      <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
         <div className="relative">
-          <div className="md:flex md:items-start md:gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
             <Tabs
               value={activeTab}
               onValueChange={handleTabChange}
-              className="w-full md:flex-1"
+              className="w-full lg:flex-1"
             >
               <TabsList
                 variant="line"
-                className="h-auto w-full flex-nowrap justify-start gap-10 overflow-x-auto bg-transparent p-0 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="h-auto w-full flex-nowrap justify-start gap-6 overflow-x-auto bg-transparent p-0 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] sm:gap-8 lg:gap-10 [&::-webkit-scrollbar]:hidden"
               >
                 {TABS.map(({ id, label }) => (
                   <TabsTrigger
@@ -78,7 +78,7 @@ export default function ProductCategoryTabs({
               </TabsList>
             </Tabs>
 
-            <div className="mt-3 w-full md:ml-auto md:mt-0 md:w-md md:shrink-0 lg:w-lg">
+            <div className="w-full lg:ml-auto lg:w-md lg:shrink-0 xl:w-lg">
               {accessToken && (
                 <SearchSuggestionsDropdown
                   accessToken={accessToken}
@@ -89,7 +89,7 @@ export default function ProductCategoryTabs({
             </div>
           </div>
 
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-linear-to-l from-white to-transparent md:hidden" />
+          <div className="pointer-events-none absolute right-0 top-0 h-12 w-10 bg-linear-to-l from-white to-transparent lg:hidden" />
         </div>
       </div>
     </div>
