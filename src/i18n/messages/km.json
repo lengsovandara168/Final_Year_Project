@@ -12,6 +12,7 @@
     "orders": "ការបញ្ជាទិញ",
     "sales": "ការលក់",
     "customers": "អតិថិជន",
+    "staffAccounts": "គណនីបុគ្គលិក",
     "admin": "អ្នកគ្រប់គ្រង",
     "logout": "ចាកចេញ"
   },
@@ -199,6 +200,29 @@
     "totalSpent": "ចំណាយសរុប",
     "joinedDate": "ថ្ងៃចូលរួម",
     "actions": "សកម្មភាព"
+  },
+  "AdminStaffAccounts": {
+    "title": "គណនីបុគ្គលិក",
+    "subtitle": "បង្កើតគណនីបុគ្គលិកដែលសកម្ម ដោយប្រើតែឈ្មោះ និងអ៊ីមែលប៉ុណ្ណោះ។",
+    "formTitle": "បង្កើតគណនីបុគ្គលិក",
+    "formDescription": "បុគ្គលិកថ្មីអាចចូលប្រើភ្លាមៗតាមលំហូរ OTP ធម្មតា។",
+    "email": "អ៊ីមែល",
+    "emailPlaceholder": "staff@example.com",
+    "name": "ឈ្មោះ",
+    "namePlaceholder": "បញ្ចូលឈ្មោះបុគ្គលិក",
+    "createStaff": "បង្កើតគណនីបុគ្គលិក",
+    "creatingStaff": "កំពុងបង្កើតគណនីបុគ្គលិក...",
+    "success": "បានបង្កើតគណនីបុគ្គលិក",
+    "createdDescription": "បានបង្កើត {name} ដោយជោគជ័យសម្រាប់ {email}។",
+    "createFailed": "បង្កើតគណនីបុគ្គលិកបរាជ័យ",
+    "emailRequired": "ត្រូវបញ្ចូលអ៊ីមែល។",
+    "nameRequired": "ត្រូវបញ្ចូលឈ្មោះ។",
+    "invalidEmail": "សូមបញ្ចូលអ៊ីមែលដែលត្រឹមត្រូវ។",
+    "flowTitle": "លំហូរចូលប្រើរបស់បុគ្គលិក",
+    "flowDescription": "វាស្របតាមលំហូរ backend ថ្មីដែលបានដាក់ប្រើ។",
+    "flowStepOne": "Admin បង្កើតគណនីបុគ្គលិកនៅទីនេះ ដោយប្រើតែអ៊ីមែល និងឈ្មោះ។",
+    "flowStepTwo": "បុគ្គលិកចូលប្រើដោយប្រើអ៊ីមែលរបស់ខ្លួនតាមទំព័រចូលប្រើធម្មតា។",
+    "flowStepThree": "Backend នឹងផ្ញើ OTP សម្រាប់គណនីដែលសកម្ម ហើយបុគ្គលិកនឹងទទួលបាន staff JWT បន្ទាប់ពីផ្ទៀងផ្ទាត់។"
   },
   "AdminAddStock": {
     "title": "បន្ថែមផលិតផល (ពី Template)",

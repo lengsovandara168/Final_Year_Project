@@ -12,6 +12,7 @@
     "orders": "Orders",
     "sales": "Sales",
     "customers": "Customers",
+    "staffAccounts": "Staff Accounts",
     "admin": "Admin",
     "logout": "Logout"
   },
@@ -199,6 +200,29 @@
     "totalSpent": "Total Spent",
     "joinedDate": "Join Date",
     "actions": "Actions"
+  },
+  "AdminStaffAccounts": {
+    "title": "Staff Accounts",
+    "subtitle": "Create active staff accounts with just a name and email.",
+    "formTitle": "Create Staff Account",
+    "formDescription": "New staff can sign in immediately with the normal OTP login flow.",
+    "email": "Email",
+    "emailPlaceholder": "staff@example.com",
+    "name": "Name",
+    "namePlaceholder": "Enter staff name",
+    "createStaff": "Create Staff Account",
+    "creatingStaff": "Creating staff account...",
+    "success": "Staff account created",
+    "createdDescription": "{name} was created successfully for {email}.",
+    "createFailed": "Staff account creation failed",
+    "emailRequired": "Email is required.",
+    "nameRequired": "Name is required.",
+    "invalidEmail": "Please enter a valid email address.",
+    "flowTitle": "Staff Login Flow",
+    "flowDescription": "This matches the backend flow now in place.",
+    "flowStepOne": "The admin creates the staff account here with email and name only.",
+    "flowStepTwo": "The staff member signs in with their email through the standard login page.",
+    "flowStepThree": "The backend sends OTP for active accounts, and the staff member receives a staff JWT after verification."
   },
   "AdminAddStock": {
     "title": "Add Product (From Template)",

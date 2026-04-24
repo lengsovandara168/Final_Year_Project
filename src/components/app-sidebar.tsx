@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Users,
   DollarSign,
+  UserPlus,
   LogOut,
   ChevronUp,
   User2,
@@ -89,9 +90,26 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
             url: `${adminBasePath}/sales`,
             icon: DollarSign,
           },
+          {
+            title: t("staffAccounts"),
+            url: `${adminBasePath}/staff`,
+            icon: UserPlus,
+          },
         ]
       : []),
   ];
+
+  const isItemActive = (url: string) => {
+    if (!pathname) {
+      return false;
+    }
+
+    if (url === adminBasePath) {
+      return pathname === url;
+    }
+
+    return pathname === url || pathname.startsWith(`${url}/`);
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -126,7 +144,7 @@ export function AppSidebar({ role, ...props }: AppSidebarProps) {
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    isActive={pathname === item.url}
+                    isActive={isItemActive(item.url)}
                   >
                     <a href={item.url}>
                       <item.icon className="size-4" />

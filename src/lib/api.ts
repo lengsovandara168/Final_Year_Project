@@ -8,4 +8,4 @@ export * from "./api/orders";
 export * from "./api/customers";
 export * from "./api/checkout";
 export * from "./api/pos";
-
+export * from "./api/admin-users";
