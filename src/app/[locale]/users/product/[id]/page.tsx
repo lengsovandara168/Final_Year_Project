@@ -41,7 +41,9 @@ import { useTranslations } from "next-intl";
 function buildProductTemplateKey(product: Product) {
   const priceKey = Number(product.price ?? 0).toFixed(2);
   const originalPriceKey =
-    product.originalPrice == null ? "none" : Number(product.originalPrice).toFixed(2);
+    product.originalPrice == null
+      ? "none"
+      : Number(product.originalPrice).toFixed(2);
 
   if (product.templateId?.trim()) {
     return `template:${product.templateId.trim()}:price:${priceKey}:original:${originalPriceKey}`;
@@ -96,9 +98,7 @@ function normalizeProductImageValues(sources: unknown[]) {
   }
 
   return Array.from(
-    new Set(
-      collected.map((value) => value.trim()).filter(Boolean),
-    ),
+    new Set(collected.map((value) => value.trim()).filter(Boolean)),
   );
 }
 
@@ -119,14 +119,13 @@ function extractProductGalleryImages(
 ) {
   if (!product) return [] as string[];
 
-  return normalizeProductImageValues([product.images, product.imageUrls]).filter(
-    (image) => image !== coverImageUrl,
-  );
+  return normalizeProductImageValues([
+    product.images,
+    product.imageUrls,
+  ]).filter((image) => image !== coverImageUrl);
 }
 
-function firstImageCollection(
-  ...collections: Array<string[] | undefined>
-) {
+function firstImageCollection(...collections: Array<string[] | undefined>) {
   return collections.find(
     (collection) => Array.isArray(collection) && collection.length > 0,
   );
@@ -153,8 +152,12 @@ function deduplicateProductTemplates(products: Product[]) {
     }
 
     const preferred = !existing.inStock && product.inStock ? product : existing;
-    const maxOriginalPrice = Math.max(existing.originalPrice ?? 0, product.originalPrice ?? 0);
-    const mergedOriginalPrice = preferred.originalPrice ?? (maxOriginalPrice || undefined);
+    const maxOriginalPrice = Math.max(
+      existing.originalPrice ?? 0,
+      product.originalPrice ?? 0,
+    );
+    const mergedOriginalPrice =
+      preferred.originalPrice ?? (maxOriginalPrice || undefined);
 
     grouped.set(key, {
       ...preferred,
@@ -172,7 +175,8 @@ function deduplicateProductTemplates(products: Product[]) {
         existing.imageUrls,
         product.imageUrls,
       ),
-      description: preferred.description || existing.description || product.description,
+      description:
+        preferred.description || existing.description || product.description,
       storage: preferred.storage || existing.storage || product.storage,
       color: preferred.color || existing.color || product.color,
       price: preferred.price,
@@ -246,14 +250,16 @@ export default function ProductDetailPage() {
       try {
         setIsLoading(true);
         const productId = params.id as string;
-        const [response, productsResponse, galleryResponse] = await Promise.all([
-          getProductById(accessToken, productId),
-          getProducts(accessToken),
-          getProductGallery(productId, accessToken).catch((error) => {
-            console.error("Failed to load product gallery", error);
-            return null;
-          }),
-        ]);
+        const [response, productsResponse, galleryResponse] = await Promise.all(
+          [
+            getProductById(accessToken, productId),
+            getProducts(accessToken),
+            getProductGallery(productId, accessToken).catch((error) => {
+              console.error("Failed to load product gallery", error);
+              return null;
+            }),
+          ],
+        );
         const loadedProduct = response.data || null;
 
         const allProducts = productsResponse.data || [];
@@ -269,8 +275,7 @@ export default function ProductDetailPage() {
           ? {
               ...loadedProduct,
               image:
-                resolveProductCoverImage(loadedProduct) ??
-                loadedProduct.image,
+                resolveProductCoverImage(loadedProduct) ?? loadedProduct.image,
               availableStock:
                 stockByTemplate.get(buildProductTemplateKey(loadedProduct)) ??
                 0,
@@ -313,6 +318,10 @@ export default function ProductDetailPage() {
   }, [params.id, pathname, router]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [params.id]);
+
+  useEffect(() => {
     const stockLimit = getStockLimit(product);
     if (stockLimit <= 0) {
       setQuantity(1);
@@ -331,7 +340,8 @@ export default function ProductDetailPage() {
   ]);
   const stockLimit = getStockLimit(product);
   const maxQuantity = stockLimit > 0 ? stockLimit : 1;
-  const selectedImageUrl = previewImages[selectedImage] ?? previewImages[0] ?? null;
+  const selectedImageUrl =
+    previewImages[selectedImage] ?? previewImages[0] ?? null;
 
   useEffect(() => {
     if (selectedImage >= previewImages.length) {
@@ -386,7 +396,9 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
-          <h2 className="text-xl font-semibold text-gray-600">{t("loading")}</h2>
+          <h2 className="text-xl font-semibold text-gray-600">
+            {t("loading")}
+          </h2>
         </div>
       </div>
     );
@@ -397,7 +409,9 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-600 mb-2">{t("notFound")}</h2>
+          <h2 className="text-xl font-semibold text-gray-600 mb-2">
+            {t("notFound")}
+          </h2>
           <p className="text-gray-500 mb-4">{t("notFoundMessage")}</p>
           <Button onClick={() => router.back()} variant="outline">
             <ChevronLeft className="h-4 w-4 mr-2" />
@@ -410,64 +424,21 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Back Button & Logo */}
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <div className="flex items-center">
-                <div className="flex items-center justify-center h-20 w-20 rounded-lg">
-                  <img src="/logo/logo.png" alt="astrix logo" />
-                </div>
-                <span className="ml-2 text-xl font-bold hidden sm:block">Astrix</span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  if (product) {
-                    toggleWishlist(product);
-                  }
-                }}
-              >
-                <Heart
-                  className={`h-5 w-5 ${
-                    product && isWishlisted(product.id)
-                      ? "fill-red-500 text-red-500"
-                      : ""
-                  }`}
-                />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={handleShareProduct}>
-                <Share2 className="h-5 w-5" />
-              </Button>
-              <Button 
-                variant="outline" 
-                className="relative"
-                onClick={() => router.push("/users/cart")}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartCount > 99 ? "99+" : cartCount}
-                  </span>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.back()}
+            className="gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {t("goBack")}
+          </Button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Images */}
           <div className="space-y-4">
@@ -487,14 +458,21 @@ export default function ProductDetailPage() {
               {/* Badges */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
                 {product.isPopular && (
-                  <Badge className="bg-orange-500 text-white">{t("popular")}</Badge>
+                  <Badge className="bg-orange-500 text-white">
+                    {t("popular")}
+                  </Badge>
                 )}
                 {product.isBestSeller && (
-                  <Badge className="bg-yellow-500 text-black">{t("bestSeller")}</Badge>
+                  <Badge className="bg-yellow-500 text-black">
+                    {t("bestSeller")}
+                  </Badge>
                 )}
                 {product.originalPrice && (
                   <Badge className="bg-red-500 text-white">
-                    {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                    {Math.round(
+                      (1 - product.price / product.originalPrice) * 100,
+                    )}
+                    % OFF
                   </Badge>
                 )}
               </div>
@@ -585,7 +563,11 @@ export default function ProductDetailPage() {
                     {formatPrice(product.originalPrice)}
                   </span>
                   <Badge className="bg-red-100 text-red-600">
-                    {t("save", { amount: formatPrice(product.originalPrice - product.price) })}
+                    {t("save", {
+                      amount: formatPrice(
+                        product.originalPrice - product.price,
+                      ),
+                    })}
                   </Badge>
                 </>
               )}
@@ -612,15 +594,21 @@ export default function ProductDetailPage() {
             {/* Description */}
             {product.description && (
               <div>
-                <h2 className="font-semibold text-gray-900 mb-2">{t("description")}</h2>
-                <p className="text-gray-600 leading-relaxed">{product.description}</p>
+                <h2 className="font-semibold text-gray-900 mb-2">
+                  {t("description")}
+                </h2>
+                <p className="text-gray-600 leading-relaxed">
+                  {product.description}
+                </p>
               </div>
             )}
 
             {/* Quantity Selector */}
             {product.inStock && (
               <div>
-                <h2 className="font-semibold text-gray-900 mb-3">{t("quantity")}</h2>
+                <h2 className="font-semibold text-gray-900 mb-3">
+                  {t("quantity")}
+                </h2>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center border rounded-lg">
                     <Button
@@ -632,11 +620,15 @@ export default function ProductDetailPage() {
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
-                    <span className="w-12 text-center font-medium">{quantity}</span>
+                    <span className="w-12 text-center font-medium">
+                      {quantity}
+                    </span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                      onClick={() =>
+                        setQuantity(Math.min(maxQuantity, quantity + 1))
+                      }
                       disabled={quantity >= maxQuantity}
                       className="rounded-l-none"
                     >
@@ -644,7 +636,10 @@ export default function ProductDetailPage() {
                     </Button>
                   </div>
                   <span className="text-gray-500">
-                    {t("total")} <span className="font-bold text-black">{formatPrice(product.price * quantity)}</span>
+                    {t("total")}{" "}
+                    <span className="font-bold text-black">
+                      {formatPrice(product.price * quantity)}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -722,44 +717,122 @@ export default function ProductDetailPage() {
 
         {/* Related Products Section */}
         {relatedProducts.length > 0 && (
-          <section className="mt-12">
-            <h2 className="text-xl font-bold mb-4">{t("youMayAlsoLike")}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <section className="mt-16 pt-12 border-t">
+            <div className="mb-10">
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                {t("youMayAlsoLike")}
+              </h2>
+              <div className="w-12 h-1 bg-black rounded-full"></div>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct) => (
-                <Card
+                <div
                   key={relatedProduct.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => router.push(`/users/product/${relatedProduct.id}`)}
+                  className="group cursor-pointer"
+                  onClick={() =>
+                    router.push(`/users/product/${relatedProduct.id}`)
+                  }
                 >
-                  <CardContent className="p-0">
-                    <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
-                      {relatedProduct.image ? (
-                        <img
-                          src={relatedProduct.image}
-                          alt={relatedProduct.name}
-                          className="w-full h-full object-contain p-4"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-12 w-12 text-gray-300" />
+                  <Card className="h-full border-0 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-visible relative">
+                    <CardContent className="p-0 flex flex-col h-full">
+                      {/* Image Section */}
+                      <div className="relative aspect-square bg-white overflow-hidden flex items-center justify-center">
+                        {relatedProduct.image ? (
+                          <img
+                            src={relatedProduct.image}
+                            alt={relatedProduct.name}
+                            className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                          />
+                        ) : (
+                          <Package className="h-16 w-16 text-gray-300" />
+                        )}
+                      </div>
+
+                      {/* Discount Badge - Outside image container */}
+                      {relatedProduct.originalPrice && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <Badge className="bg-red-500 text-white shadow-md font-bold text-xs">
+                            {Math.round(
+                              (1 - relatedProduct.price / relatedProduct.originalPrice) * 100
+                            )}
+                            % OFF
+                          </Badge>
                         </div>
                       )}
-                    </div>
-                    <div className="p-3">
-                      <h3 className="text-sm font-medium line-clamp-1">
-                        {relatedProduct.name}
-                      </h3>
-                      {(relatedProduct.storage || relatedProduct.color) && (
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                          {[relatedProduct.storage, relatedProduct.color].filter(Boolean).join(" • ")}
-                        </p>
+                      {relatedProduct.isPopular && !relatedProduct.originalPrice && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <Badge className="bg-orange-500 text-white shadow-md text-xs">
+                            {t("popular")}
+                          </Badge>
+                        </div>
                       )}
-                      <p className="text-sm font-bold mt-1">
-                        {formatPrice(relatedProduct.price)}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+
+                      {/* Content Section */}
+                      <div className="flex-1 flex flex-col p-4">
+                        {/* Name */}
+                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 mb-2 leading-tight">
+                          {relatedProduct.name}
+                        </h3>
+
+                        {/* Specs */}
+                        {(relatedProduct.storage || relatedProduct.color) && (
+                          <p className="text-xs text-gray-500 mb-3 line-clamp-1">
+                            {[relatedProduct.storage, relatedProduct.color]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </p>
+                        )}
+
+                        {/* Rating */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-3.5 w-3.5 ${
+                                  i < Math.floor(relatedProduct.rating)
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-200"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-600 font-medium">
+                            ({relatedProduct.reviewCount})
+                          </span>
+                        </div>
+
+                        {/* Price Section */}
+                        <div className="mt-auto pt-3 border-t border-gray-100">
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <span className="text-lg font-bold text-gray-900">
+                                {formatPrice(relatedProduct.price)}
+                              </span>
+                              {relatedProduct.originalPrice && (
+                                <div className="text-xs text-gray-500 line-through">
+                                  {formatPrice(relatedProduct.originalPrice)}
+                                </div>
+                              )}
+                            </div>
+                            {relatedProduct.inStock && (
+                              <Button
+                                size="sm"
+                                className="bg-black text-white hover:bg-gray-800 h-8 px-3"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addToCartWithToast(relatedProduct, 1);
+                                }}
+                              >
+                                <ShoppingCart className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               ))}
             </div>
           </section>
@@ -771,7 +844,9 @@ export default function ProductDetailPage() {
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <p className="text-sm text-gray-500">{t("totalPrice")}</p>
-            <p className="text-xl font-bold">{formatPrice(product.price * quantity)}</p>
+            <p className="text-xl font-bold">
+              {formatPrice(product.price * quantity)}
+            </p>
           </div>
           <Button
             className="flex-1 bg-black text-white hover:bg-gray-800 h-12"
