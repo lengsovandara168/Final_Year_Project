@@ -39,7 +39,7 @@ export default function ProductCard({
       onClick={handleClick}
     >
       <CardContent className="flex h-full flex-col p-0">
-        <div className="relative aspect-square overflow-hidden rounded-t-lg bg-gray-100">
+        <div className="relative aspect-square overflow-hidden rounded-t-lg bg-white">
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -48,7 +48,7 @@ export default function ProductCard({
               height={400}
               loading="lazy"
               decoding="async"
-              className="h-full w-full -translate-y-4 scale-110 object-cover object-center transition-transform duration-300 group-hover:scale-[1.14]"
+              className="h-full w-full object-contain object-center p-5 transition-transform duration-300 group-hover:scale-[1.03] sm:p-6"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
