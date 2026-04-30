@@ -70,6 +70,14 @@ export default function ProductCard({
             )}
           </div>
 
+          {product.originalPrice && (
+            <div className="absolute right-2 top-2">
+              <Badge className="bg-red-500 text-white font-bold shadow-md">
+                {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+              </Badge>
+            </div>
+          )}
+
           <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
               size="icon-sm"
