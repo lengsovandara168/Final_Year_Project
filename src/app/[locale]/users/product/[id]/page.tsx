@@ -86,7 +86,7 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     if (product) {
       // Add to cart logic here
-      console.log(`Added ${quantity} x ${product.name} to cart`);
+      console.log(`Added ${quantity} x ${product.name ?? "Unknown Product"} to cart`);
       // You can integrate with your cart state management here
     }
   };
@@ -169,7 +169,7 @@ export default function ProductDetailPage() {
               {product.image ? (
                 <img
                   src={product.image}
-                  alt={product.name}
+                  alt={product.name ?? "Product"}
                   className="w-full h-full object-contain p-8"
                 />
               ) : (
@@ -206,7 +206,7 @@ export default function ProductDetailPage() {
                   {product.image && idx === 0 ? (
                     <img
                       src={product.image}
-                      alt={`${product.name} view ${idx + 1}`}
+                      alt={`${product.name ?? "Product"} view ${idx + 1}`}
                       className="w-full h-full object-contain p-2"
                     />
                   ) : (
@@ -223,9 +223,9 @@ export default function ProductDetailPage() {
           <div className="space-y-6">
             {/* Brand & Name */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">{product.brand}</p>
+              <p className="text-sm text-gray-500 mb-1">{product.brand ?? "Unknown Brand"}</p>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                {product.name}
+                {product.name ?? "Unknown Product"}
               </h1>
             </div>
 
@@ -407,7 +407,7 @@ export default function ProductDetailPage() {
                       {relatedProduct.image ? (
                         <img
                           src={relatedProduct.image}
-                          alt={relatedProduct.name}
+                          alt={relatedProduct.name ?? "Product"}
                           className="w-full h-full object-contain p-4"
                         />
                       ) : (
@@ -417,9 +417,9 @@ export default function ProductDetailPage() {
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="text-xs text-gray-500">{relatedProduct.brand}</p>
+                      <p className="text-xs text-gray-500">{relatedProduct.brand ?? "Unknown Brand"}</p>
                       <h3 className="text-sm font-medium line-clamp-1">
-                        {relatedProduct.name}
+                        {relatedProduct.name ?? "Unknown Product"}
                       </h3>
                       <p className="text-sm font-bold mt-1">
                         {formatPrice(relatedProduct.price)}

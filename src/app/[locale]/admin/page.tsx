@@ -149,8 +149,8 @@ export default function DashboardPage() {
               {topSellingProducts.map((product, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="font-medium">{product.name}</p>
-                    <p className="text-sm text-gray-500">{product.brand}</p>
+                    <p className="font-medium">{product.name ?? "Unknown Product"}</p>
+                    <p className="text-sm text-gray-500">{product.brand ?? "Unknown Brand"}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">{product.revenue}</p>

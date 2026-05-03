@@ -249,7 +249,7 @@ export default function ShopPage() {
 
   // Filter products based on category, brand, and search
   const filteredProducts = products.filter((product) => {
-    const productSubcategoryLower = product.subcategory.toLowerCase();
+    const productSubcategoryLower = (product.subcategory ?? "").toLowerCase();
     const matchesCategory =
       selectedCategory === "all" ||
       categorySubcategorySlugs.includes(productSubcategoryLower);
@@ -260,8 +260,8 @@ export default function ShopPage() {
       productSubcategoryLower === selectedBrandName;
     const matchesSearch =
       searchQuery === "" ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchQuery.toLowerCase());
+      (product.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.brand ?? "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesBrand && matchesSearch;
   });
 
@@ -777,7 +777,7 @@ function ProductCard({
           {product.image ? (
             <img
               src={product.image}
-              alt={product.name}
+              alt={product.name ?? "Product"}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
           ) : (
@@ -807,9 +807,9 @@ function ProductCard({
 
         {/* Product Info */}
         <div className="p-4">
-          <p className="text-sm text-gray-500 mb-1">{product.brand}</p>
+          <p className="text-sm text-gray-500 mb-1">{product.brand ?? "Unknown Brand"}</p>
           <h3 className="font-medium text-sm line-clamp-2 mb-2">
-            {product.name}
+            {product.name ?? "Unknown Product"}
           </h3>
 
           {/* Rating */}

@@ -449,12 +449,12 @@ export type ProductSpecification = {
 
 export type Product = {
   id: string;
-  name: string;
-  brand: string;
+  name?: string;
+  brand?: string;
   price: number;
   originalPrice?: number;
   image?: string;
-  subcategory: string;
+  subcategory?: string;
   rating: number;
   reviewCount: number;
   inStock: boolean;
